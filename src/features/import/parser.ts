@@ -76,8 +76,8 @@ export function findDuplicates(incoming: ParsedTransaction[], existing: ParsedTr
   const suspected: Array<{ incoming: ParsedTransaction; existing: ParsedTransaction }> = [];
   for (const tx of incoming) {
     if (exactFingerprints.has(tx.fingerprint)) { exact.push(tx); continue; }
-    const candidate = existing.find((old) => old.accountReference === tx.accountReference && old.bookedOn === tx.bookedOn && old.amount === tx.amount && old.currency === tx.currency && normalize(old.counterparty).toLowerCase() === normalize(tx.counterparty).toLowerCase());
-    if (candidate) suspected.push({ incoming: tx, existing: candidate }); else accepted.push(tx);
+    const candidate = existing.find((old) => old.bookedOn === tx.bookedOn && old.amount === tx.amount && old.currency === tx.currency && normalize(old.counterparty).toLowerCase() === normalize(tx.counterparty).toLowerCase());
+    if (candidate) suspected.push({ incoming: tx, existing: candidate }); else { accepted.push(tx); exactFingerprints.add(tx.fingerprint); }
   }
   return { accepted, exact, suspected };
 }

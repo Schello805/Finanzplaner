@@ -1,0 +1,16 @@
+export const defaultCategories = [
+  ["Wohnen","wohnen","#2367a1","house"],
+  ["Lebensmittel","lebensmittel","#087e82","shopping-basket"],
+  ["Mobilität","mobilitaet","#31a77d","car"],
+  ["Tanken","tanken","#2f9075","fuel","mobilitaet"],
+  ["Freizeit","freizeit","#d88a35","party-popper"],
+  ["App- & In-Game-Käufe","app-in-game","#8159b7","gamepad-2","freizeit"],
+  ["Restaurants","restaurants","#c4772c","utensils","freizeit"],
+  ["Gesundheit","gesundheit","#c44f64","heart-pulse"],
+  ["Versicherungen","versicherungen","#556b87","shield"],
+  ["Haushalt & Drogerie","haushalt-drogerie","#159b94","spray-can"],
+  ["Kinder","kinder","#d26b90","baby"],
+  ["Einkommen","einkommen","#2a996b","wallet",null,true],
+  ["Interne Umbuchung","umbuchung","#758387","arrow-left-right"],
+  ["Sonstiges","sonstiges","#7c898c","circle-ellipsis"],
+] as const;

@@ -154,7 +154,7 @@ export const transactions = pgTable("transactions", {
   duplicateOfId: uuid("duplicate_of_id"),
   categorizationConfidence: numeric("categorization_confidence", { precision: 4, scale: 3 }),
   categorizedBy: text("categorized_by"),
-  originalData: jsonb("original_data").$type<Record<string, string>>().notNull(),
+  originalDataEncrypted: text("original_data_encrypted").notNull(),
   ...timestamps,
 }, (t) => [uniqueIndex("transactions_account_fingerprint_unique").on(t.accountId, t.fingerprint)]);
 

@@ -2,7 +2,7 @@
 
 Finanzplaner ist eine private, deutschsprachige Ausgabenanalyse für Familien. Die Anwendung importiert Kontoauszüge, entfernt Dubletten, ordnet Umsätze Kategorien zu und zeigt verständlich, wofür Geld ausgegeben wurde. Persönliche Konten, Gemeinschaftskonten und verwaltete Kinderkonten werden mit getrennten Berechtigungen abgebildet.
 
-> Status: frühe Entwicklung (`0.1.0`). Vor dem produktiven Einsatz mit echten Finanzdaten bitte die offenen Punkte und Sicherheitshinweise prüfen.
+> Status: frühe Entwicklung (`0.1.0`). Ersteinrichtung, Kontoanlage und Sparkassen-Import sind bereits mit PostgreSQL verbunden. Vor dem produktiven Einsatz mit echten Finanzdaten bitte die offenen Punkte und Sicherheitshinweise prüfen.
 
 ## Wichtigste Funktionen
 
