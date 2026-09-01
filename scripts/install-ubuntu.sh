@@ -13,6 +13,10 @@ AUTH_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
 ENCRYPTION_KEY="$(openssl rand -base64 32 | tr -d '\n')"
 IP_ADDRESS="$(hostname -I | awk '{print $1}')"
 
+# Der Quellcode wird vom unprivilegierten Dienstbenutzer gebaut. Root führt
+# Updates aus; deshalb muss Git diesen bewusst festgelegten Pfad akzeptieren.
+git config --global --get-all safe.directory 2>/dev/null | grep -Fxq "${APP_DIR}" || git config --global --add safe.directory "${APP_DIR}"
+
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl gnupg postgresql postgresql-client ufw openssl git
 install -d -m 0755 /etc/apt/keyrings

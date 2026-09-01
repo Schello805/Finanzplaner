@@ -45,13 +45,13 @@ Ausführliche Hinweise: [docs/INSTALLATION.md](docs/INSTALLATION.md)
 
 ## Updates
 
-Erstelle vor jedem Update einen Proxmox-Snapshot oder ein vollständiges LXC-Backup. Starte danach im Container:
+Ein Proxmox-Snapshot oder vollständiges LXC-Backup vor dem Update wird empfohlen, aber vom Skript nicht vorausgesetzt. Starte im Container:
 
 ```bash
 sudo /opt/finanzplaner/scripts/update.sh
 ```
 
-Das Skript fragt nach der Sicherungsbestätigung, lädt den aktuellen `main`-Stand, installiert exakt die festgeschriebenen Abhängigkeiten, führt Datenbankmigrationen aus, baut die App neu und startet den Dienst. Nach erfolgreichem Abschluss zeigt es Revision, Dienststatus sowie IP-Adresse und Port an. Updates werden niemals automatisch installiert.
+Das Skript lädt den aktuellen `main`-Stand, installiert exakt die festgeschriebenen Abhängigkeiten, führt Datenbankmigrationen aus, baut die App neu und startet den Dienst. Nach erfolgreichem Abschluss zeigt es Revision, Dienststatus sowie IP-Adresse und Port an. Updates werden niemals automatisch installiert.
 
 Wenn eine ältere Erstinstallation abgebrochen ist, verwende stattdessen erneut den Installationsbefehl aus dem vorherigen Abschnitt.
 

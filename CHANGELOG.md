@@ -18,3 +18,4 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - Datenbank-Endpunkte für verwaltete Kinderprofile und Sorgeberechtigte
 - wiederholbarer Ubuntu-Installer mit korrekter Übergabe der Datenbankverbindung an Migrationen
 - gut sichtbare Update-Anleitung direkt in der README
+- Update ohne Backup-Rückfrage und automatische Git-Freigabe des festen Installationspfads
