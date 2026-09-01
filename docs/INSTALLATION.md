@@ -34,6 +34,18 @@ sudo /opt/finanzplaner/scripts/update.sh
 
 Das Skript fragt nach der Sicherungsbestätigung, lädt ausschließlich Fast-Forward-Änderungen, installiert reproduzierbar aus `package-lock.json`, migriert die Datenbank, baut die Anwendung und prüft den Dienst. Am Ende zeigt es Revision, Status, IP und Port.
 
+## Abgebrochene Erstinstallation fortsetzen
+
+Das Installationsskript ist wiederholbar. Falls eine ältere Version beim Datenbank-Migrationsschritt abgebrochen ist, aktualisiere zunächst den Checkout und starte es erneut:
+
+```bash
+cd /opt/finanzplaner
+git pull --ff-only
+FINANZPLANER_SUBNET=192.168.1.0/24 ./scripts/install-ubuntu.sh
+```
+
+Beim erneuten Lauf wird das Datenbankpasswort konsistent aktualisiert. Bereits angelegte Tabellen und ein vorhandener Admin-Benutzer werden nicht dupliziert.
+
 ## Wiederherstellung
 
 Die Anwendung erstellt bewusst keine eigenen Backups. Stelle bei Problemen den vollständigen LXC über Proxmox wieder her. Datenbank und `/etc/finanzplaner.env` müssen stets gemeinsam auf denselben Zeitpunkt zurückgesetzt werden.
