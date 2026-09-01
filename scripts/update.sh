@@ -3,8 +3,7 @@ set -euo pipefail
 if [[ ${EUID} -ne 0 ]]; then echo "Bitte als root ausführen: sudo /opt/finanzplaner/scripts/update.sh"; exit 1; fi
 APP_DIR="/opt/finanzplaner"
 APP_USER="finanzplaner"
-read -r -p "Wurde ein aktueller Proxmox-Snapshot oder ein Backup erstellt? [j/N] " CONFIRM
-[[ "${CONFIRM,,}" == "j" || "${CONFIRM,,}" == "ja" ]] || { echo "Update abgebrochen."; exit 1; }
+git config --global --get-all safe.directory 2>/dev/null | grep -Fxq "${APP_DIR}" || git config --global --add safe.directory "${APP_DIR}"
 cd "${APP_DIR}"
 git fetch --tags --prune
 git pull --ff-only
