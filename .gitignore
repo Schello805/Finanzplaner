@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.env
+.env.local
+coverage/
+*.log
+*.tsbuildinfo
+*.csv
+!.github/fixtures/*.csv
+data/
+dist/
+.DS_Store

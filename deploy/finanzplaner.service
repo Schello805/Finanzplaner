@@ -1,0 +1,23 @@
+[Unit]
+Description=Finanzplaner Familien-Ausgabenanalyse
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=finanzplaner
+Group=finanzplaner
+WorkingDirectory=/opt/finanzplaner
+EnvironmentFile=/etc/finanzplaner.env
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/finanzplaner
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
