@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'echo "FEHLER: Installation in Zeile ${LINENO} abgebrochen. Der Befehl war: ${BASH_COMMAND}" >&2' ERR
 
 if [[ ${EUID} -ne 0 ]]; then echo "Bitte als root ausführen: sudo ./scripts/install-ubuntu.sh"; exit 1; fi
 if ! grep -q 'Ubuntu 24.04' /etc/os-release; then echo "Hinweis: Offiziell unterstützt wird Ubuntu Server 24.04 LTS."; fi
@@ -25,6 +26,7 @@ if [[ "$(pwd)" != "${APP_DIR}" ]]; then cp -a . "${APP_DIR}/"; fi
 chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}"
 
 sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='finanzplaner'" | grep -q 1 || sudo -u postgres psql -c "CREATE USER finanzplaner WITH PASSWORD '${DB_PASSWORD}'"
+sudo -u postgres psql -c "ALTER USER finanzplaner WITH PASSWORD '${DB_PASSWORD}'" >/dev/null
 sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='finanzplaner'" | grep -q 1 || sudo -u postgres createdb --owner=finanzplaner finanzplaner
 
 cat > /etc/finanzplaner.env <<EOF
@@ -41,7 +43,7 @@ chmod 0600 /etc/finanzplaner.env
 cd "${APP_DIR}"
 set -a; source /etc/finanzplaner.env; set +a
 sudo -u "${APP_USER}" npm ci
-sudo -u "${APP_USER}" npm run db:migrate
+sudo -u "${APP_USER}" --preserve-env=DATABASE_URL npm run db:migrate
 ADMIN_RESULT="$(sudo -u "${APP_USER}" --preserve-env=DATABASE_URL node scripts/init-admin.mjs)"
 sudo -u "${APP_USER}" --preserve-env=APP_VERSION npm run build
 

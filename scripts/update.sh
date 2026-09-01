@@ -12,7 +12,7 @@ REVISION="$(git describe --tags --always | sed 's/^v//')"
 sed -i "s/^APP_VERSION=.*/APP_VERSION=${REVISION}/" /etc/finanzplaner.env
 set -a; source /etc/finanzplaner.env; set +a
 sudo -u "${APP_USER}" npm ci
-sudo -u "${APP_USER}" npm run db:migrate
+sudo -u "${APP_USER}" --preserve-env=DATABASE_URL npm run db:migrate
 sudo -u "${APP_USER}" --preserve-env=APP_VERSION npm run build
 systemctl restart finanzplaner
 sleep 2

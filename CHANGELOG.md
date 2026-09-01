@@ -16,3 +16,4 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - persistente Kontoanlage für persönliche und gemeinsame Konten
 - durchgängige CSV-Importvorschau mit verschlüsselten Originalfeldern
 - Datenbank-Endpunkte für verwaltete Kinderprofile und Sorgeberechtigte
+- wiederholbarer Ubuntu-Installer mit korrekter Übergabe der Datenbankverbindung an Migrationen
