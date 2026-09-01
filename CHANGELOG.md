@@ -17,3 +17,4 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - durchgängige CSV-Importvorschau mit verschlüsselten Originalfeldern
 - Datenbank-Endpunkte für verwaltete Kinderprofile und Sorgeberechtigte
 - wiederholbarer Ubuntu-Installer mit korrekter Übergabe der Datenbankverbindung an Migrationen
+- gut sichtbare Update-Anleitung direkt in der README
