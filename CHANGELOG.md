@@ -19,3 +19,4 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - wiederholbarer Ubuntu-Installer mit korrekter Übergabe der Datenbankverbindung an Migrationen
 - gut sichtbare Update-Anleitung direkt in der README
 - Update ohne Backup-Rückfrage und automatische Git-Freigabe des festen Installationspfads
+- einblendbares Passwortfeld mit zugänglicher Augen-Schaltfläche bei der Anmeldung
