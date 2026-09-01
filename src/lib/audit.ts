@@ -1,0 +1,2 @@
+import "server-only";import {db} from "@/db";import {auditLog} from "@/db/schema";import {redactSensitiveText,sanitizeLogMetadata} from "./redaction";
+export async function writeAudit(eventType:string,message:string,options:{userId?:string;level?:"info"|"warning"|"error";metadata?:Record<string,unknown>}={}){await db.insert(auditLog).values({userId:options.userId,level:options.level??"info",eventType,message:redactSensitiveText(message).slice(0,500),metadata:options.metadata?sanitizeLogMetadata(options.metadata):undefined}).catch(()=>undefined)}
