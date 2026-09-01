@@ -43,6 +43,18 @@ Das Skript installiert Node.js, PostgreSQL und UFW, erstellt den Benutzer `admin
 
 Ausführliche Hinweise: [docs/INSTALLATION.md](docs/INSTALLATION.md)
 
+## Updates
+
+Erstelle vor jedem Update einen Proxmox-Snapshot oder ein vollständiges LXC-Backup. Starte danach im Container:
+
+```bash
+sudo /opt/finanzplaner/scripts/update.sh
+```
+
+Das Skript fragt nach der Sicherungsbestätigung, lädt den aktuellen `main`-Stand, installiert exakt die festgeschriebenen Abhängigkeiten, führt Datenbankmigrationen aus, baut die App neu und startet den Dienst. Nach erfolgreichem Abschluss zeigt es Revision, Dienststatus sowie IP-Adresse und Port an. Updates werden niemals automatisch installiert.
+
+Wenn eine ältere Erstinstallation abgebrochen ist, verwende stattdessen erneut den Installationsbefehl aus dem vorherigen Abschnitt.
+
 ## Lokale Entwicklung
 
 Voraussetzungen: Node.js 20.19 oder neuer und PostgreSQL 16 oder neuer.
