@@ -63,6 +63,17 @@ export const guardians = pgTable("guardians", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [uniqueIndex("guardian_child_unique").on(t.childMemberId, t.guardianMemberId)]);
 
+export const householdInvitations = pgTable("household_invitations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").references(() => households.id, { onDelete: "cascade" }).notNull(),
+  tokenHash: text("token_hash").notNull(),
+  email: text("email"),
+  invitedBy: uuid("invited_by").references(() => users.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [uniqueIndex("invitation_token_unique").on(t.tokenHash)]);
+
 export const accounts = pgTable("accounts", {
   id: uuid("id").defaultRandom().primaryKey(),
   householdId: uuid("household_id").references(() => households.id, { onDelete: "cascade" }).notNull(),

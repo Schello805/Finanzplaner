@@ -11,6 +11,7 @@ APP_PORT="8080"
 DB_PASSWORD="$(openssl rand -base64 30 | tr -d '/+=' | head -c 32)"
 AUTH_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
 ENCRYPTION_KEY="$(openssl rand -base64 32 | tr -d '\n')"
+IP_ADDRESS="$(hostname -I | awk '{print $1}')"
 
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl gnupg postgresql postgresql-client ufw openssl git
@@ -37,6 +38,7 @@ DATABASE_URL=postgresql://finanzplaner:${DB_PASSWORD}@127.0.0.1:5432/finanzplane
 AUTH_SECRET=${AUTH_SECRET}
 ENCRYPTION_KEY=${ENCRYPTION_KEY}
 APP_VERSION=$(git -C "${APP_DIR}" describe --tags --always 2>/dev/null | sed 's/^v//' || echo dev)
+APP_URL=http://${IP_ADDRESS}:${APP_PORT}
 EOF
 chmod 0600 /etc/finanzplaner.env
 
@@ -56,7 +58,6 @@ LOCAL_SUBNET="${FINANZPLANER_SUBNET:-}"
 if [[ -n "${LOCAL_SUBNET}" ]]; then ufw allow from "${LOCAL_SUBNET}" to any port "${APP_PORT}" proto tcp; else ufw allow "${APP_PORT}/tcp"; echo "WARNUNG: Port ${APP_PORT} ist nicht auf ein Subnetz eingeschränkt. Setze FINANZPLANER_SUBNET und passe UFW an."; fi
 ufw --force enable >/dev/null
 
-IP_ADDRESS="$(hostname -I | awk '{print $1}')"
 echo
 echo "Finanzplaner wurde installiert."
 echo "Adresse: http://${IP_ADDRESS}:${APP_PORT}"
