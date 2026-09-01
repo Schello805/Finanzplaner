@@ -12,3 +12,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - OpenAI- und Gemini-Adapter mit Datenschutzfilter und Kostenschätzung
 - native Ubuntu-Installation mit systemd, PostgreSQL und UFW
 - buildbasierte Revision im Footer
+- geführte Ersteinrichtung mit Haushalt und Standardkategorien
+- persistente Kontoanlage für persönliche und gemeinsame Konten
+- durchgängige CSV-Importvorschau mit verschlüsselten Originalfeldern
+- Datenbank-Endpunkte für verwaltete Kinderprofile und Sorgeberechtigte

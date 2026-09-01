@@ -15,7 +15,7 @@ const links = [
 
 export function AppNavigation() {
   const pathname = usePathname();
-  if (pathname === "/anmelden" || pathname === "/passwort-aendern") return null;
+  if (pathname === "/anmelden" || pathname === "/passwort-aendern" || pathname === "/einrichtung") return null;
   return <>
     <aside className="fixed inset-y-0 left-0 z-20 hidden w-[250px] border-r border-[var(--border)] bg-[var(--surface)] px-4 py-6 md:block">
       <Link href="/" className="mb-9 flex items-center gap-3 px-2 no-underline text-[var(--text)]">
