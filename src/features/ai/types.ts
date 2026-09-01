@@ -4,8 +4,8 @@ export const categorizationResponseSchema = z.object({
   results: z.array(z.object({
     id: z.string(),
     category: z.string(),
-    subcategory: z.string().optional(),
-    normalizedMerchant: z.string().optional(),
+    subcategory: z.string().nullable().optional(),
+    normalizedMerchant: z.string().nullable().optional(),
     confidence: z.number().min(0).max(1),
     reason: z.string().max(240),
   })),
