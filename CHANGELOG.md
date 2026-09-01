@@ -20,3 +20,4 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - gut sichtbare Update-Anleitung direkt in der README
 - Update ohne Backup-Rückfrage und automatische Git-Freigabe des festen Installationspfads
 - einblendbares Passwortfeld mit zugänglicher Augen-Schaltfläche bei der Anmeldung
+- gezielte, widerrufbare Freigabe persönlicher Konten an andere Erwachsene im Haushalt
