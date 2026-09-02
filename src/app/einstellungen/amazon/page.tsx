@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, PackageSearch, ShieldCheck, Upload } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { AmazonReconciliation } from "@/components/amazon-reconciliation";
 
 type Preview = {
   items: number;
@@ -56,5 +57,6 @@ export default function AmazonImportPage() {
     {message&&<div role="status" className="rounded-xl bg-[var(--surface-soft)] p-4 text-sm">{message}</div>}
     {preview&&<section className="card p-5"><h2 className="font-bold">Importvorschau</h2><div className="mt-4 grid gap-3 sm:grid-cols-5">{[["Artikel",preview.items],["Bestellungen",preview.orders],["Mehrere Artikel",preview.multipleItemOrders],["Neu",preview.newItems],["Dubletten",preview.duplicates]].map(([label,value])=><div key={label} className="rounded-xl bg-[var(--surface-soft)] p-4"><div className="text-xs font-semibold muted">{label}</div><div className="mt-1 text-2xl font-bold">{value}</div></div>)}</div>{preview.warnings.length>0&&<div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">{preview.warnings.length} Zeilen benötigen Prüfung. Erste Meldung: {preview.warnings[0]}</div>}<button disabled={busy||preview.newItems===0} onClick={()=>upload("commit")} className="btn-primary mt-5">{preview.newItems} neue Artikel importieren</button></section>}
     <section className="card overflow-hidden"><div className="border-b border-[var(--border)] p-5"><h2 className="font-bold">Bisherige Amazon-Importe</h2></div>{history.length?history.map(item=><div key={item.id} className="flex flex-col justify-between gap-2 border-b border-[var(--border)] p-5 last:border-0 sm:flex-row"><div><div className="font-semibold">{item.filename}</div><div className="mt-1 text-sm muted">{new Intl.DateTimeFormat("de-DE",{dateStyle:"medium",timeStyle:"short"}).format(new Date(item.createdAt))}</div></div><div className="text-sm font-semibold">{item.orderCount} Bestellungen · {item.itemCount} Artikel</div></div>):<div className="p-5 text-sm muted">Noch keine Amazon-Datei importiert.</div>}</section>
+    <AmazonReconciliation />
   </div>;
 }

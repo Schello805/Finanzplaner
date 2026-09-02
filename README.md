@@ -7,6 +7,7 @@ Finanzplaner ist eine private, deutschsprachige Ausgabenanalyse für Familien. D
 ## Wichtigste Funktionen
 
 - Sparkasse CSV-CAMT V8 als mitgelieferte Importvorlage
+- Amazon-„Order History.csv“-Import mit artikelweiser Kategorisierung und Zuordnung zu Bankbuchungen
 - visueller, versionierter Importformat-Designer für weitere Banken
 - exakte Dubletten automatisch überspringen, Verdachtsfälle manuell entscheiden
 - persönliche, gemeinsame und verwaltete Kinderkonten
@@ -80,7 +81,7 @@ npm run build
 
 ## Datenschutz
 
-Die Original-CSV wird nur temporär verarbeitet und nach erfolgreichem Import entfernt. Normalisierte Umsätze verbleiben in der lokalen PostgreSQL-Datenbank. KI-Aufrufe sind optional. Vor einer manuellen Anfrage zeigt die App den bereinigten Datensatz und eine Kostenschätzung. IBANs, API-Schlüssel und technische Geheimnisse werden nie an einen KI-Anbieter gesendet.
+Die Original-CSV wird nur temporär verarbeitet und nicht als Datei gespeichert. Normalisierte Umsätze verbleiben in der lokalen PostgreSQL-Datenbank. Beim Amazon-Import werden Bestellnummer und Artikelname verschlüsselt; Adressen, Zahlungsdetails, Tracking, Geschenknachrichten und Seriennummern werden verworfen. KI-Aufrufe sind optional. Vor einer manuellen Anfrage zeigt die App den bereinigten Datensatz und eine Kostenschätzung. IBANs, API-Schlüssel und technische Geheimnisse werden nie an einen KI-Anbieter gesendet.
 
 Details stehen in [docs/PRIVACY.md](docs/PRIVACY.md) und [SECURITY.md](SECURITY.md).
 
