@@ -21,3 +21,5 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - Update ohne Backup-Rückfrage und automatische Git-Freigabe des festen Installationspfads
 - einblendbares Passwortfeld mit zugänglicher Augen-Schaltfläche bei der Anmeldung
 - gezielte, widerrufbare Freigabe persönlicher Konten an andere Erwachsene im Haushalt
+- robuste automatische Trennzeichenerkennung für echte Sparkassen-CAMT-V8-Dateien
+- responsive HTML-E-Mails mit Aktionsschaltfläche und Klartext-Alternative

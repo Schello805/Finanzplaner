@@ -4,7 +4,7 @@ export const sparkasseCamtV8: ImportTemplate = {
   id: "builtin-sparkasse-camt-v8",
   name: "Sparkasse CSV-CAMT V8",
   bankName: "Sparkasse",
-  delimiter: ",",
+  delimiter: ";",
   encoding: "utf-8-sig",
   dateFormat: "dd.MM.yyyy",
   decimalSeparator: ",",

@@ -8,9 +8,10 @@ const sha256 = (value: string) => createHash("sha256").update(value).digest("hex
 function toIsoDate(value: string, format: ImportTemplate["dateFormat"]): string {
   const clean = normalize(value);
   if (format === "yyyy-MM-dd" && /^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
-  const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(clean);
+  const match = /^(\d{2})\.(\d{2})\.(\d{2}|\d{4})$/.exec(clean);
   if (!match) throw new Error(`Ungültiges Datum: ${clean || "(leer)"}`);
-  return `${match[3]}-${match[2]}-${match[1]}`;
+  const year=match[3].length===2?(Number(match[3])>=70?`19${match[3]}`:`20${match[3]}`):match[3];
+  return `${year}-${match[2]}-${match[1]}`;
 }
 
 function toAmount(value: string, decimalSeparator: "," | "."): number {
@@ -28,8 +29,10 @@ function get(row: Record<string, string>, template: ImportTemplate, field: Canon
 
 export function parseBankCsv(input: string, template: ImportTemplate): ImportResult {
   const source = input.replace(/^\uFEFF/, "");
-  const parsed = Papa.parse<Record<string, string>>(source, { header: true, delimiter: template.delimiter, skipEmptyLines: false });
-  if (parsed.errors.some((e) => e.type === "Delimiter" || e.type === "Quotes")) throw new Error(`CSV konnte nicht gelesen werden: ${parsed.errors[0]?.message}`);
+  const delimiters = [...new Set([template.delimiter, ";", ",", "\t"] )];
+  const candidates = delimiters.map(delimiter => Papa.parse<Record<string, string>>(source, { header: true, delimiter, skipEmptyLines: false }));
+  const parsed = candidates.find(candidate => template.requiredFields.every(field => (candidate.meta.fields ?? []).includes(template.columns[field] ?? ""))) ?? candidates[0];
+  if (parsed.errors.some((e) => e.type === "Delimiter" || e.type === "Quotes")) throw new Error(`CSV konnte nicht gelesen werden: ${parsed.errors.find(e => e.type === "Delimiter" || e.type === "Quotes")?.message}`);
   const headers = parsed.meta.fields ?? [];
   const missing = template.requiredFields.filter((field) => !headers.includes(template.columns[field] ?? ""));
   if (missing.length) throw new Error(`Notwendige Spalten fehlen: ${missing.map(f => template.columns[f] ?? f).join(", ")}`);
