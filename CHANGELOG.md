@@ -34,3 +34,4 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - validierte Kategorieaufteilungen sowie Verknüpfung und Kennzeichnung von Erstattungen und Umbuchungen
 - vollständige Adminverwaltung für eigene, testpflichtige Bank-Importvorlagen
 - korrekte Analyseberechnung für Kategorieaufteilungen und ausgabenmindernde Erstattungen
+- echter Importverlauf und persönliche Kategorienverwaltung

@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Bot, ChevronRight, FileUp, Lock, Mail, UserRound } from "lucide-react";
+import { Bot, ChevronRight, FileUp, Lock, Mail, Tags, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 
 const settings = [
   { icon:FileUp, title:"Datenimporte", detail:"CSV hochladen und Importverlauf anzeigen", href:"/einstellungen/import" },
   { icon:Bot, title:"KI & Datenschutz", detail:"Einwilligungen, Übertragungsmodus und Kostennutzung", href:"/einstellungen/ki" },
+  { icon:Tags, title:"Kategorien", detail:"Ausgaben, Einnahmen und Unterkategorien verwalten", href:"/einstellungen/kategorien" },
   { icon:UserRound, title:"Profil & Reset-E-Mail", detail:"Kontaktadresse für den Passwort-Reset verwalten", href:"/einstellungen/profil" },
   { icon:Lock, title:"Sicherheit", detail:"Passwort und optionale Zwei-Faktor-Anmeldung", href:"/einstellungen/sicherheit" },
   { icon:Mail, title:"Benachrichtigungen", detail:"E-Mail- und Systemhinweise auswählen", href:"#" },
