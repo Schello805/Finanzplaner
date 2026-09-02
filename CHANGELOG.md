@@ -4,6 +4,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Reale Kontofilter und dynamische Monatsbezeichnungen auf der Analyse-Startseite
 - Funktionale Umsatzfilter für Kategorien und Buchungsarten sowie direkter Zugriff auf die Kategorieverwaltung
 - Sichtbarkeitsschalter jetzt auch für zentral verwaltete KI-API-Schlüssel
 
