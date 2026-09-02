@@ -48,7 +48,10 @@ chmod 0600 /etc/finanzplaner.env
 
 cd "${APP_DIR}"
 set -a; source /etc/finanzplaner.env; set +a
-sudo -u "${APP_USER}" npm ci
+sudo -u "${APP_USER}" npm ci --prefer-offline --no-audit --no-fund
+install -d -o "${APP_USER}" -g "${APP_USER}" -m 0750 /var/lib/finanzplaner
+sha256sum package-lock.json | awk '{print $1}' > /var/lib/finanzplaner/package-lock.sha256
+chown "${APP_USER}:${APP_USER}" /var/lib/finanzplaner/package-lock.sha256
 sudo -u "${APP_USER}" --preserve-env=DATABASE_URL npm run db:migrate
 ADMIN_RESULT="$(sudo -u "${APP_USER}" --preserve-env=DATABASE_URL node scripts/init-admin.mjs)"
 sudo -u "${APP_USER}" --preserve-env=APP_VERSION npm run build
