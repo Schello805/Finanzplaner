@@ -4,6 +4,8 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Manueller KI-Start ist bei offenen Umsätzen sofort sichtbar; Import wechselt anschließend zur automatischen oder manuellen Kategorisierung
+- Verständlicher Hinweis, wenn der zentrale KI-Anbieter noch nicht eingerichtet wurde
 - Konfigurierbare CSV-Kopfzeile und Leerzeilenbehandlung werden bei Vorlagentest und Import vollständig berücksichtigt
 - Nicht angeschlossenen Benachrichtigungs-Platzhalter aus den Einstellungen entfernt
 - Reale Kontofilter und dynamische Monatsbezeichnungen auf der Analyse-Startseite
