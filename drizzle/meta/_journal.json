@@ -36,6 +36,13 @@
       "when": 1788333180959,
       "tag": "0004_dizzy_prodigy",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788335025551,
+      "tag": "0005_shallow_deathstrike",
+      "breakpoints": true
     }
   ]
 }
