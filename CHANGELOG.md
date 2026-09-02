@@ -30,3 +30,4 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - persönliche Reset-E-Mail-Adresse im Benutzerprofil
 - optionale TOTP-Zwei-Faktor-Anmeldung mit QR-Code und Authenticator-App
 - entkoppelter, fehlertoleranter Loginpfad für Benutzer ohne aktivierte 2FA
+- echte KI-Ausgabenhinweise aus datensparsamen Kategoriesummen mit Kostenanzeige und Sprachausgabe
