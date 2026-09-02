@@ -90,6 +90,15 @@ export const accounts = pgTable("accounts", {
   ...timestamps,
 });
 
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [uniqueIndex("password_reset_token_unique").on(t.tokenHash)]);
+
 export const accountShares = pgTable("account_shares", {
   accountId: uuid("account_id").references(() => accounts.id, { onDelete: "cascade" }).notNull(),
   memberId: uuid("member_id").references(() => householdMembers.id, { onDelete: "cascade" }).notNull(),

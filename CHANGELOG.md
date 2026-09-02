@@ -25,3 +25,5 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - responsive HTML-E-Mails mit Aktionsschaltfläche und Klartext-Alternative
 - persönliche, dauerhaft gespeicherte KI-Einwilligungen und automatischer Kategorisierungslauf
 - Umsatzdetails mit Notizen, Schlagwörtern und Ausschluss aus Analysen
+- sicherer Passwort-Reset per einmaligem, 30 Minuten gültigem HTML-Mail-Link
+- beschleunigte Updates durch Überspringen unveränderter Node-Abhängigkeiten
