@@ -27,3 +27,4 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - Umsatzdetails mit Notizen, Schlagwörtern und Ausschluss aus Analysen
 - sicherer Passwort-Reset per einmaligem, 30 Minuten gültigem HTML-Mail-Link
 - beschleunigte Updates durch Überspringen unveränderter Node-Abhängigkeiten
+- persönliche Reset-E-Mail-Adresse im Benutzerprofil

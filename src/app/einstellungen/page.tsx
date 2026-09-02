@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 const settings = [
   { icon:FileUp, title:"Datenimporte", detail:"CSV hochladen und Importverlauf anzeigen", href:"/einstellungen/import" },
   { icon:Bot, title:"KI & Datenschutz", detail:"Einwilligungen, Übertragungsmodus und Kostennutzung", href:"/einstellungen/ki" },
-  { icon:UserRound, title:"Profil & Familie", detail:"Profil, Freigaben und Kinderprofile verwalten", href:"#" },
+  { icon:UserRound, title:"Profil & Reset-E-Mail", detail:"Kontaktadresse für den Passwort-Reset verwalten", href:"/einstellungen/profil" },
   { icon:Lock, title:"Sicherheit", detail:"Passwort und optionale Zwei-Faktor-Anmeldung", href:"#" },
   { icon:Mail, title:"Benachrichtigungen", detail:"E-Mail- und Systemhinweise auswählen", href:"#" },
 ];
