@@ -1,19 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays, ChevronRight, Sparkles, Volume2 } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays, ChevronRight } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {AiInsightsCard} from "@/components/ai-insights-card";
 
 type CategoryRow={name:string;current:number;last:number;average:number;color:string};
 const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
-
-function speak() {
-  if (!("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance("Im letzten vollständigen Monat lagen deine Ausgaben für Lebensmittel 96 Euro über dem Durchschnitt. App- und In-Game-Käufe waren 53 Euro höher als üblich.");
-  utterance.lang = "de-DE";
-  window.speechSynthesis.speak(utterance);
-}
 
 export function AnalysisDashboard() {
   const [account, setAccount] = useState("Alle sichtbaren Konten");
@@ -64,13 +57,7 @@ export function AnalysisDashboard() {
 
     <section className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
       <article className="card p-5 sm:p-6"><h2 className="text-lg font-bold">Ausgabenverlauf</h2><p className="mt-1 text-sm muted">Letzte sechs vollständige Monate</p><div className="mt-5 h-[260px]"><ResponsiveContainer><BarChart data={months}><CartesianGrid stroke="var(--border)" vertical={false}/><XAxis dataKey="month" axisLine={false} tickLine={false}/><YAxis hide/><Tooltip formatter={(v)=>eur.format(Number(v))}/><Bar dataKey="value" fill="var(--primary)" radius={[8,8,0,0]}/></BarChart></ResponsiveContainer></div></article>
-      <article className="card border-[color-mix(in_srgb,var(--primary)_35%,var(--border))] bg-[linear-gradient(145deg,var(--surface),var(--surface-soft))] p-5 sm:p-6">
-        <div className="flex items-start justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--primary)] text-white"><Sparkles size={20}/></div><button onClick={speak} className="btn-secondary !min-h-9 !px-3 text-sm"><Volume2 size={16}/> Vorlesen</button></div>
-        <h2 className="mt-5 text-lg font-bold">Was diesen Monat auffällt</h2>
-        <p className="mt-3 leading-7">Deine Lebensmittel-Ausgaben lagen im August <strong>96 € über deinem Durchschnitt</strong>. App- und In-Game-Käufe waren mit 124 € ebenfalls deutlich höher als üblich.</p>
-        <button className="btn-primary mt-5">KI-Hinweise erstellen <Sparkles size={17}/></button>
-        <p className="mt-3 text-xs muted">Vor dem Senden siehst du Datenumfang und Kostenschätzung.</p>
-      </article>
+      <AiInsightsCard/>
     </section>
   </div>;
 }
