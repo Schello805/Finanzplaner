@@ -14,4 +14,8 @@ describe("Kategorievergleich",()=>{
     expect(result.deltaPercent).toBe(10);
     expect(result.currentUsagePercent).toBe(50);
   });
+  it("zieht Erstattungen von den Ausgaben derselben Kategorie ab",()=>{
+    const result=categoryComparison([{month:"2026-08",categoryId:"food",categoryName:"Lebensmittel",amount:-100},{month:"2026-08",categoryId:"food",categoryName:"Lebensmittel",amount:25}],"2026-08","2026-09")[0];
+    expect(result.last).toBe(75);
+  });
 });
