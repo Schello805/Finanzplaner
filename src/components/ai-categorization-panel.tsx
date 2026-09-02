@@ -20,6 +20,13 @@ type Preview = {
   }>;
   cost: { approximateInputTokens: number; lowEur: number; highEur: number };
 };
+type Suggestion = {
+  id: string;
+  category: string;
+  categoryId: string;
+  confidence: number;
+  reason: string;
+};
 export function AiCategorizationPanel({
   onApplied,
 }: {
@@ -29,6 +36,7 @@ export function AiCategorizationPanel({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [mode, setMode] = useState<Mode>("minimal");
   async function requestPreview(nextMode: Mode) {
     const response = await fetch(`/api/ai/categorize?privacyMode=${nextMode}`);
@@ -64,7 +72,25 @@ export function AiCategorizationPanel({
     setMessage(
       `${automatic ? "Automatische Analyse abgeschlossen: " : ""}${body.applied} sichere Zuordnungen übernommen. ${body.suggestions.length} Vorschläge müssen manuell geprüft werden. Kosten: ${Number(body.estimatedCostEur).toLocaleString("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 4 })}.`,
     );
+    setSuggestions(body.suggestions);
     await requestPreview(currentMode);
+    onApplied();
+  }
+  async function acceptSuggestion(suggestion: Suggestion) {
+    setBusy(true);
+    const response = await fetch("/api/transactions", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: suggestion.id, categoryId: suggestion.categoryId }),
+    });
+    const body = await response.json();
+    setBusy(false);
+    if (!response.ok) {
+      setMessage(body.error ?? "Vorschlag konnte nicht übernommen werden.");
+      return;
+    }
+    setSuggestions((current) => current.filter((item) => item.id !== suggestion.id));
+    await requestPreview(mode);
     onApplied();
   }
   useEffect(() => {
@@ -217,6 +243,46 @@ export function AiCategorizationPanel({
               einrichten.
             </span>
           )}
+        </div>
+      )}
+      {suggestions.length > 0 && (
+        <div className="mt-4 space-y-3 border-t border-[var(--border)] pt-4">
+          <div>
+            <h3 className="font-bold">KI-Vorschläge prüfen</h3>
+            <p className="mt-1 text-sm muted">
+              Unsichere Treffer werden erst nach deiner Bestätigung gespeichert.
+            </p>
+          </div>
+          {suggestions.map((suggestion) => {
+            const transaction = preview?.transactions.find(
+              (item) => item.id === suggestion.id,
+            );
+            return (
+              <article
+                key={suggestion.id}
+                className="flex flex-col justify-between gap-3 rounded-xl border border-[var(--border)] p-4 sm:flex-row sm:items-center"
+              >
+                <div>
+                  <div className="font-semibold">
+                    {transaction?.merchant ?? "Unbekannter Empfänger"}
+                  </div>
+                  <div className="mt-1 text-sm">
+                    Vorschlag: <strong>{suggestion.category}</strong> ·{" "}
+                    {(suggestion.confidence * 100).toFixed(0)} % Sicherheit
+                  </div>
+                  <div className="mt-1 text-xs muted">{suggestion.reason}</div>
+                </div>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => acceptSuggestion(suggestion)}
+                  className="btn-secondary shrink-0"
+                >
+                  Übernehmen
+                </button>
+              </article>
+            );
+          })}
         </div>
       )}
     </section>
