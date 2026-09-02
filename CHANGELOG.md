@@ -4,6 +4,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Konfigurierbare CSV-Kopfzeile und Leerzeilenbehandlung werden bei Vorlagentest und Import vollständig berücksichtigt
 - Nicht angeschlossenen Benachrichtigungs-Platzhalter aus den Einstellungen entfernt
 - Reale Kontofilter und dynamische Monatsbezeichnungen auf der Analyse-Startseite
 - Funktionale Umsatzfilter für Kategorien und Buchungsarten sowie direkter Zugriff auf die Kategorieverwaltung

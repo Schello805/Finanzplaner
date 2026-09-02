@@ -6,6 +6,8 @@ export interface ImportTemplate {
   bankName: string;
   delimiter: string;
   encoding: "utf-8" | "utf-8-sig" | "windows-1252" | "iso-8859-1";
+  headerRow?: number;
+  skipEmptyLines?: boolean;
   dateFormat: "dd.MM.yyyy" | "yyyy-MM-dd";
   decimalSeparator: "," | ".";
   columns: Partial<Record<CanonicalField, string>>;
