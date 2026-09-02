@@ -41,6 +41,11 @@ export function AiCategorizationPanel({
   async function requestPreview(nextMode: Mode) {
     const response = await fetch(`/api/ai/categorize?privacyMode=${nextMode}`);
     const body = await response.json();
+    if (response.ok && body.available === false) {
+      setPreview(null);
+      setMessage(body.error ?? "KI-Anbieter ist noch nicht eingerichtet.");
+      return null;
+    }
     if (response.ok) {
       setPreview(body);
       setMessage("");
@@ -103,9 +108,12 @@ export function AiCategorizationPanel({
       setMode(selectedMode);
       const current =
         selectedMode === "minimal"
-          ? initial
+          ? initial.available === false
+            ? null
+            : initial
           : await requestPreview(selectedMode);
-      if (selectedMode === "minimal" && initial.count) setPreview(initial);
+      if (selectedMode === "minimal" && initial.available !== false && initial.count) setPreview(initial);
+      if (selectedMode === "minimal" && initial.available === false) setPreview(null);
       if (selectedMode === "minimal" && initial.error) setMessage(initial.error);
       if (preferences.automaticCategorization && current?.count) {
         const key = `finanzplaner-auto-ai:${current.transactions.map((item: { id: string }) => item.id).join(",")}`;
