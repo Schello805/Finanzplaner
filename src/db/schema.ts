@@ -189,6 +189,44 @@ export const transactionSplits = pgTable("transaction_splits", {
   note: text("note"),
 });
 
+export const amazonOrderImports = pgTable("amazon_order_imports", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").references(() => households.id, { onDelete: "cascade" }).notNull(),
+  ownerMemberId: uuid("owner_member_id").references(() => householdMembers.id, { onDelete: "cascade" }).notNull(),
+  uploadedBy: uuid("uploaded_by").references(() => users.id, { onDelete: "set null" }),
+  fileFingerprint: text("file_fingerprint").notNull(),
+  originalFilename: text("original_filename").notNull(),
+  itemCount: integer("item_count").default(0).notNull(),
+  orderCount: integer("order_count").default(0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [uniqueIndex("amazon_import_household_file_unique").on(t.householdId, t.fileFingerprint)]);
+
+export const amazonOrderItems = pgTable("amazon_order_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  importId: uuid("import_id").references(() => amazonOrderImports.id, { onDelete: "cascade" }).notNull(),
+  householdId: uuid("household_id").references(() => households.id, { onDelete: "cascade" }).notNull(),
+  ownerMemberId: uuid("owner_member_id").references(() => householdMembers.id, { onDelete: "cascade" }).notNull(),
+  orderIdEncrypted: text("order_id_encrypted").notNull(),
+  orderIdFingerprint: text("order_id_fingerprint").notNull(),
+  sourceFingerprint: text("source_fingerprint").notNull(),
+  orderDate: date("order_date").notNull(),
+  shipDate: date("ship_date"),
+  asin: text("asin").notNull(),
+  productNameEncrypted: text("product_name_encrypted").notNull(),
+  department: text("department"),
+  status: text("status").notNull(),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
+  unitPrice: numeric("unit_price", { precision: 14, scale: 2 }).notNull(),
+  unitTax: numeric("unit_tax", { precision: 14, scale: 2 }).default("0").notNull(),
+  orderTotal: numeric("order_total", { precision: 14, scale: 2 }).notNull(),
+  shippingCharge: numeric("shipping_charge", { precision: 14, scale: 2 }).default("0").notNull(),
+  totalDiscounts: numeric("total_discounts", { precision: 14, scale: 2 }).default("0").notNull(),
+  currency: text("currency").default("EUR").notNull(),
+  categoryId: uuid("category_id").references(() => categories.id, { onDelete: "set null" }),
+  matchedTransactionId: uuid("matched_transaction_id").references(() => transactions.id, { onDelete: "set null" }),
+  ...timestamps,
+}, (t) => [uniqueIndex("amazon_item_household_source_unique").on(t.householdId, t.sourceFingerprint)]);
+
 export const categorizationRules = pgTable("categorization_rules", {
   id: uuid("id").defaultRandom().primaryKey(),
   householdId: uuid("household_id").references(() => households.id, { onDelete: "cascade" }).notNull(),

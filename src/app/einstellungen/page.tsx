@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Bot, ChevronRight, FileUp, Lock, Tags, UserRound } from "lucide-react";
+import { Bot, ChevronRight, FileUp, Lock, PackageSearch, Tags, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 
 const settings = [
   { icon:FileUp, title:"Datenimporte", detail:"CSV hochladen und Importverlauf anzeigen", href:"/einstellungen/import" },
+  { icon:PackageSearch, title:"Amazon-Bestellungen", detail:"Order History importieren und Sammelbestellungen aufteilen", href:"/einstellungen/amazon" },
   { icon:Bot, title:"KI & Datenschutz", detail:"Einwilligungen, Übertragungsmodus und Kostennutzung", href:"/einstellungen/ki" },
   { icon:Tags, title:"Kategorien", detail:"Ausgaben, Einnahmen und Unterkategorien verwalten", href:"/einstellungen/kategorien" },
   { icon:UserRound, title:"Profil & Reset-E-Mail", detail:"Kontaktadresse für den Passwort-Reset verwalten", href:"/einstellungen/profil" },
