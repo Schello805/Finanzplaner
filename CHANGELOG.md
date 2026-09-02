@@ -24,3 +24,4 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - robuste automatische Trennzeichenerkennung für echte Sparkassen-CAMT-V8-Dateien
 - responsive HTML-E-Mails mit Aktionsschaltfläche und Klartext-Alternative
 - persönliche, dauerhaft gespeicherte KI-Einwilligungen und automatischer Kategorisierungslauf
+- Umsatzdetails mit Notizen, Schlagwörtern und Ausschluss aus Analysen
