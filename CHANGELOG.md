@@ -23,3 +23,4 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - gezielte, widerrufbare Freigabe persönlicher Konten an andere Erwachsene im Haushalt
 - robuste automatische Trennzeichenerkennung für echte Sparkassen-CAMT-V8-Dateien
 - responsive HTML-E-Mails mit Aktionsschaltfläche und Klartext-Alternative
+- persönliche, dauerhaft gespeicherte KI-Einwilligungen und automatischer Kategorisierungslauf
