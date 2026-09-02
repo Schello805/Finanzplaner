@@ -4,6 +4,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Unsichere KI-Kategorisierungsvorschläge können einzeln geprüft und übernommen werden
 - Manueller KI-Start ist bei offenen Umsätzen sofort sichtbar; Import wechselt anschließend zur automatischen oder manuellen Kategorisierung
 - Verständlicher Hinweis, wenn der zentrale KI-Anbieter noch nicht eingerichtet wurde
 - Konfigurierbare CSV-Kopfzeile und Leerzeilenbehandlung werden bei Vorlagentest und Import vollständig berücksichtigt
