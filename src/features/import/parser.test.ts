@@ -16,6 +16,16 @@ describe("Sparkasse CAMT V8", () => {
     const tx = parseBankCsv(`${header}\n${row}`, sparkasseCamtV8).transactions[0];
     expect(findDuplicates([tx], [tx]).exact).toHaveLength(1);
   });
+  it("erkennt das von der Sparkasse verwendete Semikolon auch bei einer alten Vorlageneinstellung", () => {
+    const semicolonHeader = header.replaceAll(",", ";");
+    const semicolonRow = 'DE00123456780000000000;01.08.2026;01.08.2026;KARTENZAHLUNG;"Einkauf, Testmarkt";;;REF-001;;;;Testmarkt;DE00999999999999999999;TESTDEFFXXX;"-42,50";EUR;Umsatz gebucht';
+    const result = parseBankCsv(`${semicolonHeader}\n${semicolonRow}`, {...sparkasseCamtV8, delimiter: ","});
+    expect(result.transactions[0]).toMatchObject({amount: -42.5, purpose: "Einkauf, Testmarkt"});
+  });
+  it("verarbeitet das zweistellige Jahr aus aktuellen Sparkassen-Exporten", () => {
+    const shortDateRow = row.replaceAll("01.08.2026", "01.08.26");
+    expect(parseBankCsv(`${header}\n${shortDateRow}`, sparkasseCamtV8).transactions[0].bookedOn).toBe("2026-08-01");
+  });
   it("bricht bei fehlenden Pflichtspalten verständlich ab", () => {
     expect(() => parseBankCsv("Datum,Betrag\n01.08.2026,-2", sparkasseCamtV8)).toThrow("Notwendige Spalten fehlen");
   });
