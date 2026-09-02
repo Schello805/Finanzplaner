@@ -4,6 +4,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Fehlende KI-Anbieterkonfiguration wird als regulärer Verfügbarkeitsstatus statt als fehlerhafte HTTP-Anfrage behandelt
 - Amazon-Artikel lassen sich einzeln kategorisieren, mit betragsgleichen Bankumsätzen abstimmen und centgenau als Umsatzaufteilung übernehmen
 - Datenschutzsparsame Parser-Grundlage für Amazons „Order History.csv“ mit Mehrfachartikeln und Dublettenfingerabdrücken
 - Unsichere KI-Kategorisierungsvorschläge können einzeln geprüft und übernommen werden
