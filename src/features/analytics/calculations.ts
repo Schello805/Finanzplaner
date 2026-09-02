@@ -14,4 +14,4 @@ export function categoryComparison(rows: MonthlyCategoryTotal[], lastCompleteMon
       currentUsagePercent: average ? current/average*100 : null };
   }).sort((a,b)=>b.last-a.last);
 }
-const sum = (rows: MonthlyCategoryTotal[]) => rows.reduce((total,row)=>total+Math.abs(row.amount),0);
+const sum = (rows: MonthlyCategoryTotal[]) => Math.max(0,-rows.reduce((total,row)=>total+row.amount,0));

@@ -33,3 +33,4 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - echte KI-Ausgabenhinweise aus datensparsamen Kategoriesummen mit Kostenanzeige und Sprachausgabe
 - validierte Kategorieaufteilungen sowie Verknüpfung und Kennzeichnung von Erstattungen und Umbuchungen
 - vollständige Adminverwaltung für eigene, testpflichtige Bank-Importvorlagen
+- korrekte Analyseberechnung für Kategorieaufteilungen und ausgabenmindernde Erstattungen
