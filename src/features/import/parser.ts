@@ -28,9 +28,10 @@ function get(row: Record<string, string>, template: ImportTemplate, field: Canon
 }
 
 export function parseBankCsv(input: string, template: ImportTemplate): ImportResult {
-  const source = input.replace(/^\uFEFF/, "");
+  const headerRow = Math.max(1, template.headerRow ?? 1);
+  const source = input.replace(/^\uFEFF/, "").split(/\r?\n/).slice(headerRow - 1).join("\n");
   const delimiters = [...new Set([template.delimiter, ";", ",", "\t"] )];
-  const candidates = delimiters.map(delimiter => Papa.parse<Record<string, string>>(source, { header: true, delimiter, skipEmptyLines: false }));
+  const candidates = delimiters.map(delimiter => Papa.parse<Record<string, string>>(source, { header: true, delimiter, skipEmptyLines: template.skipEmptyLines ?? false }));
   const parsed = candidates.find(candidate => template.requiredFields.every(field => (candidate.meta.fields ?? []).includes(template.columns[field] ?? ""))) ?? candidates[0];
   if (parsed.errors.some((e) => e.type === "Delimiter" || e.type === "Quotes")) throw new Error(`CSV konnte nicht gelesen werden: ${parsed.errors.find(e => e.type === "Delimiter" || e.type === "Quotes")?.message}`);
   const headers = parsed.meta.fields ?? [];
@@ -66,7 +67,7 @@ export function parseBankCsv(input: string, template: ImportTemplate): ImportRes
       };
       const identity = [tx.accountReference, tx.bookedOn, tx.valuedOn, amount.toFixed(2), tx.currency, tx.counterpartyAccount, tx.counterparty, tx.purpose, tx.bankReference].map(v => normalize(String(v ?? "")).toLocaleLowerCase("de-DE")).join("|");
       transactions.push({ ...tx, fingerprint: sha256(identity) });
-    } catch (error) { warnings.push(`Zeile ${index + 2}: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`); }
+    } catch (error) { warnings.push(`Zeile ${index + headerRow + 1}: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`); }
   });
   if (!transactions.length && warnings.length) throw new Error(`Keine gültigen Umsätze erkannt. ${warnings[0]}`);
   return { transactions, warnings, skippedEmptyRows };

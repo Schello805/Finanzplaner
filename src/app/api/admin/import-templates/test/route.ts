@@ -1,2 +1,77 @@
-import {NextResponse} from "next/server";import {and,eq} from "drizzle-orm";import {db} from "@/db";import {householdMembers,importTemplates} from "@/db/schema";import {parseBankCsv} from "@/features/import/parser";import type {ImportTemplate} from "@/features/import/types";import {requireAdmin} from "@/lib/current-user";import {writeAudit} from "@/lib/audit";
-export async function POST(request:Request){try{const admin=await requireAdmin();const form=await request.formData();const id=String(form.get("id")??"");const file=form.get("file");if(!(file instanceof File)||!file.name.toLowerCase().endsWith(".csv"))throw new Error("Bitte eine CSV-Testdatei auswählen.");if(file.size>20*1024*1024)throw new Error("Die Testdatei ist größer als 20 MB.");const[member]=await db.select().from(householdMembers).where(eq(householdMembers.userId,admin.userId)).limit(1);const[row]=member?await db.select().from(importTemplates).where(and(eq(importTemplates.id,id),eq(importTemplates.householdId,member.householdId))).limit(1):[];if(!row)throw new Error("Vorlage nicht gefunden.");const encoding=row.config.encoding==="utf-8-sig"?"utf-8":row.config.encoding;const content=new TextDecoder(encoding).decode(await file.arrayBuffer());const template:ImportTemplate={id:row.id,name:row.name,bankName:row.bankName,delimiter:row.config.delimiter,encoding:row.config.encoding,dateFormat:row.config.dateFormat as ImportTemplate["dateFormat"],decimalSeparator:row.config.decimalSeparator,columns:row.config.columns as ImportTemplate["columns"],requiredFields:row.config.requiredFields as ImportTemplate["requiredFields"]};const result=parseBankCsv(content,template);await db.update(importTemplates).set({testedAt:new Date(),enabled:true,updatedAt:new Date()}).where(eq(importTemplates.id,row.id));await writeAudit("configuration","Eine Importvorlage wurde erfolgreich getestet und aktiviert.",{userId:admin.userId,metadata:{templateId:row.id,transactions:result.transactions.length,warnings:result.warnings.length}});return NextResponse.json({ok:true,transactions:result.transactions.length,warnings:result.warnings.slice(0,20)})}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Test fehlgeschlagen."},{status:400})}}
+import { NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { householdMembers, importTemplates } from "@/db/schema";
+import { parseBankCsv } from "@/features/import/parser";
+import type { ImportTemplate } from "@/features/import/types";
+import { requireAdmin } from "@/lib/current-user";
+import { writeAudit } from "@/lib/audit";
+
+export async function POST(request: Request) {
+  try {
+    const admin = await requireAdmin();
+    const form = await request.formData();
+    const id = String(form.get("id") ?? "");
+    const file = form.get("file");
+    if (!(file instanceof File) || !file.name.toLowerCase().endsWith(".csv")) {
+      throw new Error("Bitte eine CSV-Testdatei auswählen.");
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      throw new Error("Die Testdatei ist größer als 20 MB.");
+    }
+
+    const [member] = await db
+      .select()
+      .from(householdMembers)
+      .where(eq(householdMembers.userId, admin.userId))
+      .limit(1);
+    const [row] = member
+      ? await db
+          .select()
+          .from(importTemplates)
+          .where(and(eq(importTemplates.id, id), eq(importTemplates.householdId, member.householdId)))
+          .limit(1)
+      : [];
+    if (!row) throw new Error("Vorlage nicht gefunden.");
+
+    const encoding = row.config.encoding === "utf-8-sig" ? "utf-8" : row.config.encoding;
+    const content = new TextDecoder(encoding).decode(await file.arrayBuffer());
+    const template: ImportTemplate = {
+      id: row.id,
+      name: row.name,
+      bankName: row.bankName,
+      delimiter: row.config.delimiter,
+      encoding: row.config.encoding,
+      headerRow: row.config.headerRow,
+      skipEmptyLines: row.config.skipEmptyLines,
+      dateFormat: row.config.dateFormat as ImportTemplate["dateFormat"],
+      decimalSeparator: row.config.decimalSeparator,
+      columns: row.config.columns as ImportTemplate["columns"],
+      requiredFields: row.config.requiredFields as ImportTemplate["requiredFields"],
+    };
+    const result = parseBankCsv(content, template);
+
+    await db
+      .update(importTemplates)
+      .set({ testedAt: new Date(), enabled: true, updatedAt: new Date() })
+      .where(eq(importTemplates.id, row.id));
+    await writeAudit("configuration", "Eine Importvorlage wurde erfolgreich getestet und aktiviert.", {
+      userId: admin.userId,
+      metadata: {
+        templateId: row.id,
+        transactions: result.transactions.length,
+        warnings: result.warnings.length,
+      },
+    });
+    return NextResponse.json({
+      ok: true,
+      transactions: result.transactions.length,
+      warnings: result.warnings.slice(0, 20),
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Test fehlgeschlagen." },
+      { status: 400 },
+    );
+  }
+}

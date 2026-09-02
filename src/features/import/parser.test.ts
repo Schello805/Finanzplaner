@@ -29,4 +29,16 @@ describe("Sparkasse CAMT V8", () => {
   it("bricht bei fehlenden Pflichtspalten verständlich ab", () => {
     expect(() => parseBankCsv("Datum,Betrag\n01.08.2026,-2", sparkasseCamtV8)).toThrow("Notwendige Spalten fehlen");
   });
+  it("überspringt Vorspannzeilen bis zur konfigurierten Kopfzeile", () => {
+    const result = parseBankCsv(`Export der Musterbank\nErstellt am 02.09.2026\n${header}\n${row}`, {
+      ...sparkasseCamtV8,
+      headerRow: 3,
+    });
+    expect(result.transactions).toHaveLength(1);
+    expect(result.transactions[0].amount).toBe(-42.5);
+  });
+  it("meldet die ursprüngliche CSV-Zeilennummer trotz Vorspann", () => {
+    const invalid = row.replace('"-42,50"', "ungültig");
+    expect(() => parseBankCsv(`Hinweis\n${header}\n${invalid}`, {...sparkasseCamtV8, headerRow: 2})).toThrow("Zeile 3");
+  });
 });
