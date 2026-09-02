@@ -28,3 +28,4 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - sicherer Passwort-Reset per einmaligem, 30 Minuten gültigem HTML-Mail-Link
 - beschleunigte Updates durch Überspringen unveränderter Node-Abhängigkeiten
 - persönliche Reset-E-Mail-Adresse im Benutzerprofil
+- optionale TOTP-Zwei-Faktor-Anmeldung mit QR-Code und Authenticator-App
