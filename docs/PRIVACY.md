@@ -6,6 +6,8 @@ Finanzplaner ist für den lokalen Familienbetrieb bestimmt. Es findet keine Tele
 
 Normalisierte Umsätze, Kategorien, Regeln und Analyseergebnisse liegen in PostgreSQL. IBANs werden verschlüsselt gespeichert und nur maskiert angezeigt. Suchfingerprints sind nicht umkehrbar. Original-CSV-Dateien werden nach erfolgreichem Import gelöscht.
 
+Amazon-Bestellexporte werden nur im Arbeitsspeicher verarbeitet. Gespeichert werden ausschließlich die für Artikelkategorisierung und Bankabgleich notwendigen Felder. Bestellnummern und Artikelnamen sind mit AES-256-GCM verschlüsselt. Liefer- und Rechnungsadressen, Zahlungsdetails, Trackingnummern, Geschenknachrichten, Empfängerkontakte und Seriennummern werden nicht übernommen.
+
 ## KI-Anbieter
 
 OpenAI und Gemini sind optional. Der Administrator hinterlegt zentrale API-Schlüssel verschlüsselt. Genau ein Anbieter ist Standard; ein automatischer stiller Anbieterwechsel findet nicht statt.
