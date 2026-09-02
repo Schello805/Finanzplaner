@@ -35,3 +35,4 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - vollständige Adminverwaltung für eigene, testpflichtige Bank-Importvorlagen
 - korrekte Analyseberechnung für Kategorieaufteilungen und ausgabenmindernde Erstattungen
 - echter Importverlauf und persönliche Kategorienverwaltung
+- Passwortanzeige auch bei Passwortwechsel, Einladung und SMTP-Konfiguration
