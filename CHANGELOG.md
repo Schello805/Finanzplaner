@@ -36,3 +36,4 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - korrekte Analyseberechnung für Kategorieaufteilungen und ausgabenmindernde Erstattungen
 - echter Importverlauf und persönliche Kategorienverwaltung
 - Passwortanzeige auch bei Passwortwechsel, Einladung und SMTP-Konfiguration
+- Admin-Steuerung für Benutzerstatus und Administratorrollen mit Schutz des letzten Admins
