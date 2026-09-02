@@ -19,6 +19,7 @@ export const visibility = pgEnum("visibility", ["private", "shared"]);
 export const aiProvider = pgEnum("ai_provider", ["openai", "gemini"]);
 export const importStatus = pgEnum("import_status", ["pending", "review", "completed", "failed"]);
 export const transactionDirection = pgEnum("transaction_direction", ["income", "expense"]);
+export const transactionSpecialType = pgEnum("transaction_special_type", ["normal", "refund", "transfer"]);
 export const recurrenceStatus = pgEnum("recurrence_status", ["suggested", "confirmed", "dismissed"]);
 
 const timestamps = {
@@ -169,6 +170,8 @@ export const transactions = pgTable("transactions", {
   note: text("note"),
   tags: text("tags").array().default(sql`'{}'::text[]`).notNull(),
   excludedFromAnalysis: boolean("excluded_from_analysis").default(false).notNull(),
+  specialType: transactionSpecialType("special_type").default("normal").notNull(),
+  linkedTransactionId: uuid("linked_transaction_id"),
   isTransfer: boolean("is_transfer").default(false).notNull(),
   transferPeerId: uuid("transfer_peer_id"),
   duplicateOfId: uuid("duplicate_of_id"),
