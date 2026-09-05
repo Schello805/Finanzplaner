@@ -29,6 +29,16 @@ Finanzplaner ist eine private, deutschsprachige Ausgabenanalyse für Familien. D
 
 HTTP verschlüsselt Passwörter und Finanzdaten nicht. Der vorgesehene Betrieb setzt deshalb ein isoliertes, vertrauenswürdiges Heimnetz und eine auf das lokale Subnetz begrenzte Firewall-Regel voraus. Niemals öffentlich ins Internet weiterleiten.
 
+## Empfohlener Monatsablauf
+
+1. Auf der Analyseseite „Neuen Kontoauszug auswerten“ wählen und die aktuelle Bank-CSV importieren.
+2. Bereits bestätigte Händler werden lokal und ohne API-Kosten automatisch kategorisiert. Eine neue manuelle oder sichere KI-Zuordnung wird für denselben eindeutigen Händler gelernt.
+3. Nur verbleibende offene Umsätze über „Jetzt mit KI zuordnen“ analysieren oder direkt in der Umsatzliste festlegen. Unsichere KI-Vorschläge benötigen eine Bestätigung.
+4. Optional Amazons `Order History.csv` importieren, Artikel kategorisieren und mit den zugehörigen Bankbuchungen abstimmen.
+5. Zur Analyseseite zurückkehren. Der dortige Monatsablauf zeigt offene Schritte und führt direkt zur nächsten sinnvollen Aktion.
+
+Amazon und PayPal gelten als Sammelzahlungsanbieter und erhalten bewusst keine pauschale lokale Händlerregel. Amazon-Artikel werden stattdessen einzeln über den Bestellimport zugeordnet.
+
 ## Installation
 
 Im neuen Ubuntu-24.04-LXC als `root`:
