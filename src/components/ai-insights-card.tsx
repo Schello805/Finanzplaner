@@ -19,6 +19,8 @@ export function AiInsightsCard() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [insight, setInsight] = useState<Insight | null>(null);
   const [busy, setBusy] = useState(false);
+  const [speechBusy, setSpeechBusy] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   async function create(automatic = false) {
     setBusy(true); setError("");
@@ -34,17 +36,28 @@ export function AiInsightsCard() {
       if (preferences.automaticInsights && sessionStorage.getItem("finanzplaner-auto-insights") !== new Date().toISOString().slice(0, 10)) create(true);
     });
   }, []);
-  function speak() {
-    if (!insight || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
+  useEffect(() => () => { if (audioUrl) URL.revokeObjectURL(audioUrl); }, [audioUrl]);
+  async function speak() {
+    if (!insight || speechBusy) return;
     const text = [insight.summary, ...insight.opportunities.flatMap((item) => [`${item.category}. ${item.action}`, item.reason]), ...insight.watchouts].join(" ");
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "de-DE";
-    window.speechSynthesis.speak(utterance);
+    setSpeechBusy(true); setError("");
+    try {
+      const response = await fetch("/api/ai/speech", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(body.error ?? "Sprachausgabe konnte nicht erstellt werden.");
+      }
+      const url = URL.createObjectURL(await response.blob());
+      setAudioUrl(url);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Sprachausgabe konnte nicht erstellt werden.");
+    } finally {
+      setSpeechBusy(false);
+    }
   }
   const opportunities = [...(insight?.opportunities ?? [])].sort((a, b) => b.potentialEur - a.potentialEur).slice(0, 3);
   return <article className="card border-[color-mix(in_srgb,var(--primary)_35%,var(--border))] bg-[linear-gradient(145deg,var(--surface),var(--surface-soft))] p-5 sm:p-6">
-    <div className="flex items-start justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--primary)] text-white"><Sparkles size={20}/></div>{insight&&<button onClick={speak} className="btn-secondary !min-h-9 !px-3 text-sm"><Volume2 size={16}/> Vorlesen</button>}</div>
+    <div className="flex items-start justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--primary)] text-white"><Sparkles size={20}/></div>{insight&&<button disabled={speechBusy} onClick={speak} className="btn-secondary !min-h-9 !px-3 text-sm"><Volume2 size={16}/> {speechBusy ? "Stimme wird erzeugt …" : "Natürlich vorlesen"}</button>}</div>
     <h2 className="mt-5 text-lg font-bold">Größte Sparchancen</h2>
     {insight ? <>
       <p className="mt-2 text-sm leading-6 muted">{insight.summary}</p>
@@ -55,6 +68,7 @@ export function AiInsightsCard() {
       <p className="mt-4 text-xs muted">Geschätzte Kosten dieses Aufrufs: {aiCost(insight.estimatedCostEur)}</p>
     </> : <p className="mt-3 text-sm leading-6 muted">Die KI erhält nur verdichtete Kategoriesummen. Sie zeigt höchstens drei priorisierte Ansatzpunkte statt einer langen Wiederholung aller Kennzahlen.</p>}
     {error&&<div role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</div>}
+    {audioUrl&&<audio controls autoPlay src={audioUrl} className="mt-4 w-full" aria-label="Vorgelesene Sparchancen"/>}
     <button disabled={busy||!preview} onClick={()=>create(false)} className="btn-primary mt-5">{busy?"KI priorisiert Sparchancen …":insight?"Hinweise aktualisieren":"Sparchancen ermitteln"} <Sparkles size={17}/></button>
     {preview&&<p className="mt-3 text-xs muted">{preview.provider==="openai"?"OpenAI":"Gemini"} · {preview.model} · {preview.cost?`geschätzt ${aiCost(preview.cost.lowEur)}–${aiCost(preview.cost.highEur)}`:"Preisangaben im Adminbereich ergänzen"}{preview.pricingSource==="model-default"?" · Modellpreis automatisch ergänzt":""}</p>}
   </article>;
