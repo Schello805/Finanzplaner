@@ -4,6 +4,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Seitenleiste zeigt den echten Haushaltsnamen sowie reale sichtbare Konten- und Mitgliederzahlen; Adminnavigation nur für Administratoren
 - Fehlende KI-Anbieterkonfiguration wird als regulärer Verfügbarkeitsstatus statt als fehlerhafte HTTP-Anfrage behandelt
 - Amazon-Artikel lassen sich einzeln kategorisieren, mit betragsgleichen Bankumsätzen abstimmen und centgenau als Umsatzaufteilung übernehmen
 - Datenschutzsparsame Parser-Grundlage für Amazons „Order History.csv“ mit Mehrfachartikeln und Dublettenfingerabdrücken
