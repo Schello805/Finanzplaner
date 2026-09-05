@@ -16,6 +16,7 @@ type ProviderConfig = {
   inputPricePerMillion?: number;
   outputPricePerMillion?: number;
 };
+const AUTO_APPLY_CONFIDENCE = 0.75;
 class AiConfigurationError extends Error {}
 async function settings() {
   const rows = await db.select().from(systemSettings);
@@ -151,6 +152,8 @@ export async function POST(request: Request) {
       preview,
       allowed.map((c) => c.name),
     );
+    if (!result.data.results.length)
+      throw new Error("Die KI hat keine Zuordnung geliefert. Bitte starte die Analyse erneut.");
     const byName = new Map(
       allowed.map((c) => [c.name.toLocaleLowerCase("de-DE"), c.id]),
     );
@@ -160,7 +163,7 @@ export async function POST(request: Request) {
     for (const item of result.data.results) {
       const categoryId = byName.get(item.category.toLocaleLowerCase("de-DE"));
       if (!categoryId || !body.ids.includes(item.id)) continue;
-      if (item.confidence >= 0.85) {
+      if (item.confidence >= AUTO_APPLY_CONFIDENCE) {
         const source = rows.find((row) => row.id === item.id);
         await db
           .update(transactions)

@@ -38,7 +38,7 @@ export function AiCategorizationPanel({
   const [message, setMessage] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [mode, setMode] = useState<Mode>("minimal");
-  async function requestPreview(nextMode: Mode) {
+  async function requestPreview(nextMode: Mode, preserveMessage = false) {
     const response = await fetch(`/api/ai/categorize?privacyMode=${nextMode}`);
     const body = await response.json();
     if (response.ok && body.available === false) {
@@ -48,7 +48,7 @@ export function AiCategorizationPanel({
     }
     if (response.ok) {
       setPreview(body);
-      setMessage("");
+      if (!preserveMessage) setMessage("");
       return body as Preview;
     }
     setMessage(body.error ?? "KI-Vorschau konnte nicht geladen werden.");
@@ -78,7 +78,7 @@ export function AiCategorizationPanel({
       `${automatic ? "Automatische Analyse abgeschlossen: " : ""}${body.applied} sichere Zuordnungen übernommen. ${body.suggestions.length} Vorschläge müssen manuell geprüft werden. Kosten: ${Number(body.estimatedCostEur).toLocaleString("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 4 })}.`,
     );
     setSuggestions(body.suggestions);
-    await requestPreview(currentMode);
+    await requestPreview(currentMode, true);
     onApplied();
   }
   async function acceptSuggestion(suggestion: Suggestion) {
