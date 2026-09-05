@@ -51,5 +51,8 @@ describe("Sparkasse CAMT V8", () => {
     expect(isPendingTransaction({ counterparty: "  ** unbekannt vorgemerkt " })).toBe(true);
     expect(isPendingTransaction({ counterparty: "Unbekannt" })).toBe(false);
     expect(isPendingTransaction({ counterparty: undefined })).toBe(false);
+    expect(isPendingTransaction({ counterparty: undefined, originalData: { Info: "Umsatz vorgemerkt" } })).toBe(true);
+    expect(isPendingTransaction({ counterparty: undefined, bookingType: "SONSTIGER EINZUG", purpose: "MO 60194132 0509" })).toBe(true);
+    expect(isPendingTransaction({ counterparty: undefined, bookingType: "ENTGELTABSCHLUSS", purpose: "Pauschalen" })).toBe(false);
   });
 });

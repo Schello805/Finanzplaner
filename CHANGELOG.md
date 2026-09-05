@@ -4,6 +4,10 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-09-05
+
+- Vorgemerkte Sparkassen-Zeilen werden nun am Feld `Info: Umsatz vorgemerkt` erkannt; 0,00-€-Zeilen werden ebenfalls nicht importiert. Bereits gespeicherte Vormerkungen und Nullbuchungen lassen sich gezielt bereinigen.
+- Das Update entfernt bereits gespeicherte Vormerkungen und Nullbuchungen einmalig. Gebuchte Zinsen und Kontoführungsgebühren ohne Empfänger bleiben erhalten und werden in der Umsatzliste verständlich benannt.
 ## [0.2.2] - 2026-09-05
 
 - Tages- und Teilauszüge erzeugen keine unsicheren Löschvorschläge mehr; der Import zeigt stattdessen einen Sicherheitshinweis und prüft neue Umsätze sowie Dubletten weiterhin normal.

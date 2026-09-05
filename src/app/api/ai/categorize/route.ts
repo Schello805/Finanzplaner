@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, count, eq, inArray, isNull, notExists } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, notExists, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { aiUsage, categories, systemSettings, transactions, transactionSplits, userPreferences } from "@/db/schema";
@@ -50,6 +50,8 @@ async function pending(userId: string, ids?: string[]) {
   if (!accountIds.length) return { member, rows: [], total: 0 };
   const baseFilters = [
     inArray(transactions.accountId, accountIds),
+    sql`${transactions.amount} <> 0`,
+    sql`not (${transactions.counterparty} is null and ${transactions.bookingType} ilike 'SONSTIGER EINZUG' and ${transactions.purpose} ilike 'MO %')`,
     isNull(transactions.categoryId),
     notExists(
       db

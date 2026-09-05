@@ -30,7 +30,9 @@ export default function ImportPage() {
     total: number;
     alreadyImported: boolean;
     ignoredPending: number;
+    ignoredZero: number;
     storedPending: number;
+    storedZero: number;
     statementPeriod: { from: string; to: string } | null;
     reconciliationSkippedReason: string | null;
     missingStored: Array<{
@@ -103,7 +105,7 @@ export default function ImportPage() {
       setKeepSuspected(new Set());
       setSelectedMissing(new Set());
     } else {
-      sessionStorage.setItem("finanzplaner-last-import", JSON.stringify({ imported: body.imported, locallyCategorized: body.locallyCategorized ?? 0, ignoredPending: body.ignoredPending ?? 0 }));
+      sessionStorage.setItem("finanzplaner-last-import", JSON.stringify({ imported: body.imported, locallyCategorized: body.locallyCategorized ?? 0, ignoredPending: body.ignoredPending ?? 0, ignoredZero: body.ignoredZero ?? 0 }));
       setPreview(null);
       setFile(null);
       setKeepSuspected(new Set());
@@ -111,15 +113,17 @@ export default function ImportPage() {
       router.push("/umsaetze");
     }
   }
-  async function deleteStoredPending() {
-    if (!preview?.storedPending || !accountId) return;
-    if (!window.confirm(`${preview.storedPending} bereits gespeicherte vorgemerkte Umsätze wirklich löschen?`)) return;
+  async function deleteStoredCleanup(kind: "pending" | "zero") {
+    const count = kind === "pending" ? preview?.storedPending : preview?.storedZero;
+    const label = kind === "pending" ? "vorgemerkte Umsätze" : "0,00-€-Umsätze";
+    if (!count || !accountId) return;
+    if (!window.confirm(`${count} bereits gespeicherte ${label} wirklich löschen?`)) return;
     setBusy(true);
     setError("");
     const response = await fetch("/api/import", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accountId }),
+      body: JSON.stringify({ accountId, cleanup: kind }),
     });
     const body = await response.json();
     setBusy(false);
@@ -127,8 +131,8 @@ export default function ImportPage() {
       setError(body.error);
       return;
     }
-    setPreview((current) => current ? { ...current, storedPending: 0 } : current);
-    setCleanupMessage(`${body.deleted} bereits gespeicherte vorgemerkte Umsätze wurden gelöscht.`);
+    setPreview((current) => current ? { ...current, ...(kind === "pending" ? { storedPending: 0 } : { storedZero: 0 }) } : current);
+    setCleanupMessage(`${body.deleted} bereits gespeicherte ${label} wurden gelöscht.`);
   }
   async function deleteSelectedMissing() {
     if (!selectedMissing.size || !accountId) return;
@@ -230,9 +234,9 @@ export default function ImportPage() {
             />
           </label>
           <p className="mt-3 text-sm leading-6 muted">
-            Vorgemerkte Sparkassen-Umsätze mit dem Empfänger „**Unbekannt“
-            werden bewusst nicht importiert. Lade sie erst wieder hoch, sobald
-            sie von der Bank endgültig gebucht wurden.
+            Sparkassen-Zeilen mit dem Status „Umsatz vorgemerkt“ und reine
+            0,00-€-Abrechnungszeilen werden bewusst nicht importiert. Endgültig
+            gebuchte Entgelte und Zinsen ohne Empfänger bleiben erhalten.
           </p>
           {file && (
             <div className="mt-4 flex items-center justify-between rounded-xl bg-[var(--surface-soft)] p-4">
@@ -298,13 +302,14 @@ export default function ImportPage() {
               Die erneute Prüfung ist erlaubt, damit du Dubletten, Vormerkungen und inzwischen fehlende Umsätze kontrollieren kannst. Ein zweiter Import derselben Datei bleibt gesperrt.
             </div>
           )}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {[
               ["Erkannt", preview.total],
               ["Bereit", preview.ready],
               ["Sichere Dubletten", preview.exactDuplicates],
               ["Zu prüfen", preview.suspected.length],
               ["Vorgemerkt · ignoriert", preview.ignoredPending],
+              ["0,00 € · ignoriert", preview.ignoredZero],
             ].map(([label, value]) => (
               <div
                 key={label}
@@ -328,10 +333,19 @@ export default function ImportPage() {
               <button
                 type="button"
                 className="btn-secondary mt-3 border-red-300 text-red-800"
-                onClick={deleteStoredPending}
+                onClick={() => deleteStoredCleanup("pending")}
                 disabled={busy}
               >
                 {preview.storedPending} alte Vormerkungen löschen
+              </button>
+            </div>
+          )}
+          {preview.storedZero > 0 && (
+            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-900">
+              <strong>{preview.storedZero} frühere 0,00-€-Umsätze sind noch gespeichert.</strong>{" "}
+              Sie haben keinen Einfluss auf die Analyse und können entfernt werden.
+              <button type="button" className="btn-secondary mt-3 border-red-300 text-red-800" onClick={() => deleteStoredCleanup("zero")} disabled={busy}>
+                {preview.storedZero} Nullbuchungen löschen
               </button>
             </div>
           )}

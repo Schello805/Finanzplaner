@@ -57,6 +57,13 @@
       "when": 1788613080572,
       "tag": "0007_fantastic_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788630792833,
+      "tag": "0008_cleanup_pending_and_zero_transactions",
+      "breakpoints": true
     }
   ]
 }

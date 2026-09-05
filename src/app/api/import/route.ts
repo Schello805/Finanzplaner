@@ -122,8 +122,11 @@ export async function POST(request: Request) {
     const content = decodeBankCsv(bytes, template.encoding);
     const parsed = parseBankCsv(content, template);
     const pendingTransactions = parsed.transactions.filter(isPendingTransaction);
+    const zeroTransactions = parsed.transactions.filter(
+      (transaction) => !isPendingTransaction(transaction) && Math.abs(transaction.amount) < 0.005,
+    );
     const importableTransactions = parsed.transactions.filter(
-      (transaction) => !isPendingTransaction(transaction),
+      (transaction) => !isPendingTransaction(transaction) && Math.abs(transaction.amount) >= 0.005,
     );
     const existingRows = await db
       .select()
@@ -136,6 +139,7 @@ export async function POST(request: Request) {
       amount: Number(row.amount),
       currency: row.currency,
       direction: row.direction,
+      bookingType: row.bookingType ?? undefined,
       fingerprint: row.fingerprint,
       counterparty: row.counterparty ?? undefined,
       purpose: row.purpose ?? undefined,
@@ -143,13 +147,14 @@ export async function POST(request: Request) {
       originalData: {},
     }));
     const storedPending = existing.filter(isPendingTransaction).length;
+    const storedZero = existing.filter((transaction) => Math.abs(transaction.amount) < 0.005).length;
     const dates = importableTransactions.map((item) => item.bookedOn).sort();
     const coverage = statementCoverage(importableTransactions);
     const firstDate = dates[0];
     const lastDate = dates.at(-1);
     const missingStored = firstDate && lastDate
       ? findMissingStoredTransactions(
-          existingRows.filter((row) => !isPendingTransaction(row)),
+          existingRows.filter((row) => !isPendingTransaction(row) && Math.abs(Number(row.amount)) >= 0.005),
           importableTransactions,
         )
           .map((row) => ({
@@ -168,7 +173,9 @@ export async function POST(request: Request) {
         alreadyImported: prior.length > 0,
         total: parsed.transactions.length,
         ignoredPending: pendingTransactions.length,
+        ignoredZero: zeroTransactions.length,
         storedPending,
+        storedZero,
         statementPeriod: firstDate && lastDate ? { from: firstDate, to: lastDate } : null,
         reconciliationSkippedReason: coverage.comparable ? null : coverage.reason,
         missingStored,
@@ -248,6 +255,7 @@ export async function POST(request: Request) {
         duplicates: duplicateCheck.exact.length,
         skippedSuspected: duplicateCheck.suspected.length - keptSuspects.length,
         ignoredPending: pendingTransactions.length,
+        ignoredZero: zeroTransactions.length,
       },
       { status: 201 },
     );
@@ -266,7 +274,7 @@ export async function DELETE(request: Request) {
     const accountId = String(body.accountId ?? "");
     const { account } = await context(user.userId, accountId);
     const candidates = await db
-      .select({ id: transactions.id, counterparty: transactions.counterparty })
+      .select({ id: transactions.id, counterparty: transactions.counterparty, bookingType: transactions.bookingType, purpose: transactions.purpose, amount: transactions.amount })
       .from(transactions)
       .where(eq(transactions.accountId, account.id));
     const requestedIds = Array.isArray(body.transactionIds)
@@ -274,9 +282,11 @@ export async function DELETE(request: Request) {
       : null;
     const ids = requestedIds
       ? candidates.filter((row) => requestedIds.has(row.id)).map((row) => row.id)
-      : candidates.filter(isPendingTransaction).map((row) => row.id);
+      : body.cleanup === "zero"
+        ? candidates.filter((row) => Math.abs(Number(row.amount)) < 0.005).map((row) => row.id)
+        : candidates.filter(isPendingTransaction).map((row) => row.id);
     if (ids.length) await db.delete(transactions).where(inArray(transactions.id, ids));
-    await writeAudit(requestedIds ? "missing-transactions-cleanup" : "pending-transactions-cleanup", `${ids.length} Umsätze wurden nach Bestätigung gelöscht.`, {
+    await writeAudit(requestedIds ? "missing-transactions-cleanup" : body.cleanup === "zero" ? "zero-transactions-cleanup" : "pending-transactions-cleanup", `${ids.length} Umsätze wurden nach Bestätigung gelöscht.`, {
       userId: user.userId,
       metadata: { accountId: account.id, deleted: ids.length },
     });
