@@ -16,6 +16,11 @@ const rules = [
     category: /zinsen|kapitalertr(?:ä|ae)g/i,
     isIncome: true,
   },
+  {
+    text: /kfz[- ]?versicherung|autoversicherung|kraftfahrzeugversicherung/i,
+    category: /kfz[- ]?versicherung|autoversicherung|versicherung/i,
+    isIncome: false,
+  },
 ] as const;
 
 export function keywordCategory(

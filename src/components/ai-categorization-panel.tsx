@@ -149,6 +149,47 @@ export function AiCategorizationPanel({
       setBusy(false);
     }
   }
+  async function acceptAll() {
+    setBusy(true);
+    setMessage("");
+    try {
+      for (const suggestion of suggestions) {
+        const response = await fetch("/api/transactions", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: suggestion.id, categoryId: suggestion.categoryId }),
+        });
+        if (!response.ok) throw new Error((await response.json()).error);
+      }
+      for (const proposal of categoryProposals) {
+        const categoryResponse = await fetch("/api/categories", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: proposal.name, color: proposal.isIncome ? "#2f855a" : "#7c898c", icon: "Tag", isIncome: proposal.isIncome, parentId: null }),
+        });
+        const category = await categoryResponse.json();
+        if (!categoryResponse.ok) throw new Error(category.error);
+        for (const id of proposal.transactionIds) {
+          const response = await fetch("/api/transactions", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, categoryId: category.id }),
+          });
+          if (!response.ok) throw new Error((await response.json()).error);
+        }
+      }
+      const count = suggestions.length + categoryProposals.reduce((sum, proposal) => sum + proposal.transactionIds.length, 0);
+      setSuggestions([]);
+      setCategoryProposals([]);
+      setMessage(`${count} KI-Vorschläge wurden gesammelt bestätigt.`);
+      await requestPreview(mode, true);
+      onApplied();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Die Vorschläge konnten nicht vollständig übernommen werden.");
+    } finally {
+      setBusy(false);
+    }
+  }
   useEffect(() => {
     Promise.all([
       fetch("/api/user/preferences").then((r) => r.json()),
@@ -306,6 +347,13 @@ export function AiCategorizationPanel({
               einrichten.
             </span>
           )}
+        </div>
+      )}
+      {suggestions.length + categoryProposals.length > 1 && (
+        <div className="mt-4 flex justify-end border-t border-[var(--border)] pt-4">
+          <button type="button" disabled={busy} onClick={acceptAll} className="btn-primary">
+            Alle Vorschläge bestätigen
+          </button>
         </div>
       )}
       {suggestions.length > 0 && (

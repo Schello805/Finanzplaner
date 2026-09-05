@@ -15,4 +15,10 @@ describe("lokale Buchungstext-Erkennung", () => {
     expect(keywordCategory("Sollzinsen für Kredite", false, categories)?.id).toBe("fees");
     expect(keywordCategory("Habenzinsen", true, categories)?.id).toBe("interest");
   });
+  it("erkennt eine Kfz-Versicherung eindeutig", () => {
+    expect(keywordCategory("Beitrag Kfz-Versicherung", false, [
+      ...categories,
+      { id: "car-insurance", name: "Kfz-Versicherung", isIncome: false },
+    ])?.id).toBe("car-insurance");
+  });
 });
