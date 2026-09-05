@@ -4,6 +4,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Der manuelle Regellauf lernt auch bereits vor Einführung der Händlerregeln kategorisierte Umsätze; KI-Ergebnisse bleiben sichtbar und ausreichend eindeutige Vorschläge werden automatisch übernommen.
 - Anmeldungen bleiben mit einem für mobile Browser geeigneten First-Party-Cookie jetzt 30 Tage lang über Seiten-Neuladungen erhalten.
 - Wiederholte Installationsläufe bewahren Datenbank-, Anmelde- und Verschlüsselungsschlüssel; nicht mehr lesbare KI-Schlüssel führen zu einer verständlichen Neueinrichtungs-Anweisung.
 - Gelernte Händler-Zuordnungen lassen sich jederzeit erneut auf alle offenen Umsätze anwenden – ohne Datei-Upload und ohne KI-Kosten.

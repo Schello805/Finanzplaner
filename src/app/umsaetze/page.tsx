@@ -95,7 +95,9 @@ export default function TransactionsPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Automatische Erkennung konnte nicht ausgeführt werden.");
       if (result.applied > 0) {
-        setLocalMessage(`${result.applied} vorhandene Umsätze wurden anhand deiner bisherigen Zuordnungen automatisch kategorisiert.`);
+        setLocalMessage(`${result.applied} vorhandene Umsätze wurden anhand deiner bisherigen Zuordnungen automatisch kategorisiert.${result.learned ? ` Dabei wurden ${result.learned} ältere Händler-Zuordnungen nachträglich gelernt.` : ""}`);
+      } else if (result.learned > 0) {
+        setLocalMessage(`${result.learned} ältere Händler-Zuordnungen wurden nachträglich gelernt. Weitere passende offene Umsätze waren nicht vorhanden.`);
       } else if (result.rules === 0) {
         setLocalMessage("Noch keine gelernten Zuordnungen vorhanden. Ordne zuerst einen eindeutigen Händler manuell einer Kategorie zu.");
       } else {

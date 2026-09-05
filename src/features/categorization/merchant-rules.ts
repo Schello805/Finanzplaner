@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { categorizationRules, transactions } from "@/db/schema";
 import { canLearnMerchant, normalizeMerchant } from "./normalize";
@@ -73,7 +73,47 @@ export async function applyMerchantRules(input: {
   visibleAccountIds: string[];
 }) {
   if (!input.visibleAccountIds.length) return { applied: 0, rules: 0 };
-  const rules = await merchantRuleMap(input.householdId, input.ownerMemberId);
+  const existingRules = await merchantRuleMap(input.householdId, input.ownerMemberId);
+  const assigned = await db
+    .select({
+      merchant: transactions.counterparty,
+      merchantNormalized: transactions.counterpartyNormalized,
+      categoryId: transactions.categoryId,
+    })
+    .from(transactions)
+    .where(
+      and(
+        inArray(transactions.accountId, input.visibleAccountIds),
+        isNotNull(transactions.categoryId),
+      ),
+    )
+    .orderBy(desc(transactions.updatedAt));
+
+  // Vor Einführung der Regeltabelle vorgenommene Zuordnungen werden beim
+  // manuellen Lauf einmalig nachgelernt. Bei widersprüchlichen Altzuordnungen
+  // gewinnt die zuletzt bearbeitete Buchung.
+  const learned = new Map<string, string>();
+  for (const row of assigned) {
+    const merchant = normalizeMerchant(row.merchantNormalized || row.merchant);
+    if (!row.categoryId || existingRules.has(merchant) || learned.has(merchant) || !canLearnMerchant(merchant)) continue;
+    learned.set(merchant, row.categoryId);
+  }
+  if (learned.size) {
+    await db.insert(categorizationRules).values(
+      [...learned].map(([value, categoryId]) => ({
+        householdId: input.householdId,
+        ownerMemberId: input.ownerMemberId,
+        categoryId,
+        field: "counterparty",
+        operator: "equals",
+        value,
+        shared: false,
+        priority: 100,
+      })),
+    );
+  }
+
+  const rules = new Map([...existingRules, ...learned]);
   let applied = 0;
   for (const [merchant, categoryId] of rules) {
     const rows = await db
@@ -89,5 +129,5 @@ export async function applyMerchantRules(input: {
       .returning({ id: transactions.id });
     applied += rows.length;
   }
-  return { applied, rules: rules.size };
+  return { applied, rules: rules.size, learned: learned.size };
 }
