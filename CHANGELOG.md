@@ -4,6 +4,9 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Datenbasierter Monatsablauf führt von Import über offene Kategorien und Amazon-Abgleich zur Analyse
+- Kategorien können umbenannt und kontrolliert gelöscht werden; bestehende Zuordnungen werden verschoben oder bewusst entfernt
+- Bestätigte Händlerzuordnungen werden lokal gelernt und bei künftigen sowie offenen Umsätzen automatisch wiederverwendet
 - Seitenleiste zeigt den echten Haushaltsnamen sowie reale sichtbare Konten- und Mitgliederzahlen; Adminnavigation nur für Administratoren
 - Fehlende KI-Anbieterkonfiguration wird als regulärer Verfügbarkeitsstatus statt als fehlerhafte HTTP-Anfrage behandelt
 - Amazon-Artikel lassen sich einzeln kategorisieren, mit betragsgleichen Bankumsätzen abstimmen und centgenau als Umsatzaufteilung übernehmen

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays, ChevronRight } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {AiInsightsCard} from "@/components/ai-insights-card";
+import {MonthlyWorkflow} from "@/components/monthly-workflow";
 
 type CategoryRow={name:string;current:number;last:number;average:number;color:string};
 type AccountRow={id:string;name:string};
@@ -36,10 +37,12 @@ export function AnalysisDashboard() {
       </div>
     </header>
 
+    <MonthlyWorkflow />
+
     {loadError&&<div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{loadError}</div>}
     {loading&&<div className="card p-5 text-sm muted">Analysedaten werden geladen …</div>}
     {!loading&&categories.length===0&&<div className="card p-6"><h2 className="font-bold">Noch keine Ausgaben vorhanden</h2><p className="mt-2 text-sm muted">Lege unter „Konten“ ein Konto an und importiere anschließend in den Einstellungen deinen ersten Kontoauszug.</p></div>}
-    <section aria-label="Monatskennzahlen" className="grid gap-4 md:grid-cols-3">
+    <section id="analyse" aria-label="Monatskennzahlen" className="grid scroll-mt-6 gap-4 md:grid-cols-3">
       <article className="card p-5"><div className="text-sm font-semibold muted">Letzter Monat</div><div className="mt-2 text-3xl font-bold tracking-tight">{eur.format(lastTotal)}</div><div className={`mt-3 flex items-center gap-1 text-sm font-semibold ${delta > 0 ? "text-[var(--danger)]" : "text-[var(--primary)]"}`}>{delta > 0 ? <ArrowUpRight size={17}/> : <ArrowDownRight size={17}/>} {eur.format(Math.abs(delta))} · {totalDeltaPercent.toFixed(1)} % zum Ø</div></article>
       <article className="card p-5"><div className="text-sm font-semibold muted">12-Monats-Durchschnitt</div><div className="mt-2 text-3xl font-bold tracking-tight">{eur.format(averageTotal)}</div><div className="mt-3 text-sm muted">Grundlage: {historyMonths} vollständige {historyMonths===1?"Monat":"Monate"}</div></article>
       <article className="card p-5"><div className="text-sm font-semibold muted">Aktueller Monat · {formatMonth(currentMonth)||"laufend"}</div><div className="mt-2 text-3xl font-bold tracking-tight">{eur.format(currentTotal)}</div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]"><div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${Math.min(100, usagePercent)}%` }} /></div><div className="mt-2 text-sm font-semibold">{usagePercent.toFixed(0)} % des üblichen Monatswerts</div></article>

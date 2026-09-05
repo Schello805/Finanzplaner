@@ -10,6 +10,7 @@ import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/current-user";
 import { decryptSecret } from "@/lib/security";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
+import { learnMerchantRule, normalizeMerchant } from "@/features/categorization/merchant-rules";
 type ProviderConfig = {
   model: string;
   inputPricePerMillion?: number;
@@ -149,28 +150,28 @@ export async function POST(request: Request) {
     );
     let applied = 0;
     const suggestions = [];
+    const visibleAccountIds = (await memberAndVisibleAccountIds(user.userId)).accountIds;
     for (const item of result.data.results) {
       const categoryId = byName.get(item.category.toLocaleLowerCase("de-DE"));
       if (!categoryId || !body.ids.includes(item.id)) continue;
       if (item.confidence >= 0.85) {
+        const source = rows.find((row) => row.id === item.id);
         await db
           .update(transactions)
           .set({
             categoryId,
             categorizationConfidence: item.confidence.toFixed(3),
             categorizedBy: `ai:${ai.provider}`,
-            counterpartyNormalized: item.normalizedMerchant,
+            counterpartyNormalized: normalizeMerchant(source?.merchant),
             updatedAt: new Date(),
           })
           .where(
             and(
               eq(transactions.id, item.id),
-              inArray(
-                transactions.accountId,
-                (await memberAndVisibleAccountIds(user.userId)).accountIds,
-              ),
+              inArray(transactions.accountId, visibleAccountIds),
             ),
           );
+        await learnMerchantRule({ householdId: member.householdId, ownerMemberId: member.id, visibleAccountIds, merchant: source?.merchant, categoryId });
         applied++;
       } else suggestions.push({ ...item, categoryId });
     }

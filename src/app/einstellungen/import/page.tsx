@@ -86,6 +86,7 @@ export default function ImportPage() {
       setPreview(body);
       setKeepSuspected(new Set());
     } else {
+      sessionStorage.setItem("finanzplaner-last-import", JSON.stringify({ imported: body.imported, locallyCategorized: body.locallyCategorized ?? 0 }));
       setPreview(null);
       setFile(null);
       setKeepSuspected(new Set());
