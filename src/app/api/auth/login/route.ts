@@ -4,7 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { verifyPassword } from "@/lib/security";
-import { createSessionToken, SESSION_COOKIE } from "@/lib/session";
+import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
 
 const schema=z.object({username:z.string().min(1).max(80),password:z.string().min(1).max(128),code:z.string().regex(/^\d{6}$/).optional()});
 export async function POST(request:Request){
@@ -16,6 +16,6 @@ export async function POST(request:Request){
   if(user.totpSecretEncrypted){const[{decryptSecret},{verifyTotp}]=await Promise.all([import("@/lib/security"),import("@/lib/totp")]);if(!verifyTotp(decryptSecret(user.totpSecretEncrypted),parsed.data.code??""))return NextResponse.json({error:"Der Bestätigungscode ist falsch oder abgelaufen."},{status:401})}
   await db.update(users).set({lastLoginAt:new Date()}).where(eq(users.id,user.id));
   const token=await createSessionToken({userId:user.id,username:user.username,isAdmin:user.isAdmin,mustChangePassword:user.mustChangePassword});
-  const response=NextResponse.json({ok:true,mustChangePassword:user.mustChangePassword});response.cookies.set(SESSION_COOKIE,token,{httpOnly:true,sameSite:"strict",secure:false,path:"/",maxAge:60*60*12});return response;
+  const response=NextResponse.json({ok:true,mustChangePassword:user.mustChangePassword});response.cookies.set(SESSION_COOKIE,token,sessionCookieOptions);return response;
  } catch(error){console.error("Login fehlgeschlagen",error);return NextResponse.json({error:"Die Anmeldung konnte serverseitig nicht verarbeitet werden. Bitte Systemprotokoll prüfen."},{status:503})}
 }
