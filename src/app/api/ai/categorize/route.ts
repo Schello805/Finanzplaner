@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, count, eq, inArray, isNull } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, notExists } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { aiUsage, categories, systemSettings, transactions } from "@/db/schema";
+import { aiUsage, categories, systemSettings, transactions, transactionSplits } from "@/db/schema";
 import { buildTransferPreview } from "@/features/ai/privacy";
 import { categorizeWithAi, estimateCost } from "@/features/ai/provider";
 import type { AiTransactionInput } from "@/features/ai/types";
@@ -51,6 +51,12 @@ async function pending(userId: string, ids?: string[]) {
   const baseFilters = [
     inArray(transactions.accountId, accountIds),
     isNull(transactions.categoryId),
+    notExists(
+      db
+        .select({ id: transactionSplits.transactionId })
+        .from(transactionSplits)
+        .where(eq(transactionSplits.transactionId, transactions.id)),
+    ),
   ];
   const [{ value: total }] = await db
     .select({ value: count() })

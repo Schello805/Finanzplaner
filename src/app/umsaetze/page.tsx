@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Filter, Pencil, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
+import { CircleAlert, Filter, Pencil, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { AiCategorizationPanel } from "@/components/ai-categorization-panel";
 import { TransactionEditor } from "@/components/transaction-editor";
@@ -23,6 +23,9 @@ type Row = {
   splits: Array<{ categoryId: string; amount: string; note?: string | null }>;
 };
 type Category = { id: string; name: string; parentId: string | null };
+function isUnassigned(row: Row) {
+  return !row.categoryId && row.splits.length === 0;
+}
 export default function TransactionsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -54,6 +57,10 @@ export default function TransactionsPage() {
       if (Array.isArray(cats)) setCategories(cats);
     });
   }, []);
+  const unassignedCount = useMemo(
+    () => rows.filter(isUnassigned).length,
+    [rows],
+  );
   const visible = useMemo(() => {
     const q = query.toLocaleLowerCase("de-DE");
     return rows.filter(
@@ -64,7 +71,7 @@ export default function TransactionsPage() {
             .includes(q)) &&
         (categoryFilter === "all" ||
           (categoryFilter === "none"
-            ? !r.categoryId
+            ? isUnassigned(r)
             : r.categoryId === categoryFilter)) &&
         (typeFilter === "all" || r.specialType === typeFilter),
     );
@@ -162,6 +169,14 @@ export default function TransactionsPage() {
           </label>
           <button
             type="button"
+            onClick={() => setCategoryFilter((current) => current === "none" ? "all" : "none")}
+            className={categoryFilter === "none" ? "btn-secondary border-red-200 bg-red-50 text-red-800" : "btn-secondary"}
+            aria-pressed={categoryFilter === "none"}
+          >
+            <CircleAlert size={17} /> {unassignedCount} nicht zugeordnet
+          </button>
+          <button
+            type="button"
             onClick={() => setFiltersOpen((value) => !value)}
             className="btn-secondary"
             aria-expanded={filtersOpen}
@@ -223,7 +238,7 @@ export default function TransactionsPage() {
               {visible.map((row) => (
                 <tr
                   key={row.id}
-                  className={`border-t border-[var(--border)] hover:bg-[var(--surface-soft)] ${row.excluded ? "opacity-60" : ""}`}
+                  className={`border-t border-[var(--border)] ${isUnassigned(row) ? "bg-red-50/60 hover:bg-red-50" : "hover:bg-[var(--surface-soft)]"} ${row.excluded ? "opacity-60" : ""}`}
                 >
                   <td className="px-5 py-4">
                     {new Intl.DateTimeFormat("de-DE").format(
@@ -243,18 +258,24 @@ export default function TransactionsPage() {
                   </td>
                   <td className="px-5 py-4 muted">{row.accountName}</td>
                   <td className="px-5 py-4">
-                    <select
-                      value={row.categoryId ?? ""}
-                      onChange={(e) => setCategory(row, e.target.value)}
-                      className="min-h-9 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2"
-                    >
-                      <option value="">Nicht zugeordnet</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
+                    {row.splits.length > 0 ? (
+                      <span className="inline-flex min-h-9 items-center rounded-lg bg-[var(--surface-soft)] px-3 text-xs font-semibold">
+                        Aufgeteilt ({row.splits.length})
+                      </span>
+                    ) : (
+                      <select
+                        value={row.categoryId ?? ""}
+                        onChange={(e) => setCategory(row, e.target.value)}
+                        className={`min-h-9 rounded-lg border px-2 ${isUnassigned(row) ? "border-red-200 bg-red-50 font-semibold text-red-800" : "border-[var(--border)] bg-[var(--surface)]"}`}
+                      >
+                        <option value="">Nicht zugeordnet</option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </td>
                   <td
                     className={`px-5 py-4 text-right font-bold ${Number(row.amount) > 0 ? "text-[var(--primary)]" : ""}`}
