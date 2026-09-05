@@ -4,6 +4,10 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-09-05
+
+- Die einfache Browserstimme wurde durch eine natürliche deutsche Gemini-TTS-Ausgabe ersetzt. Der zentral gespeicherte Gemini-Schlüssel bleibt auf dem Server; bei einem seltenen Anbieterfehler erfolgt automatisch ein zweiter Versuch.
+
 ## [0.2.5] - 2026-09-05
 
 - KI-Ausgabenhinweise zeigen höchstens drei nach Euro-Abweichung priorisierte Sparchancen als kompakte Karten mit Icons. Fehlende `gpt-5-mini`-Preise werden mit dem offiziellen Modellpreis ergänzt; Kleinstbeträge erscheinen nicht mehr als 0,0000 €.
