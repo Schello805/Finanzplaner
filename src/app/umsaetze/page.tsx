@@ -246,10 +246,15 @@ export default function TransactionsPage() {
                     )}
                   </td>
                   <td className="max-w-[260px] px-5 py-4">
-                    <div className="truncate font-semibold">
+                    <div className="truncate font-semibold" title={row.counterparty ?? undefined}>
                       {row.counterparty ?? "Unbekannt"}
                     </div>
-                    <div className="truncate text-xs muted">{row.purpose}</div>
+                    <div
+                      className="mt-1 line-clamp-2 break-words text-xs leading-5 muted"
+                      title={row.purpose ?? undefined}
+                    >
+                      {row.purpose}
+                    </div>
                     {row.tags.length > 0 && (
                       <div className="mt-1 text-xs text-[var(--primary)]">
                         {row.tags.map((tag) => `#${tag}`).join(" ")}
