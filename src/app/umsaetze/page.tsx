@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Filter, Pencil, Search, SlidersHorizontal } from "lucide-react";
+import { Filter, Pencil, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { AiCategorizationPanel } from "@/components/ai-categorization-panel";
 import { TransactionEditor } from "@/components/transaction-editor";
@@ -31,6 +31,8 @@ export default function TransactionsPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [error, setError] = useState("");
+  const [localBusy, setLocalBusy] = useState(false);
+  const [localMessage, setLocalMessage] = useState("");
   const [importSummary, setImportSummary] = useState<{imported:number;locallyCategorized:number}|null>(null);
   const [selected, setSelected] = useState<Row | null>(null);
   async function refreshTransactions() {
@@ -84,6 +86,28 @@ export default function TransactionsPage() {
   async function setCategory(row: Row, categoryId: string) {
     await patch({ id: row.id, categoryId: categoryId || null });
   }
+  async function applyLocalRules() {
+    setLocalBusy(true);
+    setLocalMessage("");
+    setError("");
+    try {
+      const response = await fetch("/api/categorization/local", { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Automatische Erkennung konnte nicht ausgeführt werden.");
+      if (result.applied > 0) {
+        setLocalMessage(`${result.applied} vorhandene Umsätze wurden anhand deiner bisherigen Zuordnungen automatisch kategorisiert.`);
+      } else if (result.rules === 0) {
+        setLocalMessage("Noch keine gelernten Zuordnungen vorhanden. Ordne zuerst einen eindeutigen Händler manuell einer Kategorie zu.");
+      } else {
+        setLocalMessage("Alle Umsätze, die zu deinen bisherigen Zuordnungen passen, sind bereits kategorisiert.");
+      }
+      await refreshTransactions();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Automatische Erkennung konnte nicht ausgeführt werden.");
+    } finally {
+      setLocalBusy(false);
+    }
+  }
   return (
     <div className="space-y-7">
       <PageHeader
@@ -91,9 +115,15 @@ export default function TransactionsPage() {
         title="Umsätze"
         description="Durchsuche, prüfe und kategorisiere deine Buchungen."
         action={
-          <Link href="/einstellungen/kategorien" className="btn-secondary">
-            <SlidersHorizontal size={18} /> Kategorien verwalten
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-primary" onClick={applyLocalRules} disabled={localBusy}>
+              <RefreshCw size={18} className={localBusy ? "animate-spin" : ""} />
+              {localBusy ? "Erkennung läuft …" : "Gelernte Regeln anwenden"}
+            </button>
+            <Link href="/einstellungen/kategorien" className="btn-secondary">
+              <SlidersHorizontal size={18} /> Kategorien verwalten
+            </Link>
+          </div>
         }
       />
       {error && (
@@ -108,6 +138,11 @@ export default function TransactionsPage() {
         <div role="status" className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900">
           <strong>{importSummary.imported} Umsätze importiert.</strong>{" "}
           {importSummary.locallyCategorized} davon wurden anhand deiner bisherigen Zuordnungen automatisch kategorisiert. Darunter erscheinen nur noch offene Umsätze für die KI oder manuelle Prüfung.
+        </div>
+      )}
+      {localMessage && (
+        <div role="status" className="rounded-xl bg-sky-50 p-4 text-sm text-sky-900">
+          {localMessage}
         </div>
       )}
       <AiCategorizationPanel onApplied={refreshTransactions} />

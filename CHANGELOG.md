@@ -4,6 +4,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Gelernte Händler-Zuordnungen lassen sich jederzeit erneut auf alle offenen Umsätze anwenden – ohne Datei-Upload und ohne KI-Kosten.
 - Datenbasierter Monatsablauf führt von Import über offene Kategorien und Amazon-Abgleich zur Analyse
 - Kategorien können umbenannt und kontrolliert gelöscht werden; bestehende Zuordnungen werden verschoben oder bewusst entfernt
 - Bestätigte Händlerzuordnungen werden lokal gelernt und bei künftigen sowie offenen Umsätzen automatisch wiederverwendet
