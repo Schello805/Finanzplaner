@@ -242,7 +242,7 @@ export function AiCategorizationPanel({
           className="mt-4 rounded-xl bg-[var(--surface-soft)] p-4 text-sm"
         >
           {message}
-          {message.includes("eingerichtet") && (
+          {(message.includes("eingerichtet") || message.includes("Adminbereich")) && (
             <span className="mt-3 block">
               Ein Administrator kann den Anbieter unter{" "}
               <Link href="/admin/ki" className="font-semibold text-[var(--primary)]">

@@ -33,11 +33,15 @@ export function encryptSecret(plaintext: string) {
 }
 
 export function decryptSecret(payload: string) {
-  const [version, ivText, tagText, dataText] = payload.split(".");
-  if (version !== "v1" || !ivText || !tagText || !dataText) throw new Error("Ungültiges Geheimnisformat.");
-  const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), Buffer.from(ivText, "base64url"));
-  decipher.setAuthTag(Buffer.from(tagText, "base64url"));
-  return Buffer.concat([decipher.update(Buffer.from(dataText, "base64url")), decipher.final()]).toString("utf8");
+  try {
+    const [version, ivText, tagText, dataText] = payload.split(".");
+    if (version !== "v1" || !ivText || !tagText || !dataText) throw new Error("invalid payload");
+    const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), Buffer.from(ivText, "base64url"));
+    decipher.setAuthTag(Buffer.from(tagText, "base64url"));
+    return Buffer.concat([decipher.update(Buffer.from(dataText, "base64url")), decipher.final()]).toString("utf8");
+  } catch {
+    throw new Error("Gespeicherte verschlüsselte Daten können mit dem aktuellen Systemschlüssel nicht gelesen werden.");
+  }
 }
 
 export function stablePrivateFingerprint(value: string) {
