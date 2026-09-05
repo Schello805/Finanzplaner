@@ -9,6 +9,7 @@ type Category = {
   icon: string;
   isIncome: boolean;
   parentId: string | null;
+  transactionCount: number;
 };
 export default function CategoriesPage() {
   const [rows, setRows] = useState<Category[]>([]);
@@ -111,6 +112,12 @@ export default function CategoriesPage() {
                   : ""}
               </div>
             </div>
+            <span
+              className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs font-semibold whitespace-nowrap"
+              aria-label={`${row.transactionCount} zugeordnete Umsätze`}
+            >
+              {row.transactionCount} {row.transactionCount === 1 ? "Umsatz" : "Umsätze"}
+            </span>
             <button
               onClick={() => setEditing(row)}
               className="btn-secondary min-h-9 px-3"

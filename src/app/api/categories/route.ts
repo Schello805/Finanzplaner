@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, count, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, count, countDistinct, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { amazonOrderItems, categories, categorizationRules, transactions, transactionSplits } from "@/db/schema";
@@ -9,17 +9,58 @@ import { writeAudit } from "@/lib/audit";
 export async function GET() {
   try {
     const user = await requireUser();
-    const { member } = await memberAndVisibleAccountIds(user.userId);
-    const rows = await db
-      .select()
-      .from(categories)
-      .where(
-        or(
-          eq(categories.householdId, member.householdId),
-          isNull(categories.householdId),
+    const { member, accountIds } = await memberAndVisibleAccountIds(user.userId);
+    const [rows, directCounts, splitCounts] = await Promise.all([
+      db
+        .select()
+        .from(categories)
+        .where(
+          or(
+            eq(categories.householdId, member.householdId),
+            isNull(categories.householdId),
+          ),
         ),
-      );
-    return NextResponse.json(rows);
+      accountIds.length
+        ? db
+            .select({ categoryId: transactions.categoryId, value: count() })
+            .from(transactions)
+            .where(
+              and(
+                inArray(transactions.accountId, accountIds),
+                isNotNull(transactions.categoryId),
+              ),
+            )
+            .groupBy(transactions.categoryId)
+        : Promise.resolve([]),
+      accountIds.length
+        ? db
+            .select({
+              categoryId: transactionSplits.categoryId,
+              value: countDistinct(transactionSplits.transactionId),
+            })
+            .from(transactionSplits)
+            .innerJoin(
+              transactions,
+              eq(transactionSplits.transactionId, transactions.id),
+            )
+            .where(inArray(transactions.accountId, accountIds))
+            .groupBy(transactionSplits.categoryId)
+        : Promise.resolve([]),
+    ]);
+    const counts = new Map<string, number>();
+    for (const item of [...directCounts, ...splitCounts]) {
+      if (item.categoryId)
+        counts.set(
+          item.categoryId,
+          (counts.get(item.categoryId) ?? 0) + Number(item.value),
+        );
+    }
+    return NextResponse.json(
+      rows.map((row) => ({
+        ...row,
+        transactionCount: counts.get(row.id) ?? 0,
+      })),
+    );
   } catch (e) {
     return NextResponse.json(
       {
