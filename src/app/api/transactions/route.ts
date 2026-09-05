@@ -17,7 +17,11 @@ export async function GET(request: NextRequest) {
     const { accountIds } = await memberAndVisibleAccountIds(user.userId);
     if (!accountIds.length) return NextResponse.json([]);
     const search = request.nextUrl.searchParams.get("q")?.trim();
-    const conditions = [inArray(transactions.accountId, accountIds)];
+    const conditions = [
+      inArray(transactions.accountId, accountIds),
+      sql`${transactions.amount} <> 0`,
+      sql`not (${transactions.counterparty} is null and ${transactions.bookingType} ilike 'SONSTIGER EINZUG' and ${transactions.purpose} ilike 'MO %')`,
+    ];
     if (search)
       conditions.push(
         or(
@@ -32,6 +36,7 @@ export async function GET(request: NextRequest) {
         amount: transactions.amount,
         currency: transactions.currency,
         counterparty: transactions.counterparty,
+        bookingType: transactions.bookingType,
         purpose: transactions.purpose,
         categoryId: transactions.categoryId,
         categoryName: categories.name,
@@ -62,6 +67,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       rows.map((row) => ({
         ...row,
+        counterparty:
+          row.counterparty ??
+          (/zinsen/i.test(row.bookingType ?? "")
+            ? "Zinsen"
+            : /entgelt/i.test(row.bookingType ?? "")
+              ? "Kontoführungsgebühren"
+              : "Ohne Empfänger"),
         splits: splitRows
           .filter((split) => split.transactionId === row.id)
           .map(({ categoryId, amount, note }) => ({

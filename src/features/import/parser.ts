@@ -95,9 +95,12 @@ export function findDuplicates(incoming: ParsedTransaction[], existing: ParsedTr
 }
 
 /** Sparkasse uses this explicit recipient marker for transactions that are not final yet. */
-export function isPendingTransaction(transaction: { counterparty?: string | null }) {
+export function isPendingTransaction(transaction: { counterparty?: string | null; bookingType?: string | null; purpose?: string | null; originalData?: Record<string, string> }) {
   const counterparty = normalize(transaction.counterparty).normalize("NFKC");
-  return /^\*\*\s*unbekannt(?:\s|$)/i.test(counterparty);
+  const bankInfo = Object.entries(transaction.originalData ?? {}).find(([key]) => normalize(key).toLocaleLowerCase("de-DE") === "info")?.[1];
+  if (/vorgemerkt/i.test(normalize(bankInfo))) return true;
+  if (/^\*\*\s*unbekannt(?:\s|$)/i.test(counterparty)) return true;
+  return !counterparty && /sonstiger einzug/i.test(normalize(transaction.bookingType)) && /^mo\s/i.test(normalize(transaction.purpose));
 }
 
 export function fingerprintFile(content: Uint8Array) { return createHash("sha256").update(content).digest("hex"); }
