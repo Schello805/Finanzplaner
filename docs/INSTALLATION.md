@@ -38,6 +38,8 @@ Das Skript lädt ausschließlich Fast-Forward-Änderungen, installiert reproduzi
 
 Das Installationsskript ist wiederholbar. Falls eine ältere Version beim Datenbank-Migrationsschritt abgebrochen ist, aktualisiere zunächst den Checkout und starte es erneut:
 
+Bei einer Wiederholung bleiben das Datenbankkennwort sowie der Anmelde- und Verschlüsselungsschlüssel aus `/etc/finanzplaner.env` unverändert. Dadurch bleiben bereits verschlüsselt gespeicherte Einstellungen und Importdaten lesbar.
+
 ```bash
 cd /opt/finanzplaner
 git pull --ff-only

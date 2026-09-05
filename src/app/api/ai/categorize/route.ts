@@ -30,12 +30,18 @@ async function settings() {
     throw new AiConfigurationError(
       `${provider === "openai" ? "OpenAI" : "Gemini"} ist nicht vollständig eingerichtet.`,
     );
-  return {
-    provider,
-    row,
-    config: row.valueJson as unknown as ProviderConfig,
-    apiKey: decryptSecret(row.valueEncrypted),
-  };
+  try {
+    return {
+      provider,
+      row,
+      config: row.valueJson as unknown as ProviderConfig,
+      apiKey: decryptSecret(row.valueEncrypted),
+    };
+  } catch {
+    throw new AiConfigurationError(
+      `${provider === "openai" ? "OpenAI" : "Gemini"} muss im Adminbereich erneut eingerichtet werden, weil der gespeicherte API-Schlüssel nicht mehr gelesen werden kann.`,
+    );
+  }
 }
 async function pending(userId: string, ids?: string[]) {
   const { member, accountIds } = await memberAndVisibleAccountIds(userId);

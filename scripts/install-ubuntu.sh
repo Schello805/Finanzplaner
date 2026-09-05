@@ -7,10 +7,26 @@ if ! grep -q 'Ubuntu 24.04' /etc/os-release; then echo "Hinweis: Offiziell unter
 
 APP_DIR="/opt/finanzplaner"
 APP_USER="finanzplaner"
-APP_PORT="8080"
-DB_PASSWORD="$(openssl rand -base64 30 | tr -d '/+=' | head -c 32)"
-AUTH_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
-ENCRYPTION_KEY="$(openssl rand -base64 32 | tr -d '\n')"
+ENV_FILE="/etc/finanzplaner.env"
+
+# Eine erneute Installation darf die Schlüssel vorhandener Daten niemals
+# austauschen. Die Datei wird ausschließlich von root verwaltet und kann daher
+# sicher als Quelle für die bereits erzeugten Werte verwendet werden.
+if [[ -f "${ENV_FILE}" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "${ENV_FILE}"
+  set +a
+fi
+
+APP_PORT="${PORT:-8080}"
+if [[ -n "${DATABASE_URL:-}" ]]; then
+  DB_PASSWORD="$(printf '%s' "${DATABASE_URL}" | sed -E 's#^postgresql://finanzplaner:([^@]+)@.*#\1#')"
+else
+  DB_PASSWORD="$(openssl rand -base64 30 | tr -d '/+=' | head -c 32)"
+fi
+AUTH_SECRET="${AUTH_SECRET:-$(openssl rand -base64 48 | tr -d '\n')}"
+ENCRYPTION_KEY="${ENCRYPTION_KEY:-$(openssl rand -base64 32 | tr -d '\n')}"
 IP_ADDRESS="$(hostname -I | awk '{print $1}')"
 
 # Der Quellcode wird vom unprivilegierten Dienstbenutzer gebaut. Root führt
@@ -34,7 +50,7 @@ sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='finanzplaner'" 
 sudo -u postgres psql -c "ALTER USER finanzplaner WITH PASSWORD '${DB_PASSWORD}'" >/dev/null
 sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='finanzplaner'" | grep -q 1 || sudo -u postgres createdb --owner=finanzplaner finanzplaner
 
-cat > /etc/finanzplaner.env <<EOF
+cat > "${ENV_FILE}" <<EOF
 NODE_ENV=production
 PORT=${APP_PORT}
 HOSTNAME=0.0.0.0
@@ -44,10 +60,10 @@ ENCRYPTION_KEY=${ENCRYPTION_KEY}
 APP_VERSION=$(git -C "${APP_DIR}" describe --tags --always 2>/dev/null | sed 's/^v//' || echo dev)
 APP_URL=http://${IP_ADDRESS}:${APP_PORT}
 EOF
-chmod 0600 /etc/finanzplaner.env
+chmod 0600 "${ENV_FILE}"
 
 cd "${APP_DIR}"
-set -a; source /etc/finanzplaner.env; set +a
+set -a; source "${ENV_FILE}"; set +a
 sudo -u "${APP_USER}" npm ci --prefer-offline --no-audit --no-fund
 install -d -o "${APP_USER}" -g "${APP_USER}" -m 0750 /var/lib/finanzplaner
 sha256sum package-lock.json | awk '{print $1}' > /var/lib/finanzplaner/package-lock.sha256
