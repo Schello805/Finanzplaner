@@ -4,6 +4,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Verwendungszwecke werden in der Umsatzliste zweizeilig dargestellt und sind zusätzlich vollständig als Browser-Hinweis verfügbar.
 - Die Kategorienverwaltung trennt Ausgaben und Einnahmen in eigene hierarchische Abschnitte und exportiert die sichtbare Struktur als lesbare JSON-Datei.
 - Kategorien werden als Hierarchie dargestellt; Unterkategorien stehen eingerückt direkt unter ihrer jeweiligen Hauptkategorie.
 - Nicht zugeordnete Umsätze sind in der Umsatzliste dezent rot markiert und über einen Schnellfilter erreichbar; aufgeteilte Buchungen gelten dabei nicht länger fälschlich als offen.
