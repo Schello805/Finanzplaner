@@ -14,9 +14,14 @@ export const categorizationResponseSchema = z.object({
 export type CategorizationResponse = z.infer<typeof categorizationResponseSchema>;
 
 export const insightResponseSchema = z.object({
-  summary: z.string().min(1).max(600),
-  observations: z.array(z.string().min(1).max(300)).max(5),
-  savingIdeas: z.array(z.string().min(1).max(300)).max(5),
+  summary: z.string().min(1).max(240),
+  opportunities: z.array(z.object({
+    category: z.string().min(1).max(80),
+    action: z.string().min(1).max(180),
+    reason: z.string().min(1).max(180),
+    icon: z.enum(["home", "car", "shopping", "subscription", "bank", "leisure", "general"]),
+  })).min(1).max(3),
+  watchouts: z.array(z.string().min(1).max(180)).max(2),
 });
 export type InsightResponse = z.infer<typeof insightResponseSchema>;
 
