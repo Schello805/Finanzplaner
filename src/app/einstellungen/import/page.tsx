@@ -27,6 +27,7 @@ export default function ImportPage() {
   const [accountId, setAccountId] = useState("");
   const [preview, setPreview] = useState<{
     total: number;
+    alreadyImported: boolean;
     ignoredPending: number;
     storedPending: number;
     statementPeriod: { from: string; to: string } | null;
@@ -278,6 +279,12 @@ export default function ImportPage() {
       {preview && (
         <section className="card p-5">
           <h2 className="font-bold">Importvorschau</h2>
+          {preview.alreadyImported && (
+            <div className="mt-4 rounded-xl bg-sky-50 p-4 text-sm leading-6 text-sky-900">
+              <strong>Diese Datei wurde bereits importiert.</strong>{" "}
+              Die erneute Prüfung ist erlaubt, damit du Dubletten, Vormerkungen und inzwischen fehlende Umsätze kontrollieren kannst. Ein zweiter Import derselben Datei bleibt gesperrt.
+            </div>
+          )}
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {[
               ["Erkannt", preview.total],
@@ -427,9 +434,11 @@ export default function ImportPage() {
               ))}
             </div>
           )}
-          <button onClick={() => upload("commit")} className="btn-primary mt-5">
-            {preview.ready + keepSuspected.size} Umsätze importieren
-          </button>
+          {!preview.alreadyImported && (
+            <button onClick={() => upload("commit")} className="btn-primary mt-5">
+              {preview.ready + keepSuspected.size} Umsätze importieren
+            </button>
+          )}
         </section>
       )}
       <ImportHistory refreshKey={historyVersion} />

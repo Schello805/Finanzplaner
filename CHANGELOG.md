@@ -7,6 +7,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 - Sparkassen-Umsätze mit dem Empfänger `**Unbekannt` werden als vorgemerkt erkannt, nicht importiert und in Vorschau sowie Ergebnis sichtbar gezählt.
 - Die Importvorschau erkennt bereits früher gespeicherte Vormerkungen auf dem Zielkonto und bietet ihre gezielte, bestätigungspflichtige Bereinigung an.
 - Innerhalb des vom neuen Kontoauszug abgedeckten Zeitraums werden auch andere zuvor gespeicherte, nun fehlende Umsätze zur einzeln bestätigten Löschung vorgeschlagen.
+- Bereits importierte Dateien dürfen erneut als schreibgeschützte Vorschau geprüft werden, damit Bestandsvergleich und Bereinigung erreichbar bleiben; ein doppelter Import bleibt gesperrt.
 - Das Updateskript gleicht den lokalen Stand ausdrücklich mit `origin/main` ab, zeigt vorherige und neue Revision und der Footer verlinkt Commit-Revisionen korrekt.
 - Für jedes Konto kann ein optionales, lokal gespeichertes Profilbild hinterlegt, geändert und entfernt werden. KI-Kategorien werden standardmäßig einzeln oder gesammelt bestätigt; nur die persönliche Vertrauenseinstellung erlaubt eine automatische Übernahme. Unspezifische neue Kategorien wie „Sonstiges“ werden nicht vorgeschlagen.
 - Wenn keine bestehende Kategorie fachlich passt, kann die KI neue Einnahme- oder Ausgabenkategorien gebündelt vorschlagen; angelegt und zugeordnet werden sie erst nach Bestätigung. Sparkassen-Dateien mit abweichender Windows-Zeichenkodierung werden automatisch erkannt.
