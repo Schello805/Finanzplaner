@@ -16,6 +16,11 @@ describe("Sparkasse CAMT V8", () => {
     const tx = parseBankCsv(`${header}\n${row}`, sparkasseCamtV8).transactions[0];
     expect(findDuplicates([tx], [tx]).exact).toHaveLength(1);
   });
+  it("behandelt gleiche Buchungen trotz geändertem Dateifingerabdruck als sichere Dublette", () => {
+    const tx = parseBankCsv(`${header}\n${row}`, sparkasseCamtV8).transactions[0];
+    const changed = { ...tx, fingerprint: "anderer-export-fingerprint" };
+    expect(findDuplicates([changed], [tx])).toMatchObject({ exact: [changed], suspected: [] });
+  });
   it("erkennt das von der Sparkasse verwendete Semikolon auch bei einer alten Vorlageneinstellung", () => {
     const semicolonHeader = header.replaceAll(",", ";");
     const semicolonRow = 'DE00123456780000000000;01.08.2026;01.08.2026;KARTENZAHLUNG;"Einkauf, Testmarkt";;;REF-001;;;;Testmarkt;DE00999999999999999999;TESTDEFFXXX;"-42,50";EUR;Umsatz gebucht';

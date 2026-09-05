@@ -32,6 +32,7 @@ export default function ImportPage() {
     ignoredPending: number;
     storedPending: number;
     statementPeriod: { from: string; to: string } | null;
+    reconciliationSkippedReason: string | null;
     missingStored: Array<{
       id: string;
       date: string;
@@ -379,6 +380,12 @@ export default function ImportPage() {
               >
                 {selectedMissing.size || "Keine"} ausgewählte Umsätze löschen
               </button>
+            </div>
+          )}
+          {preview.reconciliationSkippedReason && (
+            <div className="mt-4 rounded-xl bg-sky-50 p-4 text-sm leading-6 text-sky-900">
+              <strong>Kein Löschabgleich für diesen Teilauszug.</strong>{" "}
+              {preview.reconciliationSkippedReason} Vorhandene Umsätze bleiben unverändert; neue Umsätze und Dubletten werden trotzdem normal geprüft.
             </div>
           )}
           {preview.suspected.length > 0 && (
