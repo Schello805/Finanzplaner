@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import Papa from "papaparse";
 import type { CanonicalField, ImportResult, ImportTemplate, ParsedTransaction } from "./types";
 
-const normalize = (value?: string) => (value ?? "").replace(/\s+/g, " ").trim();
+const normalize = (value?: string | null) => (value ?? "").replace(/\s+/g, " ").trim();
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
 function toIsoDate(value: string, format: ImportTemplate["dateFormat"]): string {
@@ -87,7 +87,7 @@ export function findDuplicates(incoming: ParsedTransaction[], existing: ParsedTr
 }
 
 /** Sparkasse uses this explicit recipient marker for transactions that are not final yet. */
-export function isPendingTransaction(transaction: Pick<ParsedTransaction, "counterparty">) {
+export function isPendingTransaction(transaction: { counterparty?: string | null }) {
   const counterparty = normalize(transaction.counterparty).normalize("NFKC");
   return /^\*\*\s*unbekannt(?:\s|$)/i.test(counterparty);
 }
