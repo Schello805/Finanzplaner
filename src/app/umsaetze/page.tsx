@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CircleAlert, Filter, Pencil, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { AiCategorizationPanel } from "@/components/ai-categorization-panel";
+import { CategorySelectOptions } from "@/components/category-select-options";
 import { TransactionEditor } from "@/components/transaction-editor";
 type Row = {
   id: string;
@@ -22,7 +23,7 @@ type Row = {
   linkedTransactionId: string | null;
   splits: Array<{ categoryId: string; amount: string; note?: string | null }>;
 };
-type Category = { id: string; name: string; parentId: string | null };
+type Category = { id: string; name: string; parentId: string | null; isIncome: boolean };
 function isUnassigned(row: Row) {
   return !row.categoryId && row.splits.length === 0;
 }
@@ -196,11 +197,7 @@ export default function TransactionsPage() {
               >
                 <option value="all">Alle Kategorien</option>
                 <option value="none">Nicht zugeordnet</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+                <CategorySelectOptions categories={categories} />
               </select>
             </label>
             <label className="text-sm font-semibold">
@@ -274,11 +271,7 @@ export default function TransactionsPage() {
                         className={`min-h-9 rounded-lg border px-2 ${isUnassigned(row) ? "border-red-200 bg-red-50 font-semibold text-red-800" : "border-[var(--border)] bg-[var(--surface)]"}`}
                       >
                         <option value="">Nicht zugeordnet</option>
-                        {categories.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
+                        <CategorySelectOptions categories={categories} />
                       </select>
                     )}
                   </td>

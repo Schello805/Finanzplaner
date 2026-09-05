@@ -4,6 +4,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Kategorie-Dropdowns bei Umsätzen, Filtern und Aufteilungen trennen Einnahmen und Ausgaben und zeigen Unterkategorien eingerückt unter ihrer Hauptkategorie.
 - Verwendungszwecke werden in der Umsatzliste zweizeilig dargestellt und sind zusätzlich vollständig als Browser-Hinweis verfügbar.
 - Die Kategorienverwaltung trennt Ausgaben und Einnahmen in eigene hierarchische Abschnitte und exportiert die sichtbare Struktur als lesbare JSON-Datei.
 - Kategorien werden als Hierarchie dargestellt; Unterkategorien stehen eingerückt direkt unter ihrer jeweiligen Hauptkategorie.
