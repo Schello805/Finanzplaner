@@ -21,4 +21,15 @@ describe("lokale Buchungstext-Erkennung", () => {
       { id: "car-insurance", name: "Kfz-Versicherung", isIncome: false },
     ])?.id).toBe("car-insurance");
   });
+  it("ordnet typische Händler und regelmäßige Zahlungen lokal zu", () => {
+    const extended = [
+      ...categories,
+      { id: "food", name: "Lebensmittel", isIncome: false },
+      { id: "phone", name: "Telefon & Internet", isIncome: false },
+      { id: "rate", name: "Rate", isIncome: false },
+    ];
+    expect(keywordCategory("Kartenzahlung LIDL SAGT DANKE", false, extended)?.id).toBe("food");
+    expect(keywordCategory("Telefonica Germany GmbH & Co. OHG", false, extended)?.id).toBe("phone");
+    expect(keywordCategory("Darlehensrückzahlung an Bank", false, extended)?.id).toBe("rate");
+  });
 });

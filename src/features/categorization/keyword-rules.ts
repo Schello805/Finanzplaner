@@ -21,6 +21,36 @@ const rules = [
     category: /kfz[- ]?versicherung|autoversicherung|versicherung/i,
     isIncome: false,
   },
+  {
+    text: /\b(lidl|aldi|netto|penny|rewe|edeka|kaufland|norma)\b/i,
+    category: /lebensmittel|supermarkt/i,
+    isIncome: false,
+  },
+  {
+    text: /\b(o2|telefonica|telekom|vodafone|1&1|congstar)\b/i,
+    category: /telefon|internet|kommunikation/i,
+    isIncome: false,
+  },
+  {
+    text: /darlehensr(?:ü|ue)ckzahlung|darlehensrate|kreditrate|tilgung/i,
+    category: /rate|darlehen|kredit|finanzierung/i,
+    isIncome: false,
+  },
+  {
+    text: /\b(aral|shell|esso|totalenergies|jet tankstelle|agip|avia)\b|kraftstoff|tankstelle/i,
+    category: /tanken|kraftstoff/i,
+    isIncome: false,
+  },
+  {
+    text: /google play|apple\.com\/bill|playstation|xbox|steam games|in[- ]?game/i,
+    category: /app|in[- ]?game|spiele/i,
+    isIncome: false,
+  },
+  {
+    text: /gehalt|lohn|besoldung|arbeitsentgelt/i,
+    category: /einkommen|gehalt|lohn/i,
+    isIncome: true,
+  },
 ] as const;
 
 export function keywordCategory(

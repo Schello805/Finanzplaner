@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { accounts, amazonOrderItems, categories, transactions, transactionSplits } from "@/db/schema";
 import { allocateAmazonCategories } from "@/features/amazon/allocation";
+import { suggestAmazonCategory } from "@/features/amazon/category-suggestions";
 import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/current-user";
 import { decryptSecret } from "@/lib/security";
@@ -31,6 +32,7 @@ export async function GET() {
       .where(eq(amazonOrderItems.ownerMemberId, member.id))
       .orderBy(desc(amazonOrderItems.orderDate))
       .limit(1000);
+    const availableCategories = await db.select({ id: categories.id, name: categories.name, isIncome: categories.isIncome }).from(categories).where(eq(categories.householdId, member.householdId));
     const amazonTransactions = accountIds.length ? await db
       .select({ id: transactions.id, bookedOn: transactions.bookedOn, amount: transactions.amount, currency: transactions.currency, accountName: accounts.name })
       .from(transactions)
@@ -54,7 +56,11 @@ export async function GET() {
       return {
         key, orderDate: first.orderDate, shipDate: first.shipDate, total: Number(first.orderTotal), currency: first.currency,
         matchedTransactionId: rows.find((row) => row.matchedTransactionId)?.matchedTransactionId ?? null,
-        items: rows.map((row) => ({ id: row.id, productName: decryptSecret(row.productNameEncrypted), quantity: Number(row.quantity), gross: (Number(row.unitPrice) + Number(row.unitTax)) * Number(row.quantity), categoryId: row.categoryId })),
+        items: rows.map((row) => {
+          const productName = decryptSecret(row.productNameEncrypted);
+          const suggestion = row.categoryId ? null : suggestAmazonCategory(productName, availableCategories);
+          return { id: row.id, productName, quantity: Number(row.quantity), gross: (Number(row.unitPrice) + Number(row.unitTax)) * Number(row.quantity), categoryId: row.categoryId, suggestion };
+        }),
         candidates: candidates.map((transaction) => ({ ...transaction, amount: Number(transaction.amount) })),
       };
     }));

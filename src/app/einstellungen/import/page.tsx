@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
+  ArrowRight,
   CheckCircle2,
   FileSpreadsheet,
   FileUp,
@@ -158,6 +159,17 @@ export default function ImportPage() {
         title="Kontoauszug importieren"
         description="Die Originaldatei wird nach dem erfolgreichen Import automatisch gelöscht."
       />
+      <nav aria-label="Importablauf" className="card p-4">
+        <ol className="grid gap-2 sm:grid-cols-4">
+          {["Datei auswählen", "Änderungen prüfen", "Kategorien bestätigen", "Analyse ansehen"].map((label, index) => (
+            <li key={label} className={`flex items-center gap-2 rounded-xl p-3 text-sm font-semibold ${index === (preview ? 1 : 0) ? "bg-[var(--surface-soft)] text-[var(--primary)]" : "muted"}`}>
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-current">{index + 1}</span>
+              <span className="flex-1">{label}</span>
+              {index < 3 && <ArrowRight size={14} className="hidden sm:block" />}
+            </li>
+          ))}
+        </ol>
+      </nav>
       <section className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
         <article className="card p-5 sm:p-7">
           <div className="flex items-center gap-3">
