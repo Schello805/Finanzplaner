@@ -10,13 +10,14 @@ echo "Installierte Revision: ${PREVIOUS_REVISION}"
 echo "Aktueller Stand wird von GitHub abgerufen …"
 git pull --ff-only --prune origin main
 REVISION="$(git rev-parse --short=7 HEAD)"
+VERSION="v$(node -p "require('./package.json').version")"
 REMOTE_REVISION="$(git rev-parse --short=7 origin/main)"
 if [[ "${REVISION}" != "${REMOTE_REVISION}" ]]; then
   echo "FEHLER: Lokaler Stand ${REVISION} entspricht nicht GitHub ${REMOTE_REVISION}." >&2
   exit 1
 fi
-echo "Zu installierende Revision: ${REVISION}"
-sed -i "s/^APP_VERSION=.*/APP_VERSION=${REVISION}/" /etc/finanzplaner.env
+echo "Zu installierende Version: ${VERSION} (Revision ${REVISION})"
+sed -i "s/^APP_VERSION=.*/APP_VERSION=${VERSION}/" /etc/finanzplaner.env
 set -a; source /etc/finanzplaner.env; set +a
 STATE_DIR="/var/lib/finanzplaner"
 LOCK_STAMP="${STATE_DIR}/package-lock.sha256"
@@ -41,5 +42,6 @@ echo
 echo "Update erfolgreich."
 echo "Vorherige Revision: ${PREVIOUS_REVISION}"
 echo "Revision: ${REVISION}"
+echo "Version: ${VERSION}"
 echo "Dienststatus: $(systemctl is-active finanzplaner)"
 echo "Adresse: http://${IP_ADDRESS}:8080"

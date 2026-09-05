@@ -4,6 +4,9 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-05
+
+- Der Monatsworkflow führt jetzt sichtbar von Import über Bestandsprüfung und bestätigbare Kategorien bis zur Analyse. Lokale Erkennung, KI-Prüfliste, Analysehochrechnung und Amazon-Kategorievorschläge wurden erweitert; der Footer verwendet echte SemVer-Revisionsnummern.
 - Sparkassen-Umsätze mit dem Empfänger `**Unbekannt` werden als vorgemerkt erkannt, nicht importiert und in Vorschau sowie Ergebnis sichtbar gezählt.
 - Die Importvorschau erkennt bereits früher gespeicherte Vormerkungen auf dem Zielkonto und bietet ihre gezielte, bestätigungspflichtige Bereinigung an.
 - Innerhalb des vom neuen Kontoauszug abgedeckten Zeitraums werden auch andere zuvor gespeicherte, nun fehlende Umsätze zur einzeln bestätigten Löschung vorgeschlagen.

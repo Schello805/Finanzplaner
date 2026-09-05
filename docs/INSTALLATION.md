@@ -32,7 +32,7 @@ Ein Proxmox-Snapshot oder Backup wird empfohlen. Danach:
 sudo /opt/finanzplaner/scripts/update.sh
 ```
 
-Das Skript lädt ausschließlich Fast-Forward-Änderungen, installiert reproduzierbar aus `package-lock.json`, migriert die Datenbank, baut die Anwendung und prüft den Dienst. Am Ende zeigt es Revision, Status, IP und Port.
+Das Skript lädt ausschließlich Fast-Forward-Änderungen, installiert reproduzierbar aus `package-lock.json`, migriert die Datenbank, baut die Anwendung und prüft den Dienst. Am Ende zeigt es SemVer-Version, Git-Revision, Status, IP und Port.
 
 ## Abgebrochene Erstinstallation fortsetzen
 

@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ShieldCheck, Sparkles } from "lucide-react";
+import { CategorySelectOptions, type SelectCategory } from "@/components/category-select-options";
 type Mode = "minimal" | "full_text";
 type Preview = {
   count: number;
@@ -46,6 +47,7 @@ export function AiCategorizationPanel({
   const [message, setMessage] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [categoryProposals, setCategoryProposals] = useState<CategoryProposal[]>([]);
+  const [categories, setCategories] = useState<SelectCategory[]>([]);
   const [mode, setMode] = useState<Mode>("minimal");
   async function requestPreview(nextMode: Mode, preserveMessage = false) {
     const response = await fetch(`/api/ai/categorize?privacyMode=${nextMode}`);
@@ -194,7 +196,9 @@ export function AiCategorizationPanel({
     Promise.all([
       fetch("/api/user/preferences").then((r) => r.json()),
       fetch("/api/ai/categorize?privacyMode=minimal").then((r) => r.json()),
-    ]).then(async ([preferences, initial]) => {
+      fetch("/api/categories").then((r) => r.json()),
+    ]).then(async ([preferences, initial, categoryRows]) => {
+      if (Array.isArray(categoryRows)) setCategories(categoryRows);
       const selectedMode: Mode =
         preferences.aiPrivacyMode === "full_text" ? "full_text" : "minimal";
       setMode(selectedMode);
@@ -204,7 +208,7 @@ export function AiCategorizationPanel({
             ? null
             : initial
           : await requestPreview(selectedMode);
-      if (selectedMode === "minimal" && initial.available !== false && initial.count) setPreview(initial);
+      if (selectedMode === "minimal" && initial.available !== false) setPreview(initial);
       if (selectedMode === "minimal" && initial.available === false) setPreview(null);
       if (selectedMode === "minimal" && initial.error) setMessage(initial.error);
       if (preferences.automaticCategorization && current?.count) {
@@ -220,7 +224,7 @@ export function AiCategorizationPanel({
     setMode(next);
     await requestPreview(next);
   }
-  if (!preview?.count && !message) return null;
+  if (!preview && !message) return null;
   return (
     <section className="card border-[color-mix(in_srgb,var(--primary)_35%,var(--border))] p-5">
       {preview?.count ? (
@@ -331,6 +335,11 @@ export function AiCategorizationPanel({
             </div>
           )}
         </>
+      ) : preview ? (
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div><h2 className="font-bold">Alle Umsätze sind zugeordnet</h2><p className="mt-1 text-sm muted">Die Kategorieprüfung ist abgeschlossen. Als Nächstes kannst du die Monatsanalyse ansehen.</p></div>
+          <Link href="/" className="btn-primary shrink-0">Zur Analyse</Link>
+        </div>
       ) : null}
       {message && (
         <div
@@ -361,7 +370,7 @@ export function AiCategorizationPanel({
           <div>
             <h3 className="font-bold">KI-Vorschläge prüfen</h3>
             <p className="mt-1 text-sm muted">
-              Unsichere Treffer werden erst nach deiner Bestätigung gespeichert.
+              Prüfe den Vorschlag, ändere ihn bei Bedarf und bestätige anschließend einzeln oder gesammelt.
             </p>
           </div>
           {suggestions.map((suggestion) => {
@@ -378,9 +387,18 @@ export function AiCategorizationPanel({
                     {transaction?.merchant ?? "Unbekannter Empfänger"}
                   </div>
                   <div className="mt-1 text-sm">
-                    Vorschlag: <strong>{suggestion.category}</strong> ·{" "}
+                    Vorschlag ·{" "}
                     {(suggestion.confidence * 100).toFixed(0)} % Sicherheit
                   </div>
+                  <select
+                    aria-label={`Kategorie für ${transaction?.merchant ?? "Umsatz"}`}
+                    value={suggestion.categoryId}
+                    onChange={(event) => setSuggestions((current) => current.map((item) => item.id === suggestion.id ? { ...item, categoryId: event.target.value, category: categories.find((category) => category.id === event.target.value)?.name ?? item.category } : item))}
+                    className="mt-2 min-h-10 w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--background)] px-3"
+                  >
+                    <CategorySelectOptions categories={categories} />
+                  </select>
+                  {transaction && <div className="mt-2 text-xs muted">{transaction.date} · {transaction.amount.toLocaleString("de-DE", { style: "currency", currency: transaction.currency })} · {transaction.purpose}</div>}
                   <div className="mt-1 text-xs muted">{suggestion.reason}</div>
                 </div>
                 <button

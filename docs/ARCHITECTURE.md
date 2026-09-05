@@ -26,9 +26,10 @@ Finanzplaner ist ein modularer TypeScript-Monolith. Diese Struktur hält Install
 4. alle Zeilen in einer Datenbanktransaktion validieren und normalisieren.
 5. eindeutige Bankreferenzen und stabile Fingerprints vergleichen.
 6. exakte Dubletten überspringen; ähnliche Buchungen zur Prüfung stellen.
-7. lokale Kategorisierungsregeln anwenden.
-8. temporäre Originaldatei entfernen.
-9. optional nicht zugeordnete Umsätze nach Einwilligung an KI übergeben.
+7. bestätigte Händlerregeln und eindeutige Buchungstexte lokal anwenden.
+8. verbleibende Vorschläge einzeln oder gesammelt bestätigen lassen.
+9. temporäre Originaldatei entfernen.
+10. optional nicht zugeordnete Umsätze nach Einwilligung an KI übergeben.
 
 ## Vertrauensgrenzen
 
@@ -36,4 +37,4 @@ CSV-Felder und KI-Ausgaben gelten immer als nicht vertrauenswürdige Daten. CSV-
 
 ## Revisionen
 
-`APP_VERSION` wird beim Installieren oder Aktualisieren aus dem aktuellen Git-Commit erzeugt. Der Footer verlinkt direkt auf diesen nachvollziehbaren Stand bei GitHub.
+`APP_VERSION` wird beim Installieren oder Aktualisieren aus der SemVer-Version in `package.json` erzeugt. Der Footer verlinkt auf das gleichnamige GitHub-Release. Das Updateskript zeigt zusätzlich den exakten Git-Commit für die technische Nachvollziehbarkeit an.

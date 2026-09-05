@@ -134,11 +134,11 @@ export async function applyMerchantRules(input: {
   }
   const [availableCategories, remaining] = await Promise.all([
     db.select({ id: categories.id, name: categories.name, isIncome: categories.isIncome }).from(categories).where(eq(categories.householdId, input.householdId)),
-    db.select({ id: transactions.id, purpose: transactions.purpose, amount: transactions.amount }).from(transactions).where(and(inArray(transactions.accountId, input.visibleAccountIds), isNull(transactions.categoryId), notExists(db.select({ id: transactionSplits.transactionId }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))))),
+    db.select({ id: transactions.id, merchant: transactions.counterparty, purpose: transactions.purpose, amount: transactions.amount }).from(transactions).where(and(inArray(transactions.accountId, input.visibleAccountIds), isNull(transactions.categoryId), notExists(db.select({ id: transactionSplits.transactionId }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))))),
   ]);
   let keywordApplied = 0;
   for (const row of remaining) {
-    const category = keywordCategory(row.purpose, Number(row.amount) >= 0, availableCategories);
+    const category = keywordCategory(`${row.merchant ?? ""} ${row.purpose ?? ""}`, Number(row.amount) >= 0, availableCategories);
     if (!category) continue;
     await db.update(transactions).set({ categoryId: category.id, categorizedBy: "local-keyword", categorizationConfidence: "0.950", updatedAt: new Date() }).where(eq(transactions.id, row.id));
     keywordApplied++;

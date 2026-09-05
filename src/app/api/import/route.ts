@@ -13,7 +13,7 @@ import type {
   ImportTemplate,
   ParsedTransaction,
 } from "@/features/import/types";
-import { merchantRuleMap, normalizeMerchant } from "@/features/categorization/merchant-rules";
+import { applyMerchantRules, merchantRuleMap, normalizeMerchant } from "@/features/categorization/merchant-rules";
 import { requireUser } from "@/lib/current-user";
 import { encryptSecret } from "@/lib/security";
 import { decodeBankCsv } from "@/features/import/decode";
@@ -238,11 +238,17 @@ export async function POST(request: Request) {
           );
       return record;
     });
+    const localResult = await applyMerchantRules({
+      householdId: member.householdId,
+      ownerMemberId: member.id,
+      visibleAccountIds: [account.id],
+    });
     return NextResponse.json(
       {
         importId: result.id,
         imported: selected.length,
-        locallyCategorized,
+        locallyCategorized: locallyCategorized + (localResult.keywordApplied ?? 0),
+        learnedRulesApplied: localResult.applied - (localResult.keywordApplied ?? 0),
         duplicates: duplicateCheck.exact.length,
         skippedSuspected: duplicateCheck.suspected.length - keptSuspects.length,
         ignoredPending: pendingTransactions.length,
