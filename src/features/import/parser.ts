@@ -81,7 +81,15 @@ export function findDuplicates(incoming: ParsedTransaction[], existing: ParsedTr
   for (const tx of incoming) {
     if (exactFingerprints.has(tx.fingerprint)) { exact.push(tx); continue; }
     const candidate = existing.find((old) => old.bookedOn === tx.bookedOn && old.amount === tx.amount && old.currency === tx.currency && normalize(old.counterparty).toLowerCase() === normalize(tx.counterparty).toLowerCase());
-    if (candidate) suspected.push({ incoming: tx, existing: candidate }); else { accepted.push(tx); exactFingerprints.add(tx.fingerprint); }
+    if (candidate) {
+      const oldReference = normalize(candidate.bankReference).toLocaleLowerCase("de-DE");
+      const newReference = normalize(tx.bankReference).toLocaleLowerCase("de-DE");
+      const stableReference = oldReference.length >= 6 && newReference === oldReference && !/^(notprovided|nicht angegeben|n\/a)$/.test(oldReference);
+      const oldPurpose = normalize(candidate.purpose).toLocaleLowerCase("de-DE");
+      const stablePurpose = oldPurpose.length >= 5 && oldPurpose === normalize(tx.purpose).toLocaleLowerCase("de-DE");
+      if (stableReference || stablePurpose) exact.push(tx);
+      else suspected.push({ incoming: tx, existing: candidate });
+    } else { accepted.push(tx); exactFingerprints.add(tx.fingerprint); }
   }
   return { accepted, exact, suspected };
 }

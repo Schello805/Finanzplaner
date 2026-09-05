@@ -4,6 +4,10 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-09-05
+
+- Tages- und Teilauszüge erzeugen keine unsicheren Löschvorschläge mehr; der Import zeigt stattdessen einen Sicherheitshinweis und prüft neue Umsätze sowie Dubletten weiterhin normal.
+- Buchungen mit übereinstimmendem Datum, Betrag, Währung, Empfänger und stabiler Referenz oder identischem Verwendungszweck gelten auch bei verändertem Exportfingerabdruck als sichere Dubletten.
 ## [0.2.1] - 2026-09-05
 
 - Der Bestandsabgleich meldet Buchungen nicht mehr fälschlich als fehlend, wenn Sparkasse Empfänger oder Buchungstext anders formatiert; entscheidend sind Datum, Betrag und Währung.

@@ -17,7 +17,7 @@ import { applyMerchantRules, merchantRuleMap, normalizeMerchant } from "@/featur
 import { requireUser } from "@/lib/current-user";
 import { encryptSecret } from "@/lib/security";
 import { decodeBankCsv } from "@/features/import/decode";
-import { findMissingStoredTransactions } from "@/features/import/reconciliation";
+import { findMissingStoredTransactions, statementCoverage } from "@/features/import/reconciliation";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { writeAudit } from "@/lib/audit";
 async function context(userId: string, accountId: string) {
@@ -144,6 +144,7 @@ export async function POST(request: Request) {
     }));
     const storedPending = existing.filter(isPendingTransaction).length;
     const dates = importableTransactions.map((item) => item.bookedOn).sort();
+    const coverage = statementCoverage(importableTransactions);
     const firstDate = dates[0];
     const lastDate = dates.at(-1);
     const missingStored = firstDate && lastDate
@@ -169,6 +170,7 @@ export async function POST(request: Request) {
         ignoredPending: pendingTransactions.length,
         storedPending,
         statementPeriod: firstDate && lastDate ? { from: firstDate, to: lastDate } : null,
+        reconciliationSkippedReason: coverage.comparable ? null : coverage.reason,
         missingStored,
         ready: duplicateCheck.accepted.length,
         exactDuplicates: duplicateCheck.exact.length,
