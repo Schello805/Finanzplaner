@@ -4,6 +4,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Anmeldungen bleiben mit einem für mobile Browser geeigneten First-Party-Cookie jetzt 30 Tage lang über Seiten-Neuladungen erhalten.
 - Wiederholte Installationsläufe bewahren Datenbank-, Anmelde- und Verschlüsselungsschlüssel; nicht mehr lesbare KI-Schlüssel führen zu einer verständlichen Neueinrichtungs-Anweisung.
 - Gelernte Händler-Zuordnungen lassen sich jederzeit erneut auf alle offenen Umsätze anwenden – ohne Datei-Upload und ohne KI-Kosten.
 - Datenbasierter Monatsablauf führt von Import über offene Kategorien und Amazon-Abgleich zur Analyse
