@@ -29,6 +29,15 @@ export default function ImportPage() {
     total: number;
     ignoredPending: number;
     storedPending: number;
+    statementPeriod: { from: string; to: string } | null;
+    missingStored: Array<{
+      id: string;
+      date: string;
+      amount: number;
+      currency: string;
+      counterparty: string;
+      purpose: string;
+    }>;
     ready: number;
     exactDuplicates: number;
     suspected: Array<{
@@ -50,6 +59,7 @@ export default function ImportPage() {
     warnings: string[];
   } | null>(null);
   const [keepSuspected, setKeepSuspected] = useState<Set<string>>(new Set());
+  const [selectedMissing, setSelectedMissing] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [cleanupMessage, setCleanupMessage] = useState("");
@@ -88,6 +98,7 @@ export default function ImportPage() {
     if (mode === "preview") {
       setPreview(body);
       setKeepSuspected(new Set());
+      setSelectedMissing(new Set());
     } else {
       sessionStorage.setItem("finanzplaner-last-import", JSON.stringify({ imported: body.imported, locallyCategorized: body.locallyCategorized ?? 0, ignoredPending: body.ignoredPending ?? 0 }));
       setPreview(null);
@@ -115,6 +126,29 @@ export default function ImportPage() {
     }
     setPreview((current) => current ? { ...current, storedPending: 0 } : current);
     setCleanupMessage(`${body.deleted} bereits gespeicherte vorgemerkte Umsätze wurden gelöscht.`);
+  }
+  async function deleteSelectedMissing() {
+    if (!selectedMissing.size || !accountId) return;
+    if (!window.confirm(`${selectedMissing.size} ausgewählte, im neuen Kontoauszug fehlende Umsätze wirklich löschen?`)) return;
+    setBusy(true);
+    setError("");
+    const response = await fetch("/api/import", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accountId, transactionIds: [...selectedMissing] }),
+    });
+    const body = await response.json();
+    setBusy(false);
+    if (!response.ok) {
+      setError(body.error);
+      return;
+    }
+    setPreview((current) => current ? {
+      ...current,
+      missingStored: current.missingStored.filter((item) => !selectedMissing.has(item.id)),
+    } : current);
+    setSelectedMissing(new Set());
+    setCleanupMessage(`${body.deleted} ausgewählte fehlende Umsätze wurden gelöscht.`);
   }
   return (
     <div className="space-y-7">
@@ -278,6 +312,53 @@ export default function ImportPage() {
                 disabled={busy}
               >
                 {preview.storedPending} alte Vormerkungen löschen
+              </button>
+            </div>
+          )}
+          {preview.missingStored.length > 0 && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+              <strong>{preview.missingStored.length} gespeicherte Umsätze fehlen im neuen Export.</strong>
+              <p className="mt-1 leading-6">
+                Verglichen wurde nur der Zeitraum {preview.statementPeriod?.from} bis {preview.statementPeriod?.to}. Prüfe die Buchungen einzeln – ein kürzerer oder gefilterter Bankexport kann ebenfalls die Ursache sein.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" className="btn-secondary" onClick={() => setSelectedMissing(new Set(preview.missingStored.map((item) => item.id)))}>
+                  Alle markieren
+                </button>
+                {selectedMissing.size > 0 && (
+                  <button type="button" className="btn-secondary" onClick={() => setSelectedMissing(new Set())}>
+                    Auswahl aufheben
+                  </button>
+                )}
+              </div>
+              <div className="mt-3 max-h-72 space-y-2 overflow-y-auto">
+                {preview.missingStored.map((item) => (
+                  <label key={item.id} className="flex cursor-pointer gap-3 rounded-lg border border-amber-200 bg-white p-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-5 w-5 shrink-0 accent-[var(--primary)]"
+                      checked={selectedMissing.has(item.id)}
+                      onChange={(event) => setSelectedMissing((current) => {
+                        const next = new Set(current);
+                        if (event.target.checked) next.add(item.id); else next.delete(item.id);
+                        return next;
+                      })}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold">{item.counterparty}</span>
+                      <span className="block break-words text-xs opacity-75">{item.date} · {item.purpose || "Kein Verwendungszweck"}</span>
+                    </span>
+                    <strong className="whitespace-nowrap">{item.amount.toLocaleString("de-DE", { style: "currency", currency: item.currency })}</strong>
+                  </label>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="btn-secondary mt-3 border-red-300 text-red-800"
+                onClick={deleteSelectedMissing}
+                disabled={!selectedMissing.size || busy}
+              >
+                {selectedMissing.size || "Keine"} ausgewählte Umsätze löschen
               </button>
             </div>
           )}
