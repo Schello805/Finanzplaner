@@ -4,6 +4,9 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-09-05
+
+- Die Hochrechnung des laufenden Monats folgt jetzt dem tatsächlichen Ausgabenverlauf der letzten bis zu zwölf vollständigen Monate statt einer linearen Kalendertag-Multiplikation. Zukünftige Buchungen werden ausgeschlossen; Ring- und Balkendiagramm zeigen Werte direkt an.
 ## [0.2.3] - 2026-09-05
 
 - Vorgemerkte Sparkassen-Zeilen werden nun am Feld `Info: Umsatz vorgemerkt` erkannt; 0,00-€-Zeilen werden ebenfalls nicht importiert. Bereits gespeicherte Vormerkungen und Nullbuchungen lassen sich gezielt bereinigen.
