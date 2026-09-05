@@ -4,6 +4,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Nicht zugeordnete Umsätze sind in der Umsatzliste dezent rot markiert und über einen Schnellfilter erreichbar; aufgeteilte Buchungen gelten dabei nicht länger fälschlich als offen.
 - Die Kategorienübersicht zeigt je Kategorie die Anzahl direkt oder über Aufteilungen zugeordneter sichtbarer Umsätze.
 - KI-Kategorisierung verarbeitet offene Umsätze in stabilen 25er-Stapeln, besitzt ein längeres Antwortfenster und meldet Zeitüberschreitungen verständlich und ohne Teiländerungen.
 - Der manuelle Regellauf lernt auch bereits vor Einführung der Händlerregeln kategorisierte Umsätze; KI-Ergebnisse bleiben sichtbar und ausreichend eindeutige Vorschläge werden automatisch übernommen.
