@@ -1,6 +1,6 @@
 "use client";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Pencil, Plus, Tags, Trash2, X } from "lucide-react";
+import { Download, Pencil, Plus, Tags, Trash2, X } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { flattenCategoryHierarchy } from "@/features/categories/hierarchy";
 type Category = {
@@ -78,6 +78,52 @@ export default function CategoriesPage() {
       ? { name: "", color: "#136f78", isIncome: false, parentId: null }
       : editing;
   const hierarchy = useMemo(() => flattenCategoryHierarchy(rows), [rows]);
+  const sections = useMemo(
+    () => [
+      {
+        key: "expenses",
+        title: "Ausgaben",
+        description: "Kategorien für Käufe, Verträge und sonstige Ausgaben",
+        items: flattenCategoryHierarchy(rows.filter((row) => !row.isIncome)),
+      },
+      {
+        key: "income",
+        title: "Einnahmen",
+        description: "Kategorien für Gehalt, Erstattungen und sonstige Einnahmen",
+        items: flattenCategoryHierarchy(rows.filter((row) => row.isIncome)),
+      },
+    ],
+    [rows],
+  );
+  function exportJson() {
+    const exported = {
+      format: "Finanzplaner-Kategorien",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      categories: hierarchy.map(({ category, depth }) => ({
+        name: category.name,
+        art: category.isIncome ? "Einnahme" : "Ausgabe",
+        parentCategory:
+          rows.find((parent) => parent.id === category.parentId)?.name ?? null,
+        level: depth,
+        color: category.color,
+        icon: category.icon,
+        assignedTransactions: category.transactionCount,
+      })),
+    };
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(exported, null, 2)], {
+        type: "application/json;charset=utf-8",
+      }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `finanzplaner-kategorien-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  }
   return (
     <div className="space-y-7">
       <PageHeader
@@ -85,9 +131,14 @@ export default function CategoriesPage() {
         title="Kategorien"
         description="Passe Ausgaben- und Einnahmegruppen an deinen Haushalt an."
         action={
-          <button onClick={() => setEditing("new")} className="btn-primary">
-            <Plus size={17} /> Kategorie anlegen
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={exportJson} className="btn-secondary">
+              <Download size={17} /> Als JSON exportieren
+            </button>
+            <button onClick={() => setEditing("new")} className="btn-primary">
+              <Plus size={17} /> Kategorie anlegen
+            </button>
+          </div>
         }
       />
       {message && (
@@ -98,9 +149,15 @@ export default function CategoriesPage() {
           {message}
         </div>
       )}
-      <section className="card divide-y divide-[var(--border)]">
-        {hierarchy.map(({ category: row, depth }) => (
-          <div key={row.id} className="flex items-center gap-4 p-4">
+      {sections.map((section) => (
+        <section key={section.key} className="card overflow-hidden">
+          <header className="border-b border-[var(--border)] bg-[var(--surface-soft)] px-5 py-4">
+            <h2 className="text-lg font-bold">{section.title}</h2>
+            <p className="mt-1 text-sm muted">{section.description} · {section.items.length} Kategorien</p>
+          </header>
+          <div className="divide-y divide-[var(--border)]">
+          {section.items.map(({ category: row, depth }) => (
+            <div key={row.id} className="flex items-center gap-4 p-4">
             <div className="flex-1" style={{ paddingLeft: `${depth * 24}px` }}>
               <div className="flex items-start gap-3">
                 {depth > 0 && <span className="muted" aria-hidden="true">↳</span>}
@@ -139,9 +196,14 @@ export default function CategoriesPage() {
             >
               <Trash2 size={15} />
             </button>
+            </div>
+          ))}
+          {!section.items.length && (
+            <p className="p-5 text-sm muted">Noch keine Kategorien in diesem Abschnitt.</p>
+          )}
           </div>
-        ))}
-      </section>
+        </section>
+      ))}
       {current && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-3 sm:items-center">
           <form onSubmit={save} className="card w-full max-w-lg p-6">
