@@ -66,3 +66,28 @@ export async function learnMerchantRule(input: {
     .returning({ id: transactions.id });
   return { learned: true, applied: applied.length };
 }
+
+export async function applyMerchantRules(input: {
+  householdId: string;
+  ownerMemberId: string;
+  visibleAccountIds: string[];
+}) {
+  if (!input.visibleAccountIds.length) return { applied: 0, rules: 0 };
+  const rules = await merchantRuleMap(input.householdId, input.ownerMemberId);
+  let applied = 0;
+  for (const [merchant, categoryId] of rules) {
+    const rows = await db
+      .update(transactions)
+      .set({ categoryId, categorizedBy: "local-rule", categorizationConfidence: "1.000", updatedAt: new Date() })
+      .where(
+        and(
+          inArray(transactions.accountId, input.visibleAccountIds),
+          isNull(transactions.categoryId),
+          eq(transactions.counterpartyNormalized, merchant),
+        ),
+      )
+      .returning({ id: transactions.id });
+    applied += rows.length;
+  }
+  return { applied, rules: rules.size };
+}
