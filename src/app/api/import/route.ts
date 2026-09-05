@@ -12,6 +12,7 @@ import type {
   ImportTemplate,
   ParsedTransaction,
 } from "@/features/import/types";
+import { merchantRuleMap, normalizeMerchant } from "@/features/categorization/merchant-rules";
 import { requireUser } from "@/lib/current-user";
 import { encryptSecret } from "@/lib/security";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
@@ -155,6 +156,8 @@ export async function POST(request: Request) {
       .filter((x) => keep.has(x.incoming.fingerprint))
       .map((x) => x.incoming);
     const selected = [...duplicateCheck.accepted, ...keptSuspects];
+    const rules = await merchantRuleMap(member.householdId, member.id);
+    const locallyCategorized = selected.filter((item) => rules.has(normalizeMerchant(item.counterparty))).length;
     const result = await db.transaction(async (tx) => {
       const [record] = await tx
         .insert(imports)
@@ -185,8 +188,10 @@ export async function POST(request: Request) {
               direction: item.direction,
               bookingType: item.bookingType,
               counterparty: item.counterparty,
-              counterpartyNormalized:
-                item.counterparty?.toLocaleLowerCase("de-DE"),
+              counterpartyNormalized: normalizeMerchant(item.counterparty),
+              categoryId: rules.get(normalizeMerchant(item.counterparty)),
+              categorizedBy: rules.has(normalizeMerchant(item.counterparty)) ? "local-rule" : undefined,
+              categorizationConfidence: rules.has(normalizeMerchant(item.counterparty)) ? "1.000" : undefined,
               purpose: item.purpose,
               bankReference: item.bankReference,
               fingerprint: item.fingerprint,
@@ -201,6 +206,7 @@ export async function POST(request: Request) {
       {
         importId: result.id,
         imported: selected.length,
+        locallyCategorized,
         duplicates: duplicateCheck.exact.length,
         skippedSuspected: duplicateCheck.suspected.length - keptSuspects.length,
       },
