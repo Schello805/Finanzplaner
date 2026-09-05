@@ -20,7 +20,7 @@ type Preview = {
     merchant?: string;
     purpose?: string;
   }>;
-  cost: { approximateInputTokens: number; lowEur: number; highEur: number };
+  cost: { approximateInputTokens: number; lowEur: number; highEur: number } | null;
 };
 type Suggestion = {
   id: string;
@@ -87,7 +87,7 @@ export function AiCategorizationPanel({
         return;
       }
       setMessage(
-        `${automatic ? "Automatische Analyse abgeschlossen: " : ""}${body.applied} sichere Zuordnungen übernommen. ${body.suggestions.length} Zuordnungen und ${body.categoryProposals.length} neue Kategorien müssen geprüft werden. Kosten: ${Number(body.estimatedCostEur).toLocaleString("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 4 })}.`,
+        `${automatic ? "Automatische Analyse abgeschlossen: " : ""}${body.applied} sichere Zuordnungen übernommen. ${body.suggestions.length} Zuordnungen und ${body.categoryProposals.length} neue Kategorien müssen geprüft werden. ${body.pricingAvailable ? `Geschätzte Kosten: ${Number(body.estimatedCostEur) > 0 && Number(body.estimatedCostEur) < 0.0001 ? "< 0,0001 €" : `${Number(body.estimatedCostEur).toLocaleString("de-DE", { minimumFractionDigits: 4, maximumFractionDigits: 6 })} €`}.` : "Preisangaben fehlen im Adminbereich."}`,
       );
       setSuggestions(body.suggestions);
       setCategoryProposals(body.categoryProposals);
@@ -315,7 +315,7 @@ export function AiCategorizationPanel({
                   ))}
                 </div>
               </div>
-              <p className="mt-4 text-sm">
+              {preview.cost ? <p className="mt-4 text-sm">
                 <strong>Kostenschätzung:</strong>{" "}
                 {preview.cost.lowEur.toLocaleString("de-DE", {
                   style: "currency",
@@ -331,7 +331,7 @@ export function AiCategorizationPanel({
                 · ca.{" "}
                 {preview.cost.approximateInputTokens.toLocaleString("de-DE")}{" "}
                 Eingabe-Tokens
-              </p>
+              </p> : <p className="mt-4 text-sm text-amber-800">Für dieses Modell fehlen Preisangaben im Adminbereich.</p>}
             </div>
           )}
         </>

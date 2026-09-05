@@ -4,7 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { aiUsage, categories, systemSettings, transactions, transactionSplits, userPreferences } from "@/db/schema";
 import { buildTransferPreview } from "@/features/ai/privacy";
-import { categorizeWithAi, estimateCost } from "@/features/ai/provider";
+import { categorizeWithAi, estimateCost, resolveModelPrice } from "@/features/ai/provider";
 import type { AiTransactionInput } from "@/features/ai/types";
 import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/current-user";
@@ -120,10 +120,7 @@ export async function GET(request: NextRequest) {
       throw error;
     }
     const preview = buildTransferPreview(rows, mode);
-    const price = {
-      inputPerMillion: ai.config.inputPricePerMillion ?? 0,
-      outputPerMillion: ai.config.outputPricePerMillion ?? 0,
-    };
+    const price = resolveModelPrice(ai.provider, ai.config.model, ai.config);
     return NextResponse.json({
       available: true,
       count: total,
@@ -132,7 +129,8 @@ export async function GET(request: NextRequest) {
       model: ai.config.model,
       privacyMode: mode,
       transactions: preview,
-      cost: estimateCost(preview, price, Math.max(300, rows.length * 80)),
+      cost: price ? estimateCost(preview, price, Math.max(300, rows.length * 80)) : null,
+      pricingSource: price?.source ?? null,
     });
   } catch (e) {
     return NextResponse.json(
@@ -226,12 +224,9 @@ export async function POST(request: Request) {
         applied++;
       } else suggestions.push({ ...item, categoryId });
     }
-    const inputCost =
-      (result.usage.inputTokens * (ai.config.inputPricePerMillion ?? 0)) /
-      1_000_000;
-    const outputCost =
-      (result.usage.outputTokens * (ai.config.outputPricePerMillion ?? 0)) /
-      1_000_000;
+    const price = resolveModelPrice(ai.provider, ai.config.model, ai.config);
+    const inputCost = price ? result.usage.inputTokens * price.inputPerMillion / 1_000_000 : 0;
+    const outputCost = price ? result.usage.outputTokens * price.outputPerMillion / 1_000_000 : 0;
     await db
       .insert(aiUsage)
       .values({
@@ -266,6 +261,7 @@ export async function POST(request: Request) {
       automaticMode: trustedAutomaticMode,
       usage: result.usage,
       estimatedCostEur: inputCost + outputCost,
+      pricingAvailable: Boolean(price),
     });
   } catch (e) {
     return NextResponse.json(

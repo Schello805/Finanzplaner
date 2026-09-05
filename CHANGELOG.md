@@ -4,6 +4,10 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-09-05
+
+- KI-Ausgabenhinweise zeigen höchstens drei nach Euro-Abweichung priorisierte Sparchancen als kompakte Karten mit Icons. Fehlende `gpt-5-mini`-Preise werden mit dem offiziellen Modellpreis ergänzt; Kleinstbeträge erscheinen nicht mehr als 0,0000 €.
+
 ## [0.2.4] - 2026-09-05
 
 - Die Hochrechnung des laufenden Monats folgt jetzt dem tatsächlichen Ausgabenverlauf der letzten bis zu zwölf vollständigen Monate statt einer linearen Kalendertag-Multiplikation. Zukünftige Buchungen werden ausgeschlossen; Ring- und Balkendiagramm zeigen Werte direkt an.
