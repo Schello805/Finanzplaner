@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, count, eq, inArray, isNull, notExists } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { aiUsage, categories, systemSettings, transactions, transactionSplits } from "@/db/schema";
+import { aiUsage, categories, systemSettings, transactions, transactionSplits, userPreferences } from "@/db/schema";
 import { buildTransferPreview } from "@/features/ai/privacy";
 import { categorizeWithAi, estimateCost } from "@/features/ai/provider";
 import type { AiTransactionInput } from "@/features/ai/types";
@@ -171,6 +171,8 @@ export async function POST(request: Request) {
     const byName = new Map(
       allowed.map((c) => [c.name.toLocaleLowerCase("de-DE"), c.id]),
     );
+    const [preferences] = await db.select({ automaticCategorization: userPreferences.automaticCategorization }).from(userPreferences).where(eq(userPreferences.userId, user.userId)).limit(1);
+    const trustedAutomaticMode = preferences?.automaticCategorization ?? false;
     let applied = 0;
     const suggestions = [];
     const categoryProposalMap = new Map<string, { name: string; isIncome: boolean; transactionIds: string[]; confidence: number; reason: string }>();
@@ -183,7 +185,7 @@ export async function POST(request: Request) {
       if (!categoryId) {
         const proposedName = (item.proposedCategory ?? item.category)?.trim();
         const source = rows.find((row) => row.id === item.id);
-        if (proposedName && source) {
+        if (proposedName && source && !/^(sonstiges?|andere?s?|diverses)$/i.test(proposedName)) {
           const key = `${source.amount >= 0 ? "income" : "expense"}:${proposedName.toLocaleLowerCase("de-DE")}`;
           const existing = categoryProposalMap.get(key);
           if (existing) {
@@ -201,7 +203,7 @@ export async function POST(request: Request) {
         }
         continue;
       }
-      if (item.confidence >= AUTO_APPLY_CONFIDENCE) {
+      if (trustedAutomaticMode && item.confidence >= AUTO_APPLY_CONFIDENCE) {
         const source = rows.find((row) => row.id === item.id);
         await db
           .update(transactions)
@@ -251,6 +253,7 @@ export async function POST(request: Request) {
           count: rows.length,
           applied,
           suggestions: suggestions.length,
+          automaticMode: trustedAutomaticMode,
         },
       },
     );
@@ -258,6 +261,7 @@ export async function POST(request: Request) {
       applied,
       suggestions,
       categoryProposals: [...categoryProposalMap.values()],
+      automaticMode: trustedAutomaticMode,
       usage: result.usage,
       estimatedCostEur: inputCost + outputCost,
     });

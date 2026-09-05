@@ -87,6 +87,7 @@ export const accounts = pgTable("accounts", {
   currency: text("currency").default("EUR").notNull(),
   openingBalance: numeric("opening_balance", { precision: 14, scale: 2 }),
   openingBalanceDate: date("opening_balance_date"),
+  profileImage: text("profile_image"),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   ...timestamps,
 });
