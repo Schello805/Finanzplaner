@@ -69,7 +69,7 @@ export async function POST(request: Request) {
         ),
       )
       .limit(1);
-    if (prior.length)
+    if (prior.length && mode !== "preview")
       throw new Error("Diese Datei wurde für das Konto bereits importiert.");
     const templateId = String(form.get("templateId") ?? "");
     let template: ImportTemplate = sparkasseCamtV8;
@@ -170,6 +170,7 @@ export async function POST(request: Request) {
     if (mode === "preview")
       return NextResponse.json({
         fileFingerprint: fileHash,
+        alreadyImported: prior.length > 0,
         total: parsed.transactions.length,
         ignoredPending: pendingTransactions.length,
         storedPending,
