@@ -7,6 +7,7 @@ import { ChevronDown, ShieldCheck, Sparkles } from "lucide-react";
 type Mode = "minimal" | "full_text";
 type Preview = {
   count: number;
+  batchSize: number;
   provider: "openai" | "gemini";
   model: string;
   privacyMode: Mode;
@@ -60,26 +61,32 @@ export function AiCategorizationPanel({
     automatic = false,
   ) {
     setBusy(true);
-    const response = await fetch("/api/ai/categorize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ids: current.transactions.map((t) => t.id),
-        privacyMode: currentMode,
-      }),
-    });
-    const body = await response.json();
-    setBusy(false);
-    if (!response.ok) {
-      setMessage(body.error);
-      return;
+    setMessage("");
+    try {
+      const response = await fetch("/api/ai/categorize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: current.transactions.map((t) => t.id),
+          privacyMode: currentMode,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setMessage(body.error ?? "KI-Kategorisierung fehlgeschlagen.");
+        return;
+      }
+      setMessage(
+        `${automatic ? "Automatische Analyse abgeschlossen: " : ""}${body.applied} sichere Zuordnungen übernommen. ${body.suggestions.length} Vorschläge müssen manuell geprüft werden. Kosten: ${Number(body.estimatedCostEur).toLocaleString("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 4 })}.`,
+      );
+      setSuggestions(body.suggestions);
+      await requestPreview(currentMode, true);
+      onApplied();
+    } catch {
+      setMessage("Die Verbindung zur KI-Analyse wurde unterbrochen. Bitte warte kurz und lade die Seite neu, um den aktuellen Stand zu prüfen, bevor du den Stapel erneut startest.");
+    } finally {
+      setBusy(false);
     }
-    setMessage(
-      `${automatic ? "Automatische Analyse abgeschlossen: " : ""}${body.applied} sichere Zuordnungen übernommen. ${body.suggestions.length} Vorschläge müssen manuell geprüft werden. Kosten: ${Number(body.estimatedCostEur).toLocaleString("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 4 })}.`,
-    );
-    setSuggestions(body.suggestions);
-    await requestPreview(currentMode, true);
-    onApplied();
   }
   async function acceptSuggestion(suggestion: Suggestion) {
     setBusy(true);
@@ -144,18 +151,22 @@ export function AiCategorizationPanel({
                 </h2>
                 <p className="mt-1 text-sm muted">
                   Mit {preview.provider === "openai" ? "OpenAI" : "Gemini"} ·{" "}
-                  {preview.model} analysieren
+                  {preview.model} analysieren · nächster Stapel: {preview.batchSize}
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
-                disabled={busy}
+                disabled={busy || suggestions.length > 0}
                 onClick={() => analyze(preview, mode)}
                 className="btn-primary"
               >
                 <Sparkles size={16} />
-                {busy ? "KI analysiert …" : "Jetzt mit KI zuordnen"}
+                {busy
+                  ? "KI analysiert …"
+                  : suggestions.length > 0
+                    ? "Vorschläge zuerst prüfen"
+                    : `${preview.batchSize} jetzt mit KI zuordnen`}
               </button>
               <button
                 onClick={() => setOpen((v) => !v)}
