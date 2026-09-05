@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findDuplicates, parseBankCsv } from "./parser";
+import { findDuplicates, isPendingTransaction, parseBankCsv } from "./parser";
 import { sparkasseCamtV8 } from "./sparkasse-camt-v8";
 
 const header = "Auftragskonto,Buchungstag,Valutadatum,Buchungstext,Verwendungszweck,Glaeubiger ID,Mandatsreferenz,Kundenreferenz (End-to-End),Sammlerreferenz,Lastschrift Ursprungsbetrag,Auslagenersatz Ruecklastschrift,Beguenstigter/Zahlungspflichtiger,Kontonummer/IBAN,BIC (SWIFT-Code),Betrag,Waehrung,Info";
@@ -40,5 +40,11 @@ describe("Sparkasse CAMT V8", () => {
   it("meldet die ursprüngliche CSV-Zeilennummer trotz Vorspann", () => {
     const invalid = row.replace('"-42,50"', "ungültig");
     expect(() => parseBankCsv(`Hinweis\n${header}\n${invalid}`, {...sparkasseCamtV8, headerRow: 2})).toThrow("Zeile 3");
+  });
+  it("erkennt nur den eindeutigen Sparkassen-Platzhalter als vorgemerkt", () => {
+    expect(isPendingTransaction({ counterparty: "**Unbekannt" })).toBe(true);
+    expect(isPendingTransaction({ counterparty: "  ** unbekannt vorgemerkt " })).toBe(true);
+    expect(isPendingTransaction({ counterparty: "Unbekannt" })).toBe(false);
+    expect(isPendingTransaction({ counterparty: undefined })).toBe(false);
   });
 });

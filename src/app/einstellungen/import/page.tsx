@@ -27,6 +27,7 @@ export default function ImportPage() {
   const [accountId, setAccountId] = useState("");
   const [preview, setPreview] = useState<{
     total: number;
+    ignoredPending: number;
     ready: number;
     exactDuplicates: number;
     suspected: Array<{
@@ -86,7 +87,7 @@ export default function ImportPage() {
       setPreview(body);
       setKeepSuspected(new Set());
     } else {
-      sessionStorage.setItem("finanzplaner-last-import", JSON.stringify({ imported: body.imported, locallyCategorized: body.locallyCategorized ?? 0 }));
+      sessionStorage.setItem("finanzplaner-last-import", JSON.stringify({ imported: body.imported, locallyCategorized: body.locallyCategorized ?? 0, ignoredPending: body.ignoredPending ?? 0 }));
       setPreview(null);
       setFile(null);
       setKeepSuspected(new Set());
@@ -159,6 +160,11 @@ export default function ImportPage() {
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
           </label>
+          <p className="mt-3 text-sm leading-6 muted">
+            Vorgemerkte Sparkassen-Umsätze mit dem Empfänger „**Unbekannt“
+            werden bewusst nicht importiert. Lade sie erst wieder hoch, sobald
+            sie von der Bank endgültig gebucht wurden.
+          </p>
           {file && (
             <div className="mt-4 flex items-center justify-between rounded-xl bg-[var(--surface-soft)] p-4">
               <div className="flex items-center gap-3">
@@ -212,12 +218,13 @@ export default function ImportPage() {
       {preview && (
         <section className="card p-5">
           <h2 className="font-bold">Importvorschau</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {[
               ["Erkannt", preview.total],
               ["Bereit", preview.ready],
               ["Sichere Dubletten", preview.exactDuplicates],
               ["Zu prüfen", preview.suspected.length],
+              ["Vorgemerkt · ignoriert", preview.ignoredPending],
             ].map(([label, value]) => (
               <div
                 key={label}
@@ -228,6 +235,12 @@ export default function ImportPage() {
               </div>
             ))}
           </div>
+          {preview.ignoredPending > 0 && (
+            <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+              <strong>{preview.ignoredPending} vorgemerkte Umsätze werden nicht importiert.</strong>{" "}
+              Sie erscheinen im nächsten Export erneut, sobald die Sparkasse sie endgültig gebucht hat.
+            </div>
+          )}
           {preview.suspected.length > 0 && (
             <div className="mt-5 space-y-3">
               <h3 className="font-bold">Mögliche Dubletten entscheiden</h3>
