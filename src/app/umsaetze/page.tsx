@@ -37,7 +37,7 @@ export default function TransactionsPage() {
   const [error, setError] = useState("");
   const [localBusy, setLocalBusy] = useState(false);
   const [localMessage, setLocalMessage] = useState("");
-  const [importSummary, setImportSummary] = useState<{imported:number;locallyCategorized:number}|null>(null);
+  const [importSummary, setImportSummary] = useState<{imported:number;locallyCategorized:number;ignoredPending?:number}|null>(null);
   const [selected, setSelected] = useState<Row | null>(null);
   async function refreshTransactions() {
     const tx = await fetch("/api/transactions").then((r) => r.json());
@@ -148,6 +148,7 @@ export default function TransactionsPage() {
         <div role="status" className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900">
           <strong>{importSummary.imported} Umsätze importiert.</strong>{" "}
           {importSummary.locallyCategorized} davon wurden anhand deiner bisherigen Zuordnungen automatisch kategorisiert. Darunter erscheinen nur noch offene Umsätze für die KI oder manuelle Prüfung.
+          {(importSummary.ignoredPending ?? 0) > 0 && <> {importSummary.ignoredPending} vorgemerkte Umsätze wurden nicht importiert.</>}
         </div>
       )}
       {localMessage && (

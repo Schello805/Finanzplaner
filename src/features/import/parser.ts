@@ -86,4 +86,10 @@ export function findDuplicates(incoming: ParsedTransaction[], existing: ParsedTr
   return { accepted, exact, suspected };
 }
 
+/** Sparkasse uses this explicit recipient marker for transactions that are not final yet. */
+export function isPendingTransaction(transaction: Pick<ParsedTransaction, "counterparty">) {
+  const counterparty = normalize(transaction.counterparty).normalize("NFKC");
+  return /^\*\*\s*unbekannt(?:\s|$)/i.test(counterparty);
+}
+
 export function fingerprintFile(content: Uint8Array) { return createHash("sha256").update(content).digest("hex"); }

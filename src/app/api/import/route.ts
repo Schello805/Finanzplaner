@@ -5,6 +5,7 @@ import { accounts, imports, importTemplates, transactions } from "@/db/schema";
 import {
   findDuplicates,
   fingerprintFile,
+  isPendingTransaction,
   parseBankCsv,
 } from "@/features/import/parser";
 import { sparkasseCamtV8 } from "@/features/import/sparkasse-camt-v8";
@@ -118,6 +119,10 @@ export async function POST(request: Request) {
       throw new Error("Keine aktive Importvorlage vorhanden.");
     const content = decodeBankCsv(bytes, template.encoding);
     const parsed = parseBankCsv(content, template);
+    const pendingTransactions = parsed.transactions.filter(isPendingTransaction);
+    const importableTransactions = parsed.transactions.filter(
+      (transaction) => !isPendingTransaction(transaction),
+    );
     const existingRows = await db
       .select()
       .from(transactions)
@@ -134,11 +139,12 @@ export async function POST(request: Request) {
       purpose: row.purpose ?? undefined,
       originalData: {},
     }));
-    const duplicateCheck = findDuplicates(parsed.transactions, existing);
+    const duplicateCheck = findDuplicates(importableTransactions, existing);
     if (mode === "preview")
       return NextResponse.json({
         fileFingerprint: fileHash,
         total: parsed.transactions.length,
+        ignoredPending: pendingTransactions.length,
         ready: duplicateCheck.accepted.length,
         exactDuplicates: duplicateCheck.exact.length,
         suspected: duplicateCheck.suspected.map((x) => ({
@@ -208,6 +214,7 @@ export async function POST(request: Request) {
         locallyCategorized,
         duplicates: duplicateCheck.exact.length,
         skippedSuspected: duplicateCheck.suspected.length - keptSuspects.length,
+        ignoredPending: pendingTransactions.length,
       },
       { status: 201 },
     );
