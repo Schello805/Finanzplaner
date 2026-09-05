@@ -17,6 +17,7 @@ import { applyMerchantRules, merchantRuleMap, normalizeMerchant } from "@/featur
 import { requireUser } from "@/lib/current-user";
 import { encryptSecret } from "@/lib/security";
 import { decodeBankCsv } from "@/features/import/decode";
+import { findMissingStoredTransactions } from "@/features/import/reconciliation";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { writeAudit } from "@/lib/audit";
 async function context(userId: string, accountId: string) {
@@ -138,25 +139,18 @@ export async function POST(request: Request) {
       fingerprint: row.fingerprint,
       counterparty: row.counterparty ?? undefined,
       purpose: row.purpose ?? undefined,
+      bankReference: row.bankReference ?? undefined,
       originalData: {},
     }));
     const storedPending = existing.filter(isPendingTransaction).length;
-    const incomingFingerprints = new Set(importableTransactions.map((item) => item.fingerprint));
-    const comparisonKey = (item: { bookedOn: string; amount: number | string; currency: string; counterparty?: string | null }) =>
-      `${item.bookedOn}|${Number(item.amount).toFixed(2)}|${item.currency}|${normalizeMerchant(item.counterparty)}`;
-    const incomingComparisonKeys = new Set(importableTransactions.map(comparisonKey));
     const dates = importableTransactions.map((item) => item.bookedOn).sort();
     const firstDate = dates[0];
     const lastDate = dates.at(-1);
     const missingStored = firstDate && lastDate
-      ? existingRows
-          .filter((row) =>
-            row.bookedOn >= firstDate &&
-            row.bookedOn <= lastDate &&
-            !isPendingTransaction(row) &&
-            !incomingFingerprints.has(row.fingerprint) &&
-            !incomingComparisonKeys.has(comparisonKey(row)),
-          )
+      ? findMissingStoredTransactions(
+          existingRows.filter((row) => !isPendingTransaction(row)),
+          importableTransactions,
+        )
           .map((row) => ({
             id: row.id,
             date: row.bookedOn,
