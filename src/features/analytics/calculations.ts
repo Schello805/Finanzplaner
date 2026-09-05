@@ -1,4 +1,20 @@
-export interface MonthlyCategoryTotal { month: string; categoryId: string; categoryName: string; amount: number }
+export interface MonthlyCategoryTotal { month: string; categoryId: string; categoryName: string; amount: number; bookedOn?: string }
+
+export function spendingProjection(rows: MonthlyCategoryTotal[], currentMonth: string, asOfDate: string) {
+  const asOfDay = Number(asOfDate.slice(8, 10));
+  const historyMonths = [...new Set(rows.map((row) => row.month).filter((month) => month < currentMonth))].sort().slice(-12);
+  const current = sum(rows.filter((row) => row.month === currentMonth && (!row.bookedOn || row.bookedOn <= asOfDate)));
+  const historicalFull = historyMonths.reduce((total, month) => total + sum(rows.filter((row) => row.month === month)), 0);
+  const historicalToDay = historyMonths.reduce((total, month) => total + sum(rows.filter((row) => row.month === month && Number((row.bookedOn ?? `${month}-01`).slice(8, 10)) <= asOfDay)), 0);
+  const historicalShare = historicalFull > 0 ? historicalToDay / historicalFull : 0;
+  return {
+    current,
+    projected: historyMonths.length >= 2 && historicalShare > 0 ? Math.round((current / historicalShare) * 100) / 100 : null,
+    historicalSharePercent: historicalShare * 100,
+    historyMonths: historyMonths.length,
+    asOfDay,
+  };
+}
 
 export function categoryComparison(rows: MonthlyCategoryTotal[], lastCompleteMonth: string, currentMonth: string) {
   const historyMonths = [...new Set(rows.map(r => r.month).filter(m => m < lastCompleteMonth))].sort().slice(-12);

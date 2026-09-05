@@ -3,31 +3,30 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays, ChevronRight } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {AiInsightsCard} from "@/components/ai-insights-card";
 import {MonthlyWorkflow} from "@/components/monthly-workflow";
 
 type CategoryRow={name:string;current:number;last:number;average:number;color:string};
 type AccountRow={id:string;name:string};
+type Projection={projected:number|null;historicalSharePercent:number;historyMonths:number;asOfDay:number};
 const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
 const formatMonth=(value:string)=>value?new Intl.DateTimeFormat("de-DE",{month:"long",year:"numeric"}).format(new Date(`${value}-01T12:00:00Z`)):"";
 
 export function AnalysisDashboard() {
   const [account, setAccount] = useState("all");
   const [accounts,setAccounts]=useState<AccountRow[]>([]);const[lastMonth,setLastMonth]=useState("");const[currentMonth,setCurrentMonth]=useState("");
-  const [categories,setCategories]=useState<CategoryRow[]>([]);const[months,setMonths]=useState<Array<{month:string;value:number}>>([]);const[historyMonths,setHistoryMonths]=useState(0);const[loading,setLoading]=useState(true);const[loadError,setLoadError]=useState("");
+  const [categories,setCategories]=useState<CategoryRow[]>([]);const[months,setMonths]=useState<Array<{month:string;value:number}>>([]);const[historyMonths,setHistoryMonths]=useState(0);const[projection,setProjection]=useState<Projection|null>(null);const[loading,setLoading]=useState(true);const[loadError,setLoadError]=useState("");
   useEffect(()=>{fetch("/api/accounts").then(r=>r.json()).then(body=>{if(Array.isArray(body))setAccounts(body.map((item:AccountRow)=>({id:item.id,name:item.name})))})},[]);
-  useEffect(()=>{const suffix=account==="all"?"":`?accountId=${encodeURIComponent(account)}`;fetch(`/api/analytics/overview${suffix}`).then(r=>r.json()).then(body=>{if(body.error){setLoadError(body.error);return}setLastMonth(body.lastMonth??"");setCurrentMonth(body.currentMonth??"");setCategories((body.categories??[]).map((c:{categoryName:string;current:number;last:number;average:number|null;color:string})=>({name:c.categoryName,current:c.current,last:c.last,average:c.average??0,color:c.color})));setMonths((body.months??[]).map((m:{month:string;value:number})=>({month:new Intl.DateTimeFormat("de-DE",{month:"short"}).format(new Date(`${m.month}-01T00:00:00Z`)),value:m.value})));setHistoryMonths(body.historyMonths??0)}).catch(()=>setLoadError("Analyse konnte nicht geladen werden.")).finally(()=>setLoading(false))},[account]);
+  useEffect(()=>{const suffix=account==="all"?"":`?accountId=${encodeURIComponent(account)}`;fetch(`/api/analytics/overview${suffix}`).then(r=>r.json()).then(body=>{if(body.error){setLoadError(body.error);return}setLastMonth(body.lastMonth??"");setCurrentMonth(body.currentMonth??"");setCategories((body.categories??[]).map((c:{categoryName:string;current:number;last:number;average:number|null;color:string})=>({name:c.categoryName,current:c.current,last:c.last,average:c.average??0,color:c.color})));setMonths((body.months??[]).map((m:{month:string;value:number})=>({month:new Intl.DateTimeFormat("de-DE",{month:"short"}).format(new Date(`${m.month}-01T00:00:00Z`)),value:m.value})));setHistoryMonths(body.historyMonths??0);setProjection(body.projection??null)}).catch(()=>setLoadError("Analyse konnte nicht geladen werden.")).finally(()=>setLoading(false))},[account]);
   const lastTotal = categories.reduce((sum, item) => sum + item.last, 0);
   const averageTotal = categories.reduce((sum, item) => sum + item.average, 0);
   const currentTotal = categories.reduce((sum, item) => sum + item.current, 0);
   const delta = lastTotal - averageTotal;
   const totalDeltaPercent = averageTotal ? Math.abs(delta / averageTotal * 100) : 0;
   const usagePercent = averageTotal ? currentTotal / averageTotal * 100 : 0;
-  const today = new Date();
-  const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const projectedCurrentTotal = currentTotal / Math.max(1, today.getDate()) * daysInCurrentMonth;
-  const projectedPercent = averageTotal ? projectedCurrentTotal / averageTotal * 100 : 0;
+  const projectedCurrentTotal = projection?.projected ?? null;
+  const projectedPercent = averageTotal && projectedCurrentTotal !== null ? projectedCurrentTotal / averageTotal * 100 : null;
 
   return <div className="space-y-7">
     <header className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
@@ -51,7 +50,7 @@ export function AnalysisDashboard() {
       <article className="card p-5"><div className="text-sm font-semibold muted">Letzter Monat</div><div className="mt-2 text-3xl font-bold tracking-tight">{eur.format(lastTotal)}</div><div className={`mt-3 flex items-center gap-1 text-sm font-semibold ${delta > 0 ? "text-[var(--danger)]" : "text-[var(--primary)]"}`}>{delta > 0 ? <ArrowUpRight size={17}/> : <ArrowDownRight size={17}/>} {eur.format(Math.abs(delta))} · {totalDeltaPercent.toFixed(1)} % zum Ø</div></article>
       <article className="card p-5"><div className="text-sm font-semibold muted">12-Monats-Durchschnitt</div><div className="mt-2 text-3xl font-bold tracking-tight">{eur.format(averageTotal)}</div><div className="mt-3 text-sm muted">Grundlage: {historyMonths} vollständige {historyMonths===1?"Monat":"Monate"}</div></article>
       <article className="card p-5"><div className="text-sm font-semibold muted">Aktueller Monat · {formatMonth(currentMonth)||"laufend"}</div><div className="mt-2 text-3xl font-bold tracking-tight">{eur.format(currentTotal)}</div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]"><div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${Math.min(100, usagePercent)}%` }} /></div><div className="mt-2 text-sm font-semibold">{usagePercent.toFixed(0)} % des üblichen Monatswerts</div></article>
-      <article className="card p-5"><div className="text-sm font-semibold muted">Hochrechnung aktueller Monat</div><div className="mt-2 text-3xl font-bold tracking-tight">{eur.format(projectedCurrentTotal)}</div><div className={`mt-3 text-sm font-semibold ${projectedPercent>100?"text-[var(--danger)]":"text-[var(--primary)]"}`}>{projectedPercent.toFixed(0)} % des Durchschnitts bei gleichbleibendem Tempo</div><div className="mt-1 text-xs muted">Orientierungswert auf Basis der bisherigen {today.getDate()} Tage</div></article>
+      <article className="card p-5"><div className="text-sm font-semibold muted">Hochrechnung aktueller Monat</div><div className="mt-2 text-3xl font-bold tracking-tight">{projectedCurrentTotal===null?"Noch nicht möglich":eur.format(projectedCurrentTotal)}</div>{projectedPercent!==null&&<div className={`mt-3 text-sm font-semibold ${projectedPercent>100?"text-[var(--danger)]":"text-[var(--primary)]"}`}>{projectedPercent.toFixed(0)} % des Durchschnitts</div>}<div className="mt-1 text-xs muted">{projection?.historyMonths&&projection.historyMonths>=2?`Historisch waren bis Tag ${projection.asOfDay} bereits ${projection.historicalSharePercent.toFixed(0)} % der Monatsausgaben angefallen.`:"Für eine belastbare Hochrechnung sind mindestens zwei vollständige Monate erforderlich."}</div></article>
     </section>
 
     <section className="grid gap-5 xl:grid-cols-[1.45fr_.8fr]">
@@ -66,11 +65,11 @@ export function AnalysisDashboard() {
           ); })}
         </div>
       </article>
-      <article className="card p-5 sm:p-6"><h2 className="text-lg font-bold">Verteilung</h2><p className="mt-1 text-sm muted">Top-Kategorien im {formatMonth(lastMonth)||"letzten Monat"}</p><div className="h-[270px] w-full"><ResponsiveContainer><PieChart><Pie data={categories} dataKey="last" nameKey="name" innerRadius={64} outerRadius={96} paddingAngle={2}>{categories.map(c=><Cell key={c.name} fill={c.color}/>)}</Pie><Tooltip formatter={(v)=>eur.format(Number(v))}/></PieChart></ResponsiveContainer></div></article>
+      <article className="card p-5 sm:p-6"><h2 className="text-lg font-bold">Verteilung</h2><p className="mt-1 text-sm muted">Top-Kategorien im {formatMonth(lastMonth)||"letzten Monat"}</p><div className="h-[230px] w-full"><ResponsiveContainer><PieChart><Pie data={categories} dataKey="last" nameKey="name" innerRadius={58} outerRadius={88} paddingAngle={2}>{categories.map(c=><Cell key={c.name} fill={c.color}/>)}</Pie><Tooltip formatter={(v)=>eur.format(Number(v))}/></PieChart></ResponsiveContainer></div><div className="space-y-2">{categories.map((item)=><div key={item.name} className="flex items-center justify-between gap-3 text-sm"><span className="flex min-w-0 items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-full" style={{background:item.color}}/><span className="truncate">{item.name}</span></span><strong>{eur.format(item.last)} · {lastTotal?`${(item.last/lastTotal*100).toFixed(0)} %`:"0 %"}</strong></div>)}</div></article>
     </section>
 
     <section className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
-      <article className="card p-5 sm:p-6"><h2 className="text-lg font-bold">Ausgabenverlauf</h2><p className="mt-1 text-sm muted">Letzte sechs vollständige Monate</p><div className="mt-5 h-[260px]"><ResponsiveContainer><BarChart data={months}><CartesianGrid stroke="var(--border)" vertical={false}/><XAxis dataKey="month" axisLine={false} tickLine={false}/><YAxis hide/><Tooltip formatter={(v)=>eur.format(Number(v))}/><Bar dataKey="value" fill="var(--primary)" radius={[8,8,0,0]}/></BarChart></ResponsiveContainer></div></article>
+      <article className="card p-5 sm:p-6"><h2 className="text-lg font-bold">Ausgabenverlauf</h2><p className="mt-1 text-sm muted">Letzte sechs vollständige Monate</p><div className="mt-5 h-[280px]"><ResponsiveContainer><BarChart data={months} margin={{top:28,right:8,left:8,bottom:0}}><CartesianGrid stroke="var(--border)" vertical={false}/><XAxis dataKey="month" axisLine={false} tickLine={false}/><YAxis hide/><Tooltip formatter={(v)=>eur.format(Number(v))}/><Bar dataKey="value" fill="var(--primary)" radius={[8,8,0,0]}><LabelList dataKey="value" position="top" formatter={(value:unknown)=>`${new Intl.NumberFormat("de-DE",{maximumFractionDigits:0}).format(Number(value))} €`} fill="var(--text)" fontSize={12} fontWeight={700}/></Bar></BarChart></ResponsiveContainer></div></article>
       <AiInsightsCard/>
     </section>
   </div>;
