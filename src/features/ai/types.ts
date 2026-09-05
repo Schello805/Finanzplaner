@@ -3,7 +3,8 @@ import { z } from "zod";
 export const categorizationResponseSchema = z.object({
   results: z.array(z.object({
     id: z.string(),
-    category: z.string(),
+    category: z.string().nullable(),
+    proposedCategory: z.string().min(2).max(60).nullable(),
     subcategory: z.string().nullable().optional(),
     normalizedMerchant: z.string().nullable().optional(),
     confidence: z.number().min(0).max(1),

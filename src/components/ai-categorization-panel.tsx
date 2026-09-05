@@ -28,6 +28,13 @@ type Suggestion = {
   confidence: number;
   reason: string;
 };
+type CategoryProposal = {
+  name: string;
+  isIncome: boolean;
+  transactionIds: string[];
+  confidence: number;
+  reason: string;
+};
 export function AiCategorizationPanel({
   onApplied,
 }: {
@@ -38,6 +45,7 @@ export function AiCategorizationPanel({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [categoryProposals, setCategoryProposals] = useState<CategoryProposal[]>([]);
   const [mode, setMode] = useState<Mode>("minimal");
   async function requestPreview(nextMode: Mode, preserveMessage = false) {
     const response = await fetch(`/api/ai/categorize?privacyMode=${nextMode}`);
@@ -77,9 +85,10 @@ export function AiCategorizationPanel({
         return;
       }
       setMessage(
-        `${automatic ? "Automatische Analyse abgeschlossen: " : ""}${body.applied} sichere Zuordnungen übernommen. ${body.suggestions.length} Vorschläge müssen manuell geprüft werden. Kosten: ${Number(body.estimatedCostEur).toLocaleString("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 4 })}.`,
+        `${automatic ? "Automatische Analyse abgeschlossen: " : ""}${body.applied} sichere Zuordnungen übernommen. ${body.suggestions.length} Zuordnungen und ${body.categoryProposals.length} neue Kategorien müssen geprüft werden. Kosten: ${Number(body.estimatedCostEur).toLocaleString("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 4 })}.`,
       );
       setSuggestions(body.suggestions);
+      setCategoryProposals(body.categoryProposals);
       await requestPreview(currentMode, true);
       onApplied();
     } catch {
@@ -104,6 +113,41 @@ export function AiCategorizationPanel({
     setSuggestions((current) => current.filter((item) => item.id !== suggestion.id));
     await requestPreview(mode);
     onApplied();
+  }
+  async function createCategory(proposal: CategoryProposal) {
+    setBusy(true);
+    setMessage("");
+    try {
+      const categoryResponse = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: proposal.name,
+          color: proposal.isIncome ? "#2f855a" : "#7c898c",
+          icon: "Tag",
+          isIncome: proposal.isIncome,
+          parentId: null,
+        }),
+      });
+      const category = await categoryResponse.json();
+      if (!categoryResponse.ok) throw new Error(category.error);
+      for (const id of proposal.transactionIds) {
+        const response = await fetch("/api/transactions", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, categoryId: category.id }),
+        });
+        if (!response.ok) throw new Error((await response.json()).error);
+      }
+      setCategoryProposals((current) => current.filter((item) => item !== proposal));
+      setMessage(`Kategorie „${proposal.name}“ wurde angelegt und ${proposal.transactionIds.length} ${proposal.transactionIds.length === 1 ? "Umsatz" : "Umsätzen"} zugeordnet.`);
+      await requestPreview(mode, true);
+      onApplied();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Kategorie konnte nicht angelegt werden.");
+    } finally {
+      setBusy(false);
+    }
   }
   useEffect(() => {
     Promise.all([
@@ -157,14 +201,14 @@ export function AiCategorizationPanel({
             </div>
             <div className="flex flex-wrap gap-2">
               <button
-                disabled={busy || suggestions.length > 0}
+                disabled={busy || suggestions.length > 0 || categoryProposals.length > 0}
                 onClick={() => analyze(preview, mode)}
                 className="btn-primary"
               >
                 <Sparkles size={16} />
                 {busy
                   ? "KI analysiert …"
-                  : suggestions.length > 0
+                  : suggestions.length > 0 || categoryProposals.length > 0
                     ? "Vorschläge zuerst prüfen"
                     : `${preview.batchSize} jetzt mit KI zuordnen`}
               </button>
@@ -302,6 +346,26 @@ export function AiCategorizationPanel({
               </article>
             );
           })}
+        </div>
+      )}
+      {categoryProposals.length > 0 && (
+        <div className="mt-4 space-y-3 border-t border-[var(--border)] pt-4">
+          <div>
+            <h3 className="font-bold">Neue Kategorien vorgeschlagen</h3>
+            <p className="mt-1 text-sm muted">Diese Kategorien werden erst nach deiner Bestätigung angelegt.</p>
+          </div>
+          {categoryProposals.map((proposal) => (
+            <article key={`${proposal.isIncome}-${proposal.name}`} className="flex flex-col justify-between gap-3 rounded-xl border border-[var(--border)] p-4 sm:flex-row sm:items-center">
+              <div>
+                <div className="font-semibold">{proposal.name}</div>
+                <div className="mt-1 text-sm">{proposal.isIncome ? "Einnahme" : "Ausgabe"} · für {proposal.transactionIds.length} {proposal.transactionIds.length === 1 ? "Umsatz" : "Umsätze"} · {(proposal.confidence * 100).toFixed(0)} % Sicherheit</div>
+                <div className="mt-1 text-xs muted">{proposal.reason}</div>
+              </div>
+              <button type="button" disabled={busy} onClick={() => createCategory(proposal)} className="btn-secondary shrink-0">
+                Kategorie anlegen & zuordnen
+              </button>
+            </article>
+          ))}
         </div>
       )}
     </section>

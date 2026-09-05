@@ -173,10 +173,34 @@ export async function POST(request: Request) {
     );
     let applied = 0;
     const suggestions = [];
+    const categoryProposalMap = new Map<string, { name: string; isIncome: boolean; transactionIds: string[]; confidence: number; reason: string }>();
     const visibleAccountIds = (await memberAndVisibleAccountIds(user.userId)).accountIds;
     for (const item of result.data.results) {
-      const categoryId = byName.get(item.category.toLocaleLowerCase("de-DE"));
-      if (!categoryId || !body.ids.includes(item.id)) continue;
+      if (!body.ids.includes(item.id)) continue;
+      const categoryId = item.category
+        ? byName.get(item.category.toLocaleLowerCase("de-DE"))
+        : undefined;
+      if (!categoryId) {
+        const proposedName = (item.proposedCategory ?? item.category)?.trim();
+        const source = rows.find((row) => row.id === item.id);
+        if (proposedName && source) {
+          const key = `${source.amount >= 0 ? "income" : "expense"}:${proposedName.toLocaleLowerCase("de-DE")}`;
+          const existing = categoryProposalMap.get(key);
+          if (existing) {
+            existing.transactionIds.push(item.id);
+            existing.confidence = Math.max(existing.confidence, item.confidence);
+          } else {
+            categoryProposalMap.set(key, {
+              name: proposedName,
+              isIncome: source.amount >= 0,
+              transactionIds: [item.id],
+              confidence: item.confidence,
+              reason: item.reason,
+            });
+          }
+        }
+        continue;
+      }
       if (item.confidence >= AUTO_APPLY_CONFIDENCE) {
         const source = rows.find((row) => row.id === item.id);
         await db
@@ -233,6 +257,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       applied,
       suggestions,
+      categoryProposals: [...categoryProposalMap.values()],
       usage: result.usage,
       estimatedCostEur: inputCost + outputCost,
     });

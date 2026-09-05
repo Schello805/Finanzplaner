@@ -103,7 +103,7 @@ export default function TransactionsPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Automatische Erkennung konnte nicht ausgeführt werden.");
       if (result.applied > 0) {
-        setLocalMessage(`${result.applied} vorhandene Umsätze wurden anhand deiner bisherigen Zuordnungen automatisch kategorisiert.${result.learned ? ` Dabei wurden ${result.learned} ältere Händler-Zuordnungen nachträglich gelernt.` : ""}`);
+        setLocalMessage(`${result.applied} vorhandene Umsätze wurden anhand deiner bisherigen Zuordnungen und eindeutiger Buchungstexte automatisch kategorisiert.${result.learned ? ` Dabei wurden ${result.learned} ältere Händler-Zuordnungen nachträglich gelernt.` : ""}${result.keywordApplied ? ` ${result.keywordApplied} Zuordnungen wurden direkt aus dem Buchungstext erkannt.` : ""}`);
       } else if (result.learned > 0) {
         setLocalMessage(`${result.learned} ältere Händler-Zuordnungen wurden nachträglich gelernt. Weitere passende offene Umsätze waren nicht vorhanden.`);
       } else if (result.rules === 0) {

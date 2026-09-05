@@ -15,6 +15,7 @@ import type {
 import { merchantRuleMap, normalizeMerchant } from "@/features/categorization/merchant-rules";
 import { requireUser } from "@/lib/current-user";
 import { encryptSecret } from "@/lib/security";
+import { decodeBankCsv } from "@/features/import/decode";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 async function context(userId: string, accountId: string) {
   const { member, accountIds } = await memberAndVisibleAccountIds(userId);
@@ -115,9 +116,7 @@ export async function POST(request: Request) {
     }
     if (!storedTemplateId)
       throw new Error("Keine aktive Importvorlage vorhanden.");
-    const encoding =
-      template.encoding === "utf-8-sig" ? "utf-8" : template.encoding;
-    const content = new TextDecoder(encoding).decode(bytes);
+    const content = decodeBankCsv(bytes, template.encoding);
     const parsed = parseBankCsv(content, template);
     const existingRows = await db
       .select()
