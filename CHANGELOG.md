@@ -4,6 +4,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Wenn keine bestehende Kategorie fachlich passt, kann die KI neue Einnahme- oder Ausgabenkategorien gebündelt vorschlagen; angelegt und zugeordnet werden sie erst nach Bestätigung. Sparkassen-Dateien mit abweichender Windows-Zeichenkodierung werden automatisch erkannt.
 - Kategorie-Dropdowns bei Umsätzen, Filtern und Aufteilungen trennen Einnahmen und Ausgaben und zeigen Unterkategorien eingerückt unter ihrer Hauptkategorie.
 - Verwendungszwecke werden in der Umsatzliste zweizeilig dargestellt und sind zusätzlich vollständig als Browser-Hinweis verfügbar.
 - Die Kategorienverwaltung trennt Ausgaben und Einnahmen in eigene hierarchische Abschnitte und exportiert die sichtbare Struktur als lesbare JSON-Datei.
