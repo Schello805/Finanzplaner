@@ -4,6 +4,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- KI-Kategorisierung verarbeitet offene Umsätze in stabilen 25er-Stapeln, besitzt ein längeres Antwortfenster und meldet Zeitüberschreitungen verständlich und ohne Teiländerungen.
 - Der manuelle Regellauf lernt auch bereits vor Einführung der Händlerregeln kategorisierte Umsätze; KI-Ergebnisse bleiben sichtbar und ausreichend eindeutige Vorschläge werden automatisch übernommen.
 - Anmeldungen bleiben mit einem für mobile Browser geeigneten First-Party-Cookie jetzt 30 Tage lang über Seiten-Neuladungen erhalten.
 - Wiederholte Installationsläufe bewahren Datenbank-, Anmelde- und Verschlüsselungsschlüssel; nicht mehr lesbare KI-Schlüssel führen zu einer verständlichen Neueinrichtungs-Anweisung.

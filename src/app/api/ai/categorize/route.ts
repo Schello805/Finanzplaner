@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, count, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { aiUsage, categories, systemSettings, transactions } from "@/db/schema";
@@ -17,6 +17,7 @@ type ProviderConfig = {
   outputPricePerMillion?: number;
 };
 const AUTO_APPLY_CONFIDENCE = 0.75;
+const AI_BATCH_SIZE = 25;
 class AiConfigurationError extends Error {}
 async function settings() {
   const rows = await db.select().from(systemSettings);
@@ -46,11 +47,16 @@ async function settings() {
 }
 async function pending(userId: string, ids?: string[]) {
   const { member, accountIds } = await memberAndVisibleAccountIds(userId);
-  if (!accountIds.length) return { member, rows: [] };
-  const filters = [
+  if (!accountIds.length) return { member, rows: [], total: 0 };
+  const baseFilters = [
     inArray(transactions.accountId, accountIds),
     isNull(transactions.categoryId),
   ];
+  const [{ value: total }] = await db
+    .select({ value: count() })
+    .from(transactions)
+    .where(and(...baseFilters));
+  const filters = [...baseFilters];
   if (ids) filters.push(inArray(transactions.id, ids));
   const rows = await db
     .select({
@@ -64,9 +70,10 @@ async function pending(userId: string, ids?: string[]) {
     })
     .from(transactions)
     .where(and(...filters))
-    .limit(100);
+    .limit(ids ? 100 : AI_BATCH_SIZE);
   return {
     member,
+    total,
     rows: rows.map(
       (r) =>
         ({
@@ -88,7 +95,7 @@ export async function GET(request: NextRequest) {
       request.nextUrl.searchParams.get("privacyMode") === "full_text"
         ? "full_text"
         : "minimal";
-    const { rows } = await pending(user.userId);
+    const { rows, total } = await pending(user.userId);
     if (!rows.length) return NextResponse.json({ count: 0, transactions: [] });
     let ai: Awaited<ReturnType<typeof settings>>;
     try {
@@ -97,7 +104,7 @@ export async function GET(request: NextRequest) {
       if (error instanceof AiConfigurationError) {
         return NextResponse.json({
           available: false,
-          count: rows.length,
+          count: total,
           transactions: [],
           error: error.message,
         });
@@ -111,7 +118,8 @@ export async function GET(request: NextRequest) {
     };
     return NextResponse.json({
       available: true,
-      count: rows.length,
+      count: total,
+      batchSize: rows.length,
       provider: ai.provider,
       model: ai.config.model,
       privacyMode: mode,

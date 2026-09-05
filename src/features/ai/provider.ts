@@ -7,11 +7,17 @@ function prompt(inputs: AiTransactionInput[], categories: string[]) {
 }
 
 export async function categorizeWithAi(config: AiConfig, inputs: AiTransactionInput[], categories: string[]): Promise<AiResult<CategorizationResponse>> {
-  return config.provider === "openai" ? openAi(config, inputs, categories) : gemini(config, inputs, categories);
+  try {
+    return await (config.provider === "openai" ? openAi(config, inputs, categories) : gemini(config, inputs, categories));
+  } catch (error) {
+    if (error instanceof Error && (error.name === "TimeoutError" || /aborted due to timeout|timed out/i.test(error.message)))
+      throw new Error("Die KI-Antwort hat zu lange gedauert. Der Umsatzstapel wurde nicht verändert; bitte starte ihn erneut.");
+    throw error;
+  }
 }
 
 async function openAi(config: AiConfig, inputs: AiTransactionInput[], categories: string[]): Promise<AiResult<CategorizationResponse>> {
-  const response = await fetch("https://api.openai.com/v1/responses", { method:"POST", headers:{Authorization:`Bearer ${config.apiKey}`,"Content-Type":"application/json"}, body:JSON.stringify({model:config.model,input:prompt(inputs,categories),text:{format:{type:"json_schema",name:"transaction_categories",strict:true,schema:{type:"object",additionalProperties:false,properties:{results:{type:"array",items:{type:"object",additionalProperties:false,properties:{id:{type:"string"},category:{type:"string"},subcategory:{type:["string","null"]},normalizedMerchant:{type:["string","null"]},confidence:{type:"number",minimum:0,maximum:1},reason:{type:"string"}},required:["id","category","subcategory","normalizedMerchant","confidence","reason"]}}},required:["results"]}}}}), signal:AbortSignal.timeout(60000) });
+  const response = await fetch("https://api.openai.com/v1/responses", { method:"POST", headers:{Authorization:`Bearer ${config.apiKey}`,"Content-Type":"application/json"}, body:JSON.stringify({model:config.model,input:prompt(inputs,categories),text:{format:{type:"json_schema",name:"transaction_categories",strict:true,schema:{type:"object",additionalProperties:false,properties:{results:{type:"array",items:{type:"object",additionalProperties:false,properties:{id:{type:"string"},category:{type:"string"},subcategory:{type:["string","null"]},normalizedMerchant:{type:["string","null"]},confidence:{type:"number",minimum:0,maximum:1},reason:{type:"string"}},required:["id","category","subcategory","normalizedMerchant","confidence","reason"]}}},required:["results"]}}}}), signal:AbortSignal.timeout(120000) });
   if (!response.ok) throw new Error(`OpenAI-Anfrage fehlgeschlagen (${response.status}).`);
   const body = await response.json() as { output_text?:string; output?:Array<{content?:Array<{text?:string}>}>; usage?:{input_tokens?:number;output_tokens?:number} };
   const text = body.output_text ?? body.output?.flatMap(item=>item.content??[]).map(item=>item.text??"").join("") ?? "";
@@ -19,7 +25,7 @@ async function openAi(config: AiConfig, inputs: AiTransactionInput[], categories
 }
 
 async function gemini(config: AiConfig, inputs: AiTransactionInput[], categories: string[]): Promise<AiResult<CategorizationResponse>> {
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(config.model)}:generateContent`, {method:"POST",headers:{"x-goog-api-key":config.apiKey,"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt(inputs,categories)}]}],generationConfig:{responseMimeType:"application/json"}}),signal:AbortSignal.timeout(60000)});
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(config.model)}:generateContent`, {method:"POST",headers:{"x-goog-api-key":config.apiKey,"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt(inputs,categories)}]}],generationConfig:{responseMimeType:"application/json"}}),signal:AbortSignal.timeout(120000)});
   if(!response.ok) throw new Error(`Gemini-Anfrage fehlgeschlagen (${response.status}).`);
   const body=await response.json() as {candidates?:Array<{content?:{parts?:Array<{text?:string}>}}>;usageMetadata?:{promptTokenCount?:number;candidatesTokenCount?:number}};
   const text=body.candidates?.[0]?.content?.parts?.map(p=>p.text??"").join("")??"";
