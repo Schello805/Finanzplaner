@@ -141,6 +141,31 @@ export async function POST(request: Request) {
       originalData: {},
     }));
     const storedPending = existing.filter(isPendingTransaction).length;
+    const incomingFingerprints = new Set(importableTransactions.map((item) => item.fingerprint));
+    const comparisonKey = (item: { bookedOn: string; amount: number | string; currency: string; counterparty?: string | null }) =>
+      `${item.bookedOn}|${Number(item.amount).toFixed(2)}|${item.currency}|${normalizeMerchant(item.counterparty)}`;
+    const incomingComparisonKeys = new Set(importableTransactions.map(comparisonKey));
+    const dates = importableTransactions.map((item) => item.bookedOn).sort();
+    const firstDate = dates[0];
+    const lastDate = dates.at(-1);
+    const missingStored = firstDate && lastDate
+      ? existingRows
+          .filter((row) =>
+            row.bookedOn >= firstDate &&
+            row.bookedOn <= lastDate &&
+            !isPendingTransaction(row) &&
+            !incomingFingerprints.has(row.fingerprint) &&
+            !incomingComparisonKeys.has(comparisonKey(row)),
+          )
+          .map((row) => ({
+            id: row.id,
+            date: row.bookedOn,
+            amount: Number(row.amount),
+            currency: row.currency,
+            counterparty: row.counterparty ?? "Unbekannt",
+            purpose: row.purpose ?? "",
+          }))
+      : [];
     const duplicateCheck = findDuplicates(importableTransactions, existing);
     if (mode === "preview")
       return NextResponse.json({
@@ -148,6 +173,8 @@ export async function POST(request: Request) {
         total: parsed.transactions.length,
         ignoredPending: pendingTransactions.length,
         storedPending,
+        statementPeriod: firstDate && lastDate ? { from: firstDate, to: lastDate } : null,
+        missingStored,
         ready: duplicateCheck.accepted.length,
         exactDuplicates: duplicateCheck.exact.length,
         suspected: duplicateCheck.suspected.map((x) => ({
@@ -232,15 +259,21 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const user = await requireUser();
-    const accountId = String((await request.json()).accountId ?? "");
+    const body = await request.json();
+    const accountId = String(body.accountId ?? "");
     const { account } = await context(user.userId, accountId);
     const candidates = await db
       .select({ id: transactions.id, counterparty: transactions.counterparty })
       .from(transactions)
       .where(eq(transactions.accountId, account.id));
-    const ids = candidates.filter(isPendingTransaction).map((row) => row.id);
+    const requestedIds = Array.isArray(body.transactionIds)
+      ? new Set(body.transactionIds.filter((id: unknown): id is string => typeof id === "string"))
+      : null;
+    const ids = requestedIds
+      ? candidates.filter((row) => requestedIds.has(row.id)).map((row) => row.id)
+      : candidates.filter(isPendingTransaction).map((row) => row.id);
     if (ids.length) await db.delete(transactions).where(inArray(transactions.id, ids));
-    await writeAudit("pending-transactions-cleanup", `${ids.length} vorgemerkte Umsätze wurden gelöscht.`, {
+    await writeAudit(requestedIds ? "missing-transactions-cleanup" : "pending-transactions-cleanup", `${ids.length} Umsätze wurden nach Bestätigung gelöscht.`, {
       userId: user.userId,
       metadata: { accountId: account.id, deleted: ids.length },
     });
