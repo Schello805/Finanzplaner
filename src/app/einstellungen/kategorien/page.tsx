@@ -1,7 +1,8 @@
 "use client";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Pencil, Plus, Tags, Trash2, X } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { flattenCategoryHierarchy } from "@/features/categories/hierarchy";
 type Category = {
   id: string;
   name: string;
@@ -76,6 +77,7 @@ export default function CategoriesPage() {
     editing === "new"
       ? { name: "", color: "#136f78", isIncome: false, parentId: null }
       : editing;
+  const hierarchy = useMemo(() => flattenCategoryHierarchy(rows), [rows]);
   return (
     <div className="space-y-7">
       <PageHeader
@@ -97,19 +99,24 @@ export default function CategoriesPage() {
         </div>
       )}
       <section className="card divide-y divide-[var(--border)]">
-        {rows.map((row) => (
+        {hierarchy.map(({ category: row, depth }) => (
           <div key={row.id} className="flex items-center gap-4 p-4">
-            <span
-              className="h-4 w-4 rounded-full"
-              style={{ background: row.color }}
-            />
-            <div className="flex-1">
-              <div className="font-semibold">{row.name}</div>
-              <div className="text-xs muted">
-                {row.isIncome ? "Einnahme" : "Ausgabe"}
-                {row.parentId
-                  ? ` · Unterkategorie von ${rows.find((parent) => parent.id === row.parentId)?.name ?? "Unbekannt"}`
-                  : ""}
+            <div className="flex-1" style={{ paddingLeft: `${depth * 24}px` }}>
+              <div className="flex items-start gap-3">
+                {depth > 0 && <span className="muted" aria-hidden="true">↳</span>}
+                <span
+                  className="mt-1 h-4 w-4 shrink-0 rounded-full"
+                  style={{ background: row.color }}
+                />
+                <div>
+                  <div className="font-semibold">{row.name}</div>
+                  <div className="text-xs muted">
+                    {row.isIncome ? "Einnahme" : "Ausgabe"}
+                    {row.parentId
+                      ? ` · Unterkategorie von ${rows.find((parent) => parent.id === row.parentId)?.name ?? "Unbekannt"}`
+                      : ""}
+                  </div>
+                </div>
               </div>
             </div>
             <span
@@ -182,15 +189,15 @@ export default function CategoriesPage() {
                   className="mt-2 min-h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3"
                 >
                   <option value="">Keine</option>
-                  {rows
+                  {hierarchy
                     .filter(
-                      (row) =>
-                        row.id !==
+                      ({ category }) =>
+                        category.id !==
                         (editing !== "new" && editing ? editing.id : ""),
                     )
-                    .map((row) => (
+                    .map(({ category: row, depth }) => (
                       <option key={row.id} value={row.id}>
-                        {row.name}
+                        {"— ".repeat(depth)}{row.name}
                       </option>
                     ))}
                 </select>
