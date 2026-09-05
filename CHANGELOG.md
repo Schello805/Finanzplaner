@@ -4,6 +4,7 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Kategorien werden als Hierarchie dargestellt; Unterkategorien stehen eingerückt direkt unter ihrer jeweiligen Hauptkategorie.
 - Nicht zugeordnete Umsätze sind in der Umsatzliste dezent rot markiert und über einen Schnellfilter erreichbar; aufgeteilte Buchungen gelten dabei nicht länger fälschlich als offen.
 - Die Kategorienübersicht zeigt je Kategorie die Anzahl direkt oder über Aufteilungen zugeordneter sichtbarer Umsätze.
 - KI-Kategorisierung verarbeitet offene Umsätze in stabilen 25er-Stapeln, besitzt ein längeres Antwortfenster und meldet Zeitüberschreitungen verständlich und ohne Teiländerungen.
