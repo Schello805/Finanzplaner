@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { accounts, imports, importTemplates, transactions } from "@/db/schema";
 import {
@@ -18,6 +18,7 @@ import { requireUser } from "@/lib/current-user";
 import { encryptSecret } from "@/lib/security";
 import { decodeBankCsv } from "@/features/import/decode";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
+import { writeAudit } from "@/lib/audit";
 async function context(userId: string, accountId: string) {
   const { member, accountIds } = await memberAndVisibleAccountIds(userId);
   if (!accountIds.includes(accountId))
@@ -139,12 +140,14 @@ export async function POST(request: Request) {
       purpose: row.purpose ?? undefined,
       originalData: {},
     }));
+    const storedPending = existing.filter(isPendingTransaction).length;
     const duplicateCheck = findDuplicates(importableTransactions, existing);
     if (mode === "preview")
       return NextResponse.json({
         fileFingerprint: fileHash,
         total: parsed.transactions.length,
         ignoredPending: pendingTransactions.length,
+        storedPending,
         ready: duplicateCheck.accepted.length,
         exactDuplicates: duplicateCheck.exact.length,
         suspected: duplicateCheck.suspected.map((x) => ({
@@ -221,6 +224,30 @@ export async function POST(request: Request) {
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Import fehlgeschlagen." },
+      { status: 400 },
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const user = await requireUser();
+    const accountId = String((await request.json()).accountId ?? "");
+    const { account } = await context(user.userId, accountId);
+    const candidates = await db
+      .select({ id: transactions.id, counterparty: transactions.counterparty })
+      .from(transactions)
+      .where(eq(transactions.accountId, account.id));
+    const ids = candidates.filter(isPendingTransaction).map((row) => row.id);
+    if (ids.length) await db.delete(transactions).where(inArray(transactions.id, ids));
+    await writeAudit("pending-transactions-cleanup", `${ids.length} vorgemerkte Umsätze wurden gelöscht.`, {
+      userId: user.userId,
+      metadata: { accountId: account.id, deleted: ids.length },
+    });
+    return NextResponse.json({ deleted: ids.length });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Vorgemerkte Umsätze konnten nicht gelöscht werden." },
       { status: 400 },
     );
   }

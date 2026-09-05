@@ -28,6 +28,7 @@ export default function ImportPage() {
   const [preview, setPreview] = useState<{
     total: number;
     ignoredPending: number;
+    storedPending: number;
     ready: number;
     exactDuplicates: number;
     suspected: Array<{
@@ -51,6 +52,7 @@ export default function ImportPage() {
   const [keepSuspected, setKeepSuspected] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cleanupMessage, setCleanupMessage] = useState("");
   useEffect(() => {
     Promise.all([
       fetch("/api/accounts").then((r) => r.json()),
@@ -94,6 +96,25 @@ export default function ImportPage() {
       setHistoryVersion((version) => version + 1);
       router.push("/umsaetze");
     }
+  }
+  async function deleteStoredPending() {
+    if (!preview?.storedPending || !accountId) return;
+    if (!window.confirm(`${preview.storedPending} bereits gespeicherte vorgemerkte Umsätze wirklich löschen?`)) return;
+    setBusy(true);
+    setError("");
+    const response = await fetch("/api/import", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accountId }),
+    });
+    const body = await response.json();
+    setBusy(false);
+    if (!response.ok) {
+      setError(body.error);
+      return;
+    }
+    setPreview((current) => current ? { ...current, storedPending: 0 } : current);
+    setCleanupMessage(`${body.deleted} bereits gespeicherte vorgemerkte Umsätze wurden gelöscht.`);
   }
   return (
     <div className="space-y-7">
@@ -187,6 +208,11 @@ export default function ImportPage() {
               {error}
             </div>
           )}
+          {cleanupMessage && (
+            <div role="status" className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">
+              {cleanupMessage}
+            </div>
+          )}
           <button
             onClick={() => upload("preview")}
             className="btn-primary mt-5 w-full"
@@ -239,6 +265,20 @@ export default function ImportPage() {
             <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
               <strong>{preview.ignoredPending} vorgemerkte Umsätze werden nicht importiert.</strong>{" "}
               Sie erscheinen im nächsten Export erneut, sobald die Sparkasse sie endgültig gebucht hat.
+            </div>
+          )}
+          {preview.storedPending > 0 && (
+            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-900">
+              <strong>{preview.storedPending} früher importierte Vormerkungen sind noch gespeichert.</strong>{" "}
+              Diese Buchungen haben ebenfalls den Empfänger „**Unbekannt“ und können jetzt sicher aus diesem Konto entfernt werden.
+              <button
+                type="button"
+                className="btn-secondary mt-3 border-red-300 text-red-800"
+                onClick={deleteStoredPending}
+                disabled={busy}
+              >
+                {preview.storedPending} alte Vormerkungen löschen
+              </button>
             </div>
           )}
           {preview.suspected.length > 0 && (
