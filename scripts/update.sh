@@ -5,8 +5,17 @@ APP_DIR="/opt/finanzplaner"
 APP_USER="finanzplaner"
 git config --global --get-all safe.directory 2>/dev/null | grep -Fxq "${APP_DIR}" || git config --global --add safe.directory "${APP_DIR}"
 cd "${APP_DIR}"
-git pull --ff-only --prune
-REVISION="$(git describe --tags --always | sed 's/^v//')"
+PREVIOUS_REVISION="$(git rev-parse --short=7 HEAD)"
+echo "Installierte Revision: ${PREVIOUS_REVISION}"
+echo "Aktueller Stand wird von GitHub abgerufen …"
+git pull --ff-only --prune origin main
+REVISION="$(git rev-parse --short=7 HEAD)"
+REMOTE_REVISION="$(git rev-parse --short=7 origin/main)"
+if [[ "${REVISION}" != "${REMOTE_REVISION}" ]]; then
+  echo "FEHLER: Lokaler Stand ${REVISION} entspricht nicht GitHub ${REMOTE_REVISION}." >&2
+  exit 1
+fi
+echo "Zu installierende Revision: ${REVISION}"
 sed -i "s/^APP_VERSION=.*/APP_VERSION=${REVISION}/" /etc/finanzplaner.env
 set -a; source /etc/finanzplaner.env; set +a
 STATE_DIR="/var/lib/finanzplaner"
@@ -30,6 +39,7 @@ systemctl is-active --quiet finanzplaner
 IP_ADDRESS="$(hostname -I | awk '{print $1}')"
 echo
 echo "Update erfolgreich."
+echo "Vorherige Revision: ${PREVIOUS_REVISION}"
 echo "Revision: ${REVISION}"
 echo "Dienststatus: $(systemctl is-active finanzplaner)"
 echo "Adresse: http://${IP_ADDRESS}:8080"

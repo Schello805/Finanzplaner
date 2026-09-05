@@ -57,7 +57,7 @@ HOSTNAME=0.0.0.0
 DATABASE_URL=postgresql://finanzplaner:${DB_PASSWORD}@127.0.0.1:5432/finanzplaner
 AUTH_SECRET=${AUTH_SECRET}
 ENCRYPTION_KEY=${ENCRYPTION_KEY}
-APP_VERSION=$(git -C "${APP_DIR}" describe --tags --always 2>/dev/null | sed 's/^v//' || echo dev)
+APP_VERSION=$(git -C "${APP_DIR}" rev-parse --short=7 HEAD 2>/dev/null || echo dev)
 APP_URL=http://${IP_ADDRESS}:${APP_PORT}
 EOF
 chmod 0600 "${ENV_FILE}"

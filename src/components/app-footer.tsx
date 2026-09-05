@@ -2,7 +2,7 @@ import { Github } from "lucide-react";
 
 export function AppFooter() {
   const revision = process.env.APP_VERSION ?? process.env.npm_package_version ?? "dev";
-  const releaseUrl = revision === "dev" ? "https://github.com/Schello805/Finanzplaner" : `https://github.com/Schello805/Finanzplaner/releases/tag/v${revision}`;
+  const releaseUrl = revision === "dev" ? "https://github.com/Schello805/Finanzplaner" : `https://github.com/Schello805/Finanzplaner/commit/${revision}`;
   return <footer className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-[var(--border)] pt-6 text-center text-xs muted sm:flex-row sm:text-left">
     <span>Quelloffenes Projekt für nichtkommerzielle Nutzung von Michael Schellenberger</span>
     <span className="flex items-center gap-3">

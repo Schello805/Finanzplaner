@@ -36,4 +36,4 @@ CSV-Felder und KI-Ausgaben gelten immer als nicht vertrauenswürdige Daten. CSV-
 
 ## Revisionen
 
-`APP_VERSION` wird beim Installieren oder Aktualisieren aus dem Git-Tag erzeugt. Der Footer verlinkt die Revision mit dem passenden GitHub-Release.
+`APP_VERSION` wird beim Installieren oder Aktualisieren aus dem aktuellen Git-Commit erzeugt. Der Footer verlinkt direkt auf diesen nachvollziehbaren Stand bei GitHub.
