@@ -8,6 +8,7 @@ import { CategorySelectOptions } from "@/components/category-select-options";
 import { TransactionEditor } from "@/components/transaction-editor";
 type Row = {
   id: string;
+  accountId:string;
   bookedOn: string;
   amount: string;
   currency: string;
@@ -48,7 +49,7 @@ export default function TransactionsPage() {
   const [error, setError] = useState("");
   const [localBusy, setLocalBusy] = useState(false);
   const [localMessage, setLocalMessage] = useState("");
-  const [importSummary, setImportSummary] = useState<{imported:number;locallyCategorized:number;ignoredPending?:number;ignoredZero?:number}|null>(null);
+  const [importSummary, setImportSummary] = useState<{accountId?:string;imported:number;locallyCategorized:number;duplicates?:number;skippedSuspected?:number;ignoredPending?:number;ignoredZero?:number}|null>(null);
   const [selected, setSelected] = useState<Row | null>(null);
   const [pendingCategory, setPendingCategory] = useState<{row:Row;categoryId:string}|null>(null);
   async function refreshTransactions() {
@@ -74,6 +75,7 @@ export default function TransactionsPage() {
     () => rows.filter(isUnassigned).length,
     [rows],
   );
+  const sampleIds=useMemo(()=>{const safe=rows.filter(row=>confidenceBand(row)==="very-safe");const sampled=safe.filter(row=>{let hash=0;for(const char of row.id)hash=(hash*31+char.charCodeAt(0))|0;return Math.abs(hash)%20===0}).slice(0,10);if(!sampled.length&&safe.length)sampled.push(safe[0]);return new Set(sampled.map(row=>row.id))},[rows]);
   const visible = useMemo(() => {
     const q = query.toLocaleLowerCase("de-DE");
     return rows.filter(
@@ -87,9 +89,9 @@ export default function TransactionsPage() {
             ? isUnassigned(r)
             : r.categoryId === categoryFilter)) &&
         (typeFilter === "all" || r.specialType === typeFilter) &&
-        (confidenceFilter === "all" || (confidenceFilter === "review" ? ["likely","check"].includes(confidenceBand(r)) : confidenceBand(r) === confidenceFilter)),
+        (confidenceFilter === "all" || (confidenceFilter === "review" ? ["likely","check"].includes(confidenceBand(r)) : confidenceFilter==="sample"?sampleIds.has(r.id):confidenceBand(r) === confidenceFilter)),
     );
-  }, [rows, query, categoryFilter, typeFilter,confidenceFilter]);
+  }, [rows, query, categoryFilter, typeFilter,confidenceFilter,sampleIds]);
   async function patch(body: Record<string, unknown>) {
     const response = await fetch("/api/transactions", {
       method: "PATCH",
@@ -164,11 +166,10 @@ export default function TransactionsPage() {
         </div>
       )}
       {importSummary && (
-        <div role="status" className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900">
-          <strong>{importSummary.imported} Umsätze importiert.</strong>{" "}
-          {importSummary.locallyCategorized} davon wurden anhand deiner bisherigen Zuordnungen automatisch kategorisiert. Darunter erscheinen nur noch offene Umsätze für die KI oder manuelle Prüfung.
-          {(importSummary.ignoredPending ?? 0) > 0 && <> {importSummary.ignoredPending} vorgemerkte Umsätze wurden nicht importiert.</>}
-          {(importSummary.ignoredZero ?? 0) > 0 && <> {importSummary.ignoredZero} Nullbuchungen wurden nicht importiert.</>}
+        <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
+          <strong className="text-base">Import abgeschlossen und geprüft</strong>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><div>✓ <strong>{importSummary.imported}</strong> neu importiert</div><div>✓ <strong>{importSummary.duplicates??0}</strong> sichere Dubletten übersprungen{(importSummary.skippedSuspected??0)>0&&<span className="block text-xs">+ {importSummary.skippedSuspected} mögliche Dubletten nicht übernommen</span>}</div><div>✓ <strong>{(importSummary.ignoredPending??0)+(importSummary.ignoredZero??0)}</strong> Vormerkungen/Nullbuchungen ignoriert</div><div>→ <strong>{rows.filter(row=>(!importSummary.accountId||row.accountId===importSummary.accountId)&&["unassigned","likely","check"].includes(confidenceBand(row))).length}</strong> noch zu klären</div></div>
+          <p className="mt-3">{importSummary.locallyCategorized} Zuordnungen wurden automatisch erkannt. Prüfe jetzt offene und wahrscheinliche Fälle; anschließend ist die Analyse bereit.</p>
         </div>
       )}
       {localMessage && (
@@ -241,6 +242,7 @@ export default function TransactionsPage() {
                 <option value="likely">Wahrscheinlich</option>
                 <option value="check">Bitte prüfen</option>
                 <option value="very-safe">Sehr sicher</option>
+                <option value="sample">Stichprobe aus „Sehr sicher“ ({sampleIds.size})</option>
                 <option value="manual">Manuell bestätigt</option>
               </select>
             </label>

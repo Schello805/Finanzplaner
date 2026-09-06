@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
     const rows = await db
       .select({
         id: transactions.id,
+        accountId: transactions.accountId,
         bookedOn: transactions.bookedOn,
         amount: transactions.amount,
         currency: transactions.currency,

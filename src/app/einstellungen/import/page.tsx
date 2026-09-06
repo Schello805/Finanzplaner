@@ -105,7 +105,7 @@ export default function ImportPage() {
       setKeepSuspected(new Set());
       setSelectedMissing(new Set());
     } else {
-      sessionStorage.setItem("finanzplaner-last-import", JSON.stringify({ imported: body.imported, locallyCategorized: body.locallyCategorized ?? 0, ignoredPending: body.ignoredPending ?? 0, ignoredZero: body.ignoredZero ?? 0 }));
+      sessionStorage.setItem("finanzplaner-last-import", JSON.stringify({ accountId, imported: body.imported, locallyCategorized: body.locallyCategorized ?? 0, duplicates:body.duplicates??0, skippedSuspected:body.skippedSuspected??0, ignoredPending: body.ignoredPending ?? 0, ignoredZero: body.ignoredZero ?? 0 }));
       setPreview(null);
       setFile(null);
       setKeepSuspected(new Set());

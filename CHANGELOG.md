@@ -4,6 +4,14 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-09-06
+
+- Die Einstellungsübersicht nutzt am Desktop ein platzsparendes dreispaltiges Kartenraster und bleibt auf kleinen Bildschirmen responsiv.
+- Die Datenqualität zeigt je Konto einen transparent berechneten Prüfstand aus sicheren, manuellen, unsicheren und offenen Zuordnungen.
+- Nach einem Import erscheint eine feste Abschlussprüfung mit neuen Umsätzen, Dubletten, ignorierten Vormerkungen beziehungsweise Nullbuchungen und noch zu klärenden Fällen.
+- Ein reproduzierbarer Stichprobenfilter legt einen kleinen Teil der sehr sicheren Zuordnungen zur manuellen Qualitätskontrolle vor.
+- Erkannte wiederkehrende Kosten lassen sich dauerhaft ausblenden. Die zugrunde liegenden Umsätze bleiben erhalten und der Vorgang wird protokolliert.
+
 ## [0.3.4] - 2026-09-06
 
 - Umsätze lassen sich nach Sicherheitsstufe filtern, einschließlich einer gemeinsamen Prüfliste für „Wahrscheinlich“ und „Bitte prüfen“.
