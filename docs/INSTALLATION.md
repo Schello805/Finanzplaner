@@ -11,10 +11,23 @@ apt-get update && apt-get install -y git
 git clone https://github.com/Schello805/Finanzplaner.git /opt/finanzplaner
 cd /opt/finanzplaner
 chmod +x scripts/install-ubuntu.sh scripts/update.sh
-FINANZPLANER_SUBNET=192.168.1.0/24 ./scripts/install-ubuntu.sh
+./scripts/install-ubuntu.sh
 ```
 
-Passe das Beispielsubnetz an dein Heimnetz an. Ohne `FINANZPLANER_SUBNET` öffnet das Skript Port 8080 allgemein und gibt eine Warnung aus. Prüfe anschließend `ufw status verbose`.
+Der Installer führt durch die notwendigen Angaben:
+
+- lokales Subnetz, beispielsweise `192.168.1.0/24`; ein automatisch erkannter Wert wird vorgeschlagen und verständlich erklärt,
+- HTTP-Port, standardmäßig `8080`,
+- E-Mail-Adresse und Anzeigename des Administrators,
+- abschließende Zusammenfassung vor Beginn der Installation.
+
+Die Firewall öffnet den App-Port ausschließlich für das gewählte lokale Subnetz und bewahrt den SSH-Zugang. Prüfe anschließend bei Bedarf `ufw status verbose`.
+
+Für eine automatisierte Installation ohne Terminal können dieselben Werte gesetzt werden:
+
+```bash
+ADMIN_EMAIL=admin@example.de ADMIN_DISPLAY_NAME="Michael" FINANZPLANER_SUBNET=192.168.1.0/24 PORT=8080 ./scripts/install-ubuntu.sh
+```
 
 ## Dienste und Logs
 
@@ -43,7 +56,7 @@ Bei einer Wiederholung bleiben das Datenbankkennwort sowie der Anmelde- und Vers
 ```bash
 cd /opt/finanzplaner
 git pull --ff-only
-FINANZPLANER_SUBNET=192.168.1.0/24 ./scripts/install-ubuntu.sh
+./scripts/install-ubuntu.sh
 ```
 
 Beim erneuten Lauf wird das Datenbankpasswort konsistent aktualisiert. Bereits angelegte Tabellen und ein vorhandener Admin-Benutzer werden nicht dupliziert.

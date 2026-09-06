@@ -51,10 +51,10 @@ Im neuen Ubuntu-24.04-LXC als `root`:
 apt-get update && apt-get install -y git
 git clone https://github.com/Schello805/Finanzplaner.git /opt/finanzplaner
 cd /opt/finanzplaner
-FINANZPLANER_SUBNET=192.168.1.0/24 ./scripts/install-ubuntu.sh
+./scripts/install-ubuntu.sh
 ```
 
-Das Skript installiert Node.js, PostgreSQL und UFW, erstellt den Benutzer `admin` mit einem zufälligen Einmalpasswort und zeigt anschließend IP, Port und Zugangsdaten. Das Passwort muss beim ersten Login geändert werden.
+Der geführte Assistent fragt nach lokalem Subnetz (mit erkanntem Beispielwert und Erklärung), App-Port, Admin-E-Mail und Anzeigename. Danach installiert das Skript Node.js, PostgreSQL und UFW, begrenzt den Zugriff per Firewall auf dein Heimnetz, erstellt den Benutzer `admin` mit einem zufälligen Einmalpasswort und zeigt anschließend IP, Port und Zugangsdaten. Das Passwort muss beim ersten Login geändert werden.
 
 Ausführliche Hinweise: [docs/INSTALLATION.md](docs/INSTALLATION.md)
 

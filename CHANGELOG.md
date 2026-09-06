@@ -4,6 +4,9 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Der Ubuntu-Installer führt jetzt verständlich durch Subnetz, Port, Admin-E-Mail und Anzeigename, erklärt die Firewall-Einschränkung und zeigt vor dem Start eine Zusammenfassung.
+- Die Admin-E-Mail wird schon bei der Installation gespeichert und steht damit sofort für den Passwort-Reset bereit. Unbeaufsichtigte Installationen bleiben über Umgebungsvariablen möglich.
+
 - Dieselbe eindeutige Bankreferenz wird nun auch dann als sichere Dublette erkannt, wenn die Bank den Buchungstag zwischen zwei Exporten verschiebt; Uhrzeiten spielen dabei keine Rolle.
 - Bereits gespeicherte Referenzdubletten erscheinen unter „Datenqualität“ mit beiden Buchungstagen und können dort nach ausdrücklicher Bestätigung bereinigt werden.
 
