@@ -4,6 +4,9 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Die Amazon-Abstimmung lässt sich danach filtern, ob eine passende Bankbuchung gefunden wurde oder noch fehlt.
+- Fehlende Kategorien können direkt in der Umsatz- und Amazon-Zuordnung angelegt werden. Die aktuelle Arbeitsposition bleibt erhalten und die neue Kategorie wird unmittelbar übernommen.
+
 - Einzelne Ergebnisse eines KI-Stapels lassen sich mit „Später prüfen“ zurückstellen. Sie werden nicht im nächsten 25er-Stapel erneut gesendet, sind über einen eigenen Umsatzfilter auffindbar und können dort wieder für die KI freigegeben werden.
 
 - Wiederkehrende Kosten sind in „Abonnements“ und „Regelmäßige Zahlungen“ getrennt. Die App sortiert bestehende Treffer vor, erlaubt jederzeit die manuelle Verschiebung und zeigt für Abos geschätzte Jahreskosten.

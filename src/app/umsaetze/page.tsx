@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { AiCategorizationPanel } from "@/components/ai-categorization-panel";
 import { CategorySelectOptions } from "@/components/category-select-options";
 import { TransactionEditor } from "@/components/transaction-editor";
+import { InlineCategoryCreate } from "@/components/inline-category-create";
 type Row = {
   id: string;
   accountId:string;
@@ -55,6 +56,7 @@ export default function TransactionsPage() {
   const [importSummary, setImportSummary] = useState<{accountId?:string;imported:number;locallyCategorized:number;duplicates?:number;skippedSuspected?:number;ignoredPending?:number;ignoredZero?:number}|null>(null);
   const [selected, setSelected] = useState<Row | null>(null);
   const [pendingCategory, setPendingCategory] = useState<{row:Row;categoryId:string}|null>(null);
+  const [creatingCategoryFor, setCreatingCategoryFor] = useState<Row | null>(null);
   async function refreshTransactions() {
     const tx = await fetch("/api/transactions").then((r) => r.json());
     if (Array.isArray(tx)) setRows(tx);
@@ -112,6 +114,7 @@ export default function TransactionsPage() {
     return true;
   }
   async function setCategory(row: Row, categoryId: string) {
+    if (categoryId === "__create__") { setCreatingCategoryFor(row); return; }
     if (!categoryId) { await patch({ id: row.id, categoryId: null, ruleMode: "none" }); return; }
     setPendingCategory({row,categoryId});
   }
@@ -318,6 +321,7 @@ export default function TransactionsPage() {
                       >
                         <option value="">Nicht zugeordnet</option>
                         <CategorySelectOptions categories={categories} />
+                        <option value="__create__">＋ Neue Kategorie anlegen …</option>
                       </select>
                     )}
                     {row.categoryId&&<div className="mt-1 flex items-center gap-2"><span className={`text-xs font-semibold ${Number(row.categorizationConfidence??1)>=.9?"text-emerald-700":Number(row.categorizationConfidence??0)>=.7?"text-amber-700":"text-red-700"}`}>{row.categorizedBy==="manual"?"Manuell bestätigt":Number(row.categorizationConfidence??0)>=.9?"Sehr sicher":Number(row.categorizationConfidence??0)>=.7?"Wahrscheinlich":"Bitte prüfen"}</span>{row.categorizedBy!=="manual"&&<button type="button" onClick={()=>confirmSuggestion(row)} className="text-xs font-semibold text-[var(--primary)] underline decoration-dotted underline-offset-2">Bestätigen</button>}</div>}
@@ -363,6 +367,7 @@ export default function TransactionsPage() {
         />
       )}{" "}
       {pendingCategory&&<div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-3 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="rule-choice-title"><section className="card w-full max-w-lg p-6"><h2 id="rule-choice-title" className="text-xl font-bold">Zuordnung speichern</h2><p className="mt-2 text-sm leading-6 muted">Wie soll die Zuordnung für „{pendingCategory.row.counterparty??"diesen Umsatz"}“ verwendet werden? Neue Regeln gelten zunächst nur für {pendingCategory.row.accountName}.</p><div className="mt-5 grid gap-3"><button onClick={()=>confirmCategory("none")} className="btn-secondary justify-start">Nur diesen Umsatz ändern</button><button onClick={()=>confirmCategory("future")} className="btn-secondary justify-start">Diesen Umsatz ändern und Kontoregel speichern</button><button onClick={()=>confirmCategory("all")} className="btn-primary justify-start">Alle passenden Umsätze dieses Kontos ändern</button></div><button onClick={()=>setPendingCategory(null)} className="btn-secondary mt-4 w-full">Abbrechen</button></section></div>}
+      {creatingCategoryFor&&<InlineCategoryCreate categories={categories} defaultIsIncome={Number(creatingCategoryFor.amount)>0} onClose={()=>setCreatingCategoryFor(null)} onCreated={async(category)=>{setCategories(current=>[...current,category]);setCreatingCategoryFor(null);setPendingCategory({row:creatingCategoryFor,categoryId:category.id});}}/>}
     </div>
   );
 }
