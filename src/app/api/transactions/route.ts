@@ -46,6 +46,8 @@ export async function GET(request: NextRequest) {
         excluded: transactions.excludedFromAnalysis,
         specialType: transactions.specialType,
         linkedTransactionId: transactions.linkedTransactionId,
+        categorizationConfidence: transactions.categorizationConfidence,
+        categorizedBy: transactions.categorizedBy,
       })
       .from(transactions)
       .innerJoin(accounts, eq(transactions.accountId, accounts.id))
@@ -109,6 +111,7 @@ const patchSchema = z.object({
   specialType: z.enum(["normal", "refund", "transfer"]).optional(),
   linkedTransactionId: z.string().uuid().nullable().optional(),
   splits: z.array(splitSchema).min(2).max(20).optional(),
+  ruleMode: z.enum(["none", "future", "all"]).optional(),
 });
 export async function PATCH(request: Request) {
   try {
@@ -182,6 +185,8 @@ export async function PATCH(request: Request) {
           updatedAt: new Date(),
           categorizedBy:
             body.categoryId !== undefined || body.splits ? "manual" : undefined,
+          categorizationConfidence:
+            body.categoryId !== undefined || body.splits ? "1.000" : undefined,
         })
         .where(eq(transactions.id, body.id));
       if (body.splits) {
@@ -203,13 +208,14 @@ export async function PATCH(request: Request) {
           .delete(transactionSplits)
           .where(eq(transactionSplits.transactionId, body.id));
     });
-    const learned = body.categoryId !== undefined && !body.splits
+    const learned = body.categoryId !== undefined && !body.splits && body.ruleMode !== "none"
       ? await learnMerchantRule({
           householdId: member.householdId,
           ownerMemberId: member.id,
           visibleAccountIds: accountIds,
           merchant: row.counterparty,
           categoryId: body.categoryId ?? null,
+          applyExisting: body.ruleMode === "all" ? "all" : "none",
         })
       : { learned: false, applied: 0 };
     return NextResponse.json({ ok: true, ruleLearned: learned.learned, additionallyApplied: learned.applied });

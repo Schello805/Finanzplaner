@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { accounts, amazonOrderItems, categories, transactions, transactionSplits } from "@/db/schema";
 import { allocateAmazonCategories } from "@/features/amazon/allocation";
 import { suggestAmazonCategory } from "@/features/amazon/category-suggestions";
+import { amazonMatchScore } from "@/features/amazon/matching";
 import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/current-user";
 import { decryptSecret } from "@/lib/security";
@@ -12,7 +13,6 @@ import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 
 const categorySchema = z.object({ itemId: z.string().uuid(), categoryId: z.string().uuid().nullable() });
 const applySchema = z.object({ itemIds: z.array(z.string().uuid()).min(1).max(50), transactionId: z.string().uuid() });
-const day = 86_400_000;
 const cents = (value: number) => Math.round(value * 100);
 
 export async function GET() {
@@ -47,12 +47,11 @@ export async function GET() {
     }
     return NextResponse.json([...groups.entries()].slice(0, 250).map(([key, rows]) => {
       const first = rows[0];
-      const referenceDate = new Date(`${first.shipDate ?? first.orderDate}T12:00:00Z`).getTime();
-      const candidates = amazonTransactions.filter((transaction) =>
-        transaction.currency === first.currency &&
-        Math.abs(Math.abs(Number(transaction.amount)) - Number(first.orderTotal)) < 0.01 &&
-        Math.abs(new Date(`${transaction.bookedOn}T12:00:00Z`).getTime() - referenceDate) <= 21 * day,
-      );
+      const candidates = amazonTransactions.flatMap((transaction) => {
+        if (transaction.currency !== first.currency) return [];
+        const match = amazonMatchScore(Number(first.orderTotal), first.shipDate ?? first.orderDate, Number(transaction.amount), transaction.bookedOn);
+        return match ? [{ ...transaction, ...match }] : [];
+      }).sort((a, b) => b.score - a.score);
       return {
         key, orderDate: first.orderDate, shipDate: first.shipDate, total: Number(first.orderTotal), currency: first.currency,
         matchedTransactionId: rows.find((row) => row.matchedTransactionId)?.matchedTransactionId ?? null,

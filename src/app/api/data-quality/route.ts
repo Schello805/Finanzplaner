@@ -1,0 +1,16 @@
+import { NextResponse } from "next/server";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { accounts, amazonOrderItems, imports, transactions, transactionSplits } from "@/db/schema";
+import { requireUser } from "@/lib/current-user";
+import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
+
+function missingMonths(from:string|null,to:string|null,available:string[]){if(!from||!to)return[];const found=new Set(available);const result:string[]=[];let date=new Date(`${from.slice(0,7)}-01T12:00:00Z`);const end=new Date(`${to.slice(0,7)}-01T12:00:00Z`);while(date<=end){const key=date.toISOString().slice(0,7);if(!found.has(key))result.push(key);date=new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,1,12))}return result}
+
+export async function GET(){try{const user=await requireUser();const{member,accountIds}=await memberAndVisibleAccountIds(user.userId);if(!accountIds.length)return NextResponse.json({accounts:[],totals:{uncategorized:0,lowConfidence:0,amazonOpen:0}});const [accountRows,txRows,splitRows,importRows,amazonRows]=await Promise.all([
+  db.select({id:accounts.id,name:accounts.name}).from(accounts).where(inArray(accounts.id,accountIds)),
+  db.select({id:transactions.id,accountId:transactions.accountId,bookedOn:transactions.bookedOn,categoryId:transactions.categoryId,confidence:transactions.categorizationConfidence}).from(transactions).where(and(inArray(transactions.accountId,accountIds),sql`${transactions.amount} <> 0`)),
+  db.select({transactionId:transactionSplits.transactionId}).from(transactionSplits),
+  db.select({accountId:imports.accountId,completedAt:imports.completedAt,filename:imports.originalFilename}).from(imports).where(and(inArray(imports.accountId,accountIds),eq(imports.status,"completed"))).orderBy(desc(imports.completedAt)),
+  db.select({id:amazonOrderItems.id}).from(amazonOrderItems).where(and(eq(amazonOrderItems.ownerMemberId,member.id),sql`${amazonOrderItems.matchedTransactionId} is null`)),
+]);const splitIds=new Set(splitRows.map(x=>x.transactionId));let uncategorized=0,lowConfidence=0;const result=accountRows.map(account=>{const rows=txRows.filter(x=>x.accountId===account.id);const dates=rows.map(x=>x.bookedOn).sort();const months=[...new Set(dates.map(x=>x.slice(0,7)))];const open=rows.filter(x=>!x.categoryId&&!splitIds.has(x.id)).length;const uncertain=rows.filter(x=>x.categoryId&&Number(x.confidence??1)<.9).length;uncategorized+=open;lowConfidence+=uncertain;const lastImport=importRows.find(x=>x.accountId===account.id);return{id:account.id,name:account.name,transactionCount:rows.length,from:dates[0]??null,to:dates.at(-1)??null,lastImportAt:lastImport?.completedAt??null,lastFilename:lastImport?.filename??null,uncategorized:open,lowConfidence:uncertain,missingMonths:missingMonths(dates[0]??null,dates.at(-1)??null,months)}});return NextResponse.json({accounts:result,totals:{uncategorized,lowConfidence,amazonOpen:amazonRows.length}})}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Datenqualität konnte nicht geprüft werden."},{status:400})}}

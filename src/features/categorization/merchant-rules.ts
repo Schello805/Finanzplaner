@@ -27,6 +27,7 @@ export async function learnMerchantRule(input: {
   visibleAccountIds: string[];
   merchant?: string | null;
   categoryId: string | null;
+  applyExisting?: "none" | "unassigned" | "all";
 }) {
   const value = normalizeMerchant(input.merchant);
   if (!canLearnMerchant(value)) return { learned: false, applied: 0 };
@@ -53,14 +54,14 @@ export async function learnMerchantRule(input: {
       });
     }
   });
-  if (!input.categoryId || !input.visibleAccountIds.length) return { learned: true, applied: 0 };
+  if (!input.categoryId || !input.visibleAccountIds.length || input.applyExisting === "none") return { learned: true, applied: 0 };
   const applied = await db
     .update(transactions)
     .set({ categoryId: input.categoryId, categorizedBy: "local-rule", categorizationConfidence: "1.000", updatedAt: new Date() })
     .where(
       and(
         inArray(transactions.accountId, input.visibleAccountIds),
-        isNull(transactions.categoryId),
+        ...(input.applyExisting === "all" ? [] : [isNull(transactions.categoryId)]),
         notExists(db.select({ id: transactionSplits.transactionId }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))),
         eq(transactions.counterpartyNormalized, value),
       ),

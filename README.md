@@ -2,7 +2,7 @@
 
 Finanzplaner ist eine private, deutschsprachige Ausgabenanalyse für Familien. Die Anwendung importiert Kontoauszüge, entfernt Dubletten, ordnet Umsätze Kategorien zu und zeigt verständlich, wofür Geld ausgegeben wurde. Persönliche Konten, Gemeinschaftskonten und verwaltete Kinderkonten werden mit getrennten Berechtigungen abgebildet.
 
-> Status: frühe Entwicklung (`0.1.0`). Ersteinrichtung, Kontoanlage und Sparkassen-Import sind bereits mit PostgreSQL verbunden. Vor dem produktiven Einsatz mit echten Finanzdaten bitte die offenen Punkte und Sicherheitshinweise prüfen.
+> Status: aktive Entwicklung. Vor dem produktiven Einsatz mit echten Finanzdaten bitte die Sicherheitshinweise prüfen.
 
 ## Wichtigste Funktionen
 
@@ -12,10 +12,13 @@ Finanzplaner ist eine private, deutschsprachige Ausgabenanalyse für Familien. D
 - exakte Dubletten automatisch überspringen, Verdachtsfälle manuell entscheiden
 - persönliche, gemeinsame und verwaltete Kinderkonten
 - Kategorien, Unterkategorien, Tags, Aufteilungen, Rückerstattungen und Umbuchungen
+- bearbeitbare Händlerregeln mit wahlweise zukünftiger oder rückwirkender Anwendung
+- Erkennung wiederkehrender Kosten, Abos und auffälliger Preisänderungen
+- Datenqualitätsübersicht mit Importstand, Zeiträumen und offenen Zuordnungen je Konto
 - Top-5-Analyse: letzter vollständiger Monat gegen den Durchschnitt der vorherigen zwölf Monate
 - aktueller Monat als Anteil des üblichen Monatswerts
 - optionale OpenAI- oder Gemini-Kategorisierung mit Übertragungsvorschau
-- lokale Sprachausgabe über den Browser
+- natürliche deutsche Sprachausgabe über Gemini TTS
 - zentrale Administration ohne Zugriff auf private Finanzinhalte
 - installierbare PWA für Desktop, Tablet und Smartphone
 
@@ -36,7 +39,7 @@ HTTP verschlüsselt Passwörter und Finanzdaten nicht. Der vorgesehene Betrieb s
 3. Bereits bestätigte Händler sowie eindeutige Begriffe werden lokal und ohne API-Kosten zugeordnet. Nur der verbleibende Rest wird optional an die KI übergeben.
 4. KI-Vorschläge einzeln oder gesammelt prüfen. Die vorgeschlagene Kategorie kann vor der Bestätigung geändert werden; erst eine persönliche Vertrauenseinstellung erlaubt die automatische Übernahme sicherer Treffer.
 5. Optional Amazons `Order History.csv` importieren. Lokale Artikelvorschläge bestätigen und Sammelbestellungen anschließend mit der passenden Bankbuchung abstimmen.
-6. Zur Analyseseite zurückkehren. Sie vergleicht den letzten vollständigen Monat mit bis zu zwölf Vormonaten und zeigt Verbrauch sowie Hochrechnung des laufenden Monats.
+6. Zur Analyseseite zurückkehren. Sie vergleicht den letzten vollständigen Monat mit bis zu zwölf Vormonaten und zeigt den aktuellen Monat als Anteil des üblichen Monatswerts. Eine spekulative Hochrechnung wird bewusst nicht angezeigt.
 
 Amazon und PayPal gelten als Sammelzahlungsanbieter und erhalten bewusst keine pauschale lokale Händlerregel. Amazon-Artikel werden stattdessen einzeln über den Bestellimport zugeordnet.
 

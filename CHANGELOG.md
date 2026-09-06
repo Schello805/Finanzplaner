@@ -4,6 +4,13 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-06
+
+- Gelernte Händlerregeln können korrigiert, pausiert, geteilt oder gelöscht und wahlweise nur künftig oder zusätzlich rückwirkend angewendet werden.
+- Wiederkehrende Kosten und Preisänderungen sowie eine kontoabhängige Datenqualitätsübersicht sind in den Einstellungen verfügbar.
+- Kategoriezuordnungen zeigen verständliche Vertrauensstufen; Amazon-Abgleiche bewerten Betrag und zeitliche Nähe.
+- Die nicht belastbare Hochrechnung des laufenden Monats wurde vollständig entfernt.
+
 ## [0.2.6] - 2026-09-05
 
 - Die einfache Browserstimme wurde durch eine natürliche deutsche Gemini-TTS-Ausgabe ersetzt. Der zentral gespeicherte Gemini-Schlüssel bleibt auf dem Server; bei einem seltenen Anbieterfehler erfolgt automatisch ein zweiter Versuch.

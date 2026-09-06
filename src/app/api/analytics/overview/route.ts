@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, gte, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, transactions, transactionSplits } from "@/db/schema";
-import { categoryComparison, spendingProjection, type MonthlyCategoryTotal } from "@/features/analytics/calculations";
+import { categoryComparison, type MonthlyCategoryTotal } from "@/features/analytics/calculations";
 import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 
@@ -67,7 +67,6 @@ export async function GET(request: NextRequest) {
       historyMonths: Math.max(0, ...comparisons.map((item) => item.historyMonths)),
       categories: comparisons.filter((item) => item.last > 0 || item.current > 0).slice(0, 5),
       months: months.slice(-6),
-      projection: spendingProjection(normalized, currentMonth, asOfDate),
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Analyse konnte nicht geladen werden." }, { status: 400 });

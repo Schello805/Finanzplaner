@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CircleAlert, Filter, Pencil, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
+import { CircleAlert, Filter, Pencil, RefreshCw, Search, SlidersHorizontal, WandSparkles } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { AiCategorizationPanel } from "@/components/ai-categorization-panel";
 import { CategorySelectOptions } from "@/components/category-select-options";
@@ -21,6 +21,8 @@ type Row = {
   excluded: boolean;
   specialType: "normal" | "refund" | "transfer";
   linkedTransactionId: string | null;
+  categorizationConfidence: string | null;
+  categorizedBy: string | null;
   splits: Array<{ categoryId: string; amount: string; note?: string | null }>;
 };
 type Category = { id: string; name: string; parentId: string | null; isIncome: boolean };
@@ -39,6 +41,7 @@ export default function TransactionsPage() {
   const [localMessage, setLocalMessage] = useState("");
   const [importSummary, setImportSummary] = useState<{imported:number;locallyCategorized:number;ignoredPending?:number;ignoredZero?:number}|null>(null);
   const [selected, setSelected] = useState<Row | null>(null);
+  const [pendingCategory, setPendingCategory] = useState<{row:Row;categoryId:string}|null>(null);
   async function refreshTransactions() {
     const tx = await fetch("/api/transactions").then((r) => r.json());
     if (Array.isArray(tx)) setRows(tx);
@@ -92,8 +95,10 @@ export default function TransactionsPage() {
     return true;
   }
   async function setCategory(row: Row, categoryId: string) {
-    await patch({ id: row.id, categoryId: categoryId || null });
+    if (!categoryId) { await patch({ id: row.id, categoryId: null, ruleMode: "none" }); return; }
+    setPendingCategory({row,categoryId});
   }
+  async function confirmCategory(ruleMode:"none"|"future"|"all") { if(!pendingCategory)return;await patch({id:pendingCategory.row.id,categoryId:pendingCategory.categoryId,ruleMode});setPendingCategory(null); }
   async function applyLocalRules() {
     setLocalBusy(true);
     setLocalMessage("");
@@ -132,6 +137,9 @@ export default function TransactionsPage() {
             </button>
             <Link href="/einstellungen/kategorien" className="btn-secondary">
               <SlidersHorizontal size={18} /> Kategorien verwalten
+            </Link>
+            <Link href="/einstellungen/regeln" className="btn-secondary">
+              <WandSparkles size={18} /> Regeln verwalten
             </Link>
           </div>
         }
@@ -276,6 +284,7 @@ export default function TransactionsPage() {
                         <CategorySelectOptions categories={categories} />
                       </select>
                     )}
+                    {row.categoryId&&<div className={`mt-1 text-xs font-semibold ${Number(row.categorizationConfidence??1)>=.9?"text-emerald-700":Number(row.categorizationConfidence??0)>=.7?"text-amber-700":"text-red-700"}`}>{row.categorizedBy==="manual"?"Manuell bestätigt":Number(row.categorizationConfidence??0)>=.9?"Sehr sicher":Number(row.categorizationConfidence??0)>=.7?"Wahrscheinlich":"Bitte prüfen"}</div>}
                   </td>
                   <td
                     className={`px-5 py-4 text-right font-bold ${Number(row.amount) > 0 ? "text-[var(--primary)]" : ""}`}
@@ -316,6 +325,7 @@ export default function TransactionsPage() {
           onSave={patch}
         />
       )}{" "}
+      {pendingCategory&&<div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-3 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="rule-choice-title"><section className="card w-full max-w-lg p-6"><h2 id="rule-choice-title" className="text-xl font-bold">Zuordnung speichern</h2><p className="mt-2 text-sm leading-6 muted">Wie soll die Zuordnung für „{pendingCategory.row.counterparty??"diesen Umsatz"}“ verwendet werden?</p><div className="mt-5 grid gap-3"><button onClick={()=>confirmCategory("none")} className="btn-secondary justify-start">Nur diesen Umsatz ändern</button><button onClick={()=>confirmCategory("future")} className="btn-secondary justify-start">Diesen Umsatz ändern und Regel für die Zukunft speichern</button><button onClick={()=>confirmCategory("all")} className="btn-primary justify-start">Alle passenden Umsätze jetzt und künftig ändern</button></div><button onClick={()=>setPendingCategory(null)} className="btn-secondary mt-4 w-full">Abbrechen</button></section></div>}
     </div>
   );
 }

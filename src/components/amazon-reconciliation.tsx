@@ -7,7 +7,7 @@ type Category = { id: string; name: string; isIncome: boolean };
 type Group = {
   key: string; orderDate: string; shipDate: string | null; total: number; currency: string; matchedTransactionId: string | null;
   items: Array<{ id: string; productName: string; quantity: number; gross: number; categoryId: string | null; suggestion: { categoryId: string; categoryName: string; reason: string } | null }>;
-  candidates: Array<{ id: string; bookedOn: string; amount: number; currency: string; accountName: string }>;
+  candidates: Array<{ id: string; bookedOn: string; amount: number; currency: string; accountName: string; score: number; reason: string }>;
 };
 
 export function AmazonReconciliation() {
@@ -23,11 +23,11 @@ export function AmazonReconciliation() {
     ]);
     if (Array.isArray(orderRows)) {
       setGroups(orderRows);
-      setTransactions(Object.fromEntries(orderRows.map((group: Group) => [group.key, group.matchedTransactionId ?? (group.candidates.length === 1 ? group.candidates[0].id : "")])));
+      setTransactions(Object.fromEntries(orderRows.map((group: Group) => [group.key, group.matchedTransactionId ?? (group.candidates[0]?.score >= 0.9 ? group.candidates[0].id : "")])));
     } else setMessage(orderRows.error);
     if (Array.isArray(categoryRows)) setCategories(categoryRows);
   }
-  useEffect(() => { Promise.all([fetch("/api/amazon/orders").then((response) => response.json()), fetch("/api/categories").then((response) => response.json())]).then(([orderRows, categoryRows]) => { if (Array.isArray(orderRows)) { setGroups(orderRows); setTransactions(Object.fromEntries(orderRows.map((group: Group) => [group.key, group.matchedTransactionId ?? (group.candidates.length === 1 ? group.candidates[0].id : "")]))); } if (Array.isArray(categoryRows)) setCategories(categoryRows); }); }, []);
+  useEffect(() => { Promise.all([fetch("/api/amazon/orders").then((response) => response.json()), fetch("/api/categories").then((response) => response.json())]).then(([orderRows, categoryRows]) => { if (Array.isArray(orderRows)) { setGroups(orderRows); setTransactions(Object.fromEntries(orderRows.map((group: Group) => [group.key, group.matchedTransactionId ?? (group.candidates[0]?.score >= 0.9 ? group.candidates[0].id : "")]))); } if (Array.isArray(categoryRows)) setCategories(categoryRows); }); }, []);
   async function setCategory(itemId: string, categoryId: string) {
     const response = await fetch("/api/amazon/orders", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId, categoryId: categoryId || null }) });
     const body = await response.json();
