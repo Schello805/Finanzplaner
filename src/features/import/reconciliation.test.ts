@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findMissingStoredTransactions } from "./reconciliation";
+import { findMissingStoredTransactions, findStoredReferenceDuplicates } from "./reconciliation";
 
 const transaction = (overrides: Partial<{ bookedOn: string; amount: number; currency: string; fingerprint: string; counterparty: string }> = {}) => ({
   bookedOn: "2026-09-01",
@@ -8,6 +8,18 @@ const transaction = (overrides: Partial<{ bookedOn: string; amount: number; curr
   fingerprint: "stored",
   counterparty: "Telefonica Germany GmbH + Co. OHG",
   ...overrides,
+});
+
+describe("gespeicherte Referenzdubletten", () => {
+  it("findet gleiche stabile Referenz trotz abweichendem Buchungstag", () => {
+    const base = { id:"one", accountId:"account", bookedOn:"2026-09-01", amount:"-7.57", currency:"EUR", bankReference:"PAYPAL-REFERENCE-EXAMPLE-001" };
+    expect(findStoredReferenceDuplicates([base,{...base,id:"two",bookedOn:"2026-09-02"}])).toEqual([{original:base,duplicate:{...base,id:"two",bookedOn:"2026-09-02"}}]);
+  });
+  it("ignoriert generische Referenzen und verschiedene Konten", () => {
+    const base = { id:"one", accountId:"account", bookedOn:"2026-09-01", amount:"-7.57", currency:"EUR", bankReference:"NOTPROVIDED" };
+    expect(findStoredReferenceDuplicates([base,{...base,id:"two",bookedOn:"2026-09-02"}])).toEqual([]);
+    expect(findStoredReferenceDuplicates([{...base,bankReference:"REF-123"},{...base,id:"two",accountId:"other",bankReference:"REF-123"}])).toEqual([]);
+  });
 });
 const statement = (base: ReturnType<typeof transaction>) => Array.from({ length: 10 }, (_, index) => ({ ...base, bookedOn: `2026-09-${String(index + 1).padStart(2, "0")}`, fingerprint: `${base.fingerprint}-${index}` }));
 

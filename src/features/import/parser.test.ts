@@ -21,6 +21,16 @@ describe("Sparkasse CAMT V8", () => {
     const changed = { ...tx, fingerprint: "anderer-export-fingerprint" };
     expect(findDuplicates([changed], [tx])).toMatchObject({ exact: [changed], suspected: [] });
   });
+  it("erkennt dieselbe Bankreferenz auch bei nachträglich verschobenem Buchungstag", () => {
+    const tx = parseBankCsv(`${header}\n${row}`, sparkasseCamtV8).transactions[0];
+    const shifted = { ...tx, bookedOn: "2026-08-02", valuedOn: "2026-08-02", fingerprint: "shifted" };
+    expect(findDuplicates([shifted], [tx])).toMatchObject({ exact: [shifted], accepted: [], suspected: [] });
+  });
+  it("verwechselt generische Referenzen an verschiedenen Tagen nicht mit Dubletten", () => {
+    const tx = parseBankCsv(`${header}\n${row.replace("REF-001", "NOTPROVIDED")}`, sparkasseCamtV8).transactions[0];
+    const later = { ...tx, bookedOn: "2026-08-02", valuedOn: "2026-08-02", fingerprint: "later" };
+    expect(findDuplicates([later], [tx]).accepted).toEqual([later]);
+  });
   it("erkennt das von der Sparkasse verwendete Semikolon auch bei einer alten Vorlageneinstellung", () => {
     const semicolonHeader = header.replaceAll(",", ";");
     const semicolonRow = 'DE00123456780000000000;01.08.2026;01.08.2026;KARTENZAHLUNG;"Einkauf, Testmarkt";;;REF-001;;;;Testmarkt;DE00999999999999999999;TESTDEFFXXX;"-42,50";EUR;Umsatz gebucht';

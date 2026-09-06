@@ -4,6 +4,9 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Dieselbe eindeutige Bankreferenz wird nun auch dann als sichere Dublette erkannt, wenn die Bank den Buchungstag zwischen zwei Exporten verschiebt; Uhrzeiten spielen dabei keine Rolle.
+- Bereits gespeicherte Referenzdubletten erscheinen unter „Datenqualität“ mit beiden Buchungstagen und können dort nach ausdrücklicher Bestätigung bereinigt werden.
+
 - Mehrkonten-Workflow nach Nutzersicht geprüft: Bei mehreren Konten verlangt der Import jetzt eine bewusste Zielkontowahl und öffnet danach direkt die Umsätze dieses Kontos.
 - Umsatzprüfung, lokale Regeln und KI-Zuordnung können auf ein einzelnes Konto begrenzt werden; der neue Kontofilter verhindert Vermischungen beim Monatsabschluss.
 - Datenqualitäts-Kacheln öffnen direkt die passende Prüfliste. Der Amazon-Abgleich ist im Monatsablauf eindeutig als optional gekennzeichnet.

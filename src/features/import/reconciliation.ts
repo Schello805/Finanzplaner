@@ -43,3 +43,31 @@ export function findMissingStoredTransactions<T extends ComparableTransaction>(
       !incomingCoreKeys.has(coreKey(row)),
   );
 }
+
+type StoredReferenceTransaction = {
+  id: string;
+  accountId: string;
+  bookedOn: string;
+  amount: number | string;
+  currency: string;
+  bankReference?: string | null;
+};
+
+const stableReference = (value?: string | null) => {
+  const normalized = (value ?? "").replace(/\s+/g, " ").trim().toLocaleLowerCase("de-DE");
+  return normalized.length >= 6 && !/^(notprovided|nicht angegeben|n\/a)$/.test(normalized) ? normalized : null;
+};
+
+export function findStoredReferenceDuplicates<T extends StoredReferenceTransaction>(rows: T[]) {
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const reference = stableReference(row.bankReference);
+    if (!reference) continue;
+    const key = `${row.accountId}|${Number(row.amount).toFixed(2)}|${row.currency.toUpperCase()}|${reference}`;
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  }
+  return [...groups.values()].flatMap((group) => {
+    const sorted = [...group].sort((a,b)=>a.bookedOn.localeCompare(b.bookedOn));
+    return sorted.slice(1).map((duplicate, index) => ({ original: sorted[index], duplicate }));
+  });
+}

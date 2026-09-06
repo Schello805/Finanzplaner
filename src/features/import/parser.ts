@@ -90,10 +90,18 @@ export function findDuplicates(incoming: ParsedTransaction[], existing: ParsedTr
   const suspected: Array<{ incoming: ParsedTransaction; existing: ParsedTransaction }> = [];
   for (const tx of incoming) {
     if (exactFingerprints.has(tx.fingerprint)) { exact.push(tx); continue; }
-    const candidate = existing.find((old) => old.bookedOn === tx.bookedOn && old.amount === tx.amount && old.currency === tx.currency && normalize(old.counterparty).toLowerCase() === normalize(tx.counterparty).toLowerCase());
+    const newReference = normalize(tx.bankReference).toLocaleLowerCase("de-DE");
+    const hasStableReference = newReference.length >= 6 && !/^(notprovided|nicht angegeben|n\/a)$/.test(newReference);
+    // Banken können den Buchungstag zwischen zwei Exporten korrigieren. Eine
+    // eindeutige Bankreferenz ist deshalb stärker als das Datum.
+    const candidate = existing.find((old) => {
+      const sameCore = old.amount === tx.amount && old.currency === tx.currency;
+      const oldReference = normalize(old.bankReference).toLocaleLowerCase("de-DE");
+      if (sameCore && hasStableReference && oldReference === newReference) return true;
+      return sameCore && old.bookedOn === tx.bookedOn && normalize(old.counterparty).toLowerCase() === normalize(tx.counterparty).toLowerCase();
+    });
     if (candidate) {
       const oldReference = normalize(candidate.bankReference).toLocaleLowerCase("de-DE");
-      const newReference = normalize(tx.bankReference).toLocaleLowerCase("de-DE");
       const stableReference = oldReference.length >= 6 && newReference === oldReference && !/^(notprovided|nicht angegeben|n\/a)$/.test(oldReference);
       const oldPurpose = normalize(candidate.purpose).toLocaleLowerCase("de-DE");
       const stablePurpose = oldPurpose.length >= 5 && oldPurpose === normalize(tx.purpose).toLocaleLowerCase("de-DE");

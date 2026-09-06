@@ -242,3 +242,22 @@ export async function PATCH(request: Request) {
     );
   }
 }
+
+const deleteSchema = z.object({ id: z.string().uuid() });
+export async function DELETE(request: Request) {
+  try {
+    const user = await requireUser();
+    const { accountIds } = await memberAndVisibleAccountIds(user.userId);
+    const body = deleteSchema.parse(await request.json());
+    const [row] = await db.select({ accountId: transactions.accountId, linkedTransactionId: transactions.linkedTransactionId }).from(transactions).where(eq(transactions.id, body.id)).limit(1);
+    if (!row || !accountIds.includes(row.accountId)) throw new Error("Umsatz nicht sichtbar.");
+    await db.transaction(async (tx) => {
+      if (row.linkedTransactionId) await tx.update(transactions).set({ specialType:"normal", excludedFromAnalysis:false, linkedTransactionId:null, isTransfer:false, transferPeerId:null, updatedAt:new Date() }).where(and(eq(transactions.id,row.linkedTransactionId),eq(transactions.linkedTransactionId,body.id)));
+      await tx.delete(transactions).where(eq(transactions.id, body.id));
+    });
+    await writeAudit("transaction-deleted","Eine bestätigte Umsatzdublette wurde gelöscht.",{userId:user.userId,metadata:{transactionId:body.id,accountId:row.accountId}});
+    return NextResponse.json({ ok:true });
+  } catch (error) {
+    return NextResponse.json({ error:error instanceof Error?error.message:"Umsatz konnte nicht gelöscht werden." },{status:400});
+  }
+}
