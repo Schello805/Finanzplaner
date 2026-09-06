@@ -1,0 +1,38 @@
+-- Ergänzt den neuen Standardbaum idempotent für bestehende Haushalte.
+-- Vorhandene Kategorien und Zuordnungen werden nicht verändert.
+DO $$
+DECLARE household_row record; item record; parent_uuid uuid;
+BEGIN
+  FOR household_row IN SELECT id FROM households LOOP
+    FOR item IN SELECT d.*, row_number() OVER () AS sort_order FROM (VALUES
+      ('Wohnen','wohnen','#2367a1','house',NULL::text,false),('Miete','miete','#3478ad','key-round','wohnen',false),('Nebenkosten','nebenkosten','#3478ad','receipt-text','wohnen',false),('Strom','strom','#3478ad','zap','wohnen',false),('Heizung','heizung','#3478ad','flame','wohnen',false),('Instandhaltung & Renovierung','instandhaltung-renovierung','#3478ad','hammer','wohnen',false),('Möbel & Einrichtung','moebel-einrichtung','#3478ad','sofa','wohnen',false),
+      ('Lebensmittel & Getränke','lebensmittel','#087e82','shopping-basket',NULL,false),('Supermarkt','supermarkt','#159296','shopping-cart','lebensmittel',false),('Bäckerei','baeckerei','#159296','croissant','lebensmittel',false),('Getränke','getraenke','#159296','cup-soda','lebensmittel',false),
+      ('Mobilität','mobilitaet','#31a77d','car',NULL,false),('Tanken','tanken','#3daf87','fuel','mobilitaet',false),('ÖPNV & Bahn','oepnv-bahn','#3daf87','train-front','mobilitaet',false),('Parken & Maut','parken-maut','#3daf87','circle-parking','mobilitaet',false),('Wartung & Reparatur','kfz-wartung-reparatur','#3daf87','wrench','mobilitaet',false),('Leasing & Fahrzeugkauf','leasing-fahrzeugkauf','#3daf87','car-front','mobilitaet',false),
+      ('Kommunikation & Medien','kommunikation-medien','#5275a8','wifi',NULL,false),('Telefon & Internet','telefon-internet','#6385b5','phone','kommunikation-medien',false),('Streaming','streaming','#6385b5','tv','kommunikation-medien',false),('Software & Cloud','software-cloud','#6385b5','cloud','kommunikation-medien',false),('Rundfunkbeitrag','rundfunkbeitrag','#6385b5','radio','kommunikation-medien',false),
+      ('Haushalt & Drogerie','haushalt-drogerie','#159b94','spray-can',NULL,false),('Drogerie & Körperpflege','drogerie-koerperpflege','#27aaa3','sparkles','haushalt-drogerie',false),('Reinigung & Haushaltswaren','reinigung-haushaltswaren','#27aaa3','brush-cleaning','haushalt-drogerie',false),
+      ('Einkäufe','einkaeufe','#7d6da8','shopping-bag',NULL,false),('Kleidung & Schuhe','kleidung-schuhe','#8e7db8','shirt','einkaeufe',false),('Elektronik','elektronik','#8e7db8','monitor-smartphone','einkaeufe',false),('Bücher & Medien','buecher-medien','#8e7db8','book-open','einkaeufe',false),('Werkzeug & Hobbybedarf','werkzeug-hobbybedarf','#8e7db8','drill','einkaeufe',false),
+      ('Gesundheit','gesundheit','#c44f64','heart-pulse',NULL,false),('Apotheke & Medikamente','apotheke-medikamente','#cf6174','pill','gesundheit',false),('Arzt & Behandlung','arzt-behandlung','#cf6174','stethoscope','gesundheit',false),('Brille & Hilfsmittel','brille-hilfsmittel','#cf6174','glasses','gesundheit',false),
+      ('Versicherungen','versicherungen','#556b87','shield',NULL,false),('Kfz-Versicherung','kfz-versicherung','#667b96','car','versicherungen',false),('Haftpflicht','haftpflicht','#667b96','shield-check','versicherungen',false),('Hausrat & Gebäude','hausrat-gebaeude','#667b96','house','versicherungen',false),('Rechtsschutz','rechtsschutz','#667b96','scale','versicherungen',false),('Personenversicherung','personenversicherung','#667b96','heart-handshake','versicherungen',false),
+      ('Bank & Finanzen','bank-finanzen','#786b58','landmark',NULL,false),('Kontoführungsgebühren','kontofuehrungsgebuehren','#897b68','receipt','bank-finanzen',false),('Sollzinsen','sollzinsen','#897b68','percent','bank-finanzen',false),('Depot & Geldanlage','depot-geldanlage','#897b68','chart-candlestick','bank-finanzen',false),
+      ('Kredite & Raten','kredite-raten','#8a665a','badge-euro',NULL,false),('Darlehensrate','darlehensrate','#9a776b','house','kredite-raten',false),('Kreditkartenrate','kreditkartenrate','#9a776b','credit-card','kredite-raten',false),('Ratenkauf','ratenkauf','#9a776b','calendar-clock','kredite-raten',false),
+      ('Freizeit','freizeit','#d88a35','party-popper',NULL,false),('Restaurants & Cafés','restaurants-cafes','#df9849','utensils','freizeit',false),('Kultur & Veranstaltungen','kultur-veranstaltungen','#df9849','ticket','freizeit',false),('Sport & Vereine','sport-vereine','#df9849','dumbbell','freizeit',false),('App- & In-Game-Käufe','app-in-game','#df9849','gamepad-2','freizeit',false),('Hobbys','hobbys','#df9849','palette','freizeit',false),
+      ('Reisen & Urlaub','reisen-urlaub','#2f9eaa','plane',NULL,false),('Unterkunft','unterkunft','#43acb7','bed-double','reisen-urlaub',false),('Anreise & Mietwagen','anreise-mietwagen','#43acb7','route','reisen-urlaub',false),('Aktivitäten im Urlaub','urlaubsaktivitaeten','#43acb7','map','reisen-urlaub',false),
+      ('Familie & Kinder','familie-kinder','#d26b90','baby',NULL,false),('Betreuung & Schule','betreuung-schule','#db7ca0','school','familie-kinder',false),('Kinderkleidung','kinderkleidung','#db7ca0','shirt','familie-kinder',false),('Spielzeug & Taschengeld','spielzeug-taschengeld','#db7ca0','blocks','familie-kinder',false),
+      ('Bildung & Beruf','bildung-beruf','#6c7f52','graduation-cap',NULL,false),('Weiterbildung','weiterbildung','#7e9164','book-open-check','bildung-beruf',false),('Arbeitsmittel','arbeitsmittel','#7e9164','briefcase-business','bildung-beruf',false),('Steuern & Abgaben','steuern-abgaben','#9a7554','file-text',NULL,false),('Geschenke & Spenden','geschenke-spenden','#b05f78','gift',NULL,false),
+      ('Tierhaltung','tierhaltung','#84714f','paw-print',NULL,false),('Tierfutter & Zubehör','tierfutter-zubehoer','#958260','bone','tierhaltung',false),('Tierarzt','tierarzt','#958260','cross','tierhaltung',false),('Interne Umbuchung','umbuchung','#758387','arrow-left-right',NULL,false),
+      ('Einnahmen','einnahmen','#2a996b','wallet',NULL,true),('Gehalt & Lohn','gehalt-lohn','#3baa7b','badge-euro','einnahmen',true),('Kindergeld & Familienleistungen','kindergeld-familienleistungen','#3baa7b','baby','einnahmen',true),('Rente & Pension','rente-pension','#3baa7b','landmark','einnahmen',true),('Kapitalerträge & Habenzinsen','kapitalertraege','#3baa7b','trending-up','einnahmen',true),('Erstattungen & Rückzahlungen','erstattungen-rueckzahlungen','#3baa7b','rotate-ccw','einnahmen',true),('Verkäufe & Nebeneinkünfte','verkaeufe-nebeneinkuenfte','#3baa7b','hand-coins','einnahmen',true)
+    ) AS d(name,slug,color,icon,parent_slug,is_income) LOOP
+      parent_uuid := NULL;
+      IF item.parent_slug IS NOT NULL THEN SELECT id INTO parent_uuid FROM categories WHERE household_id=household_row.id AND slug=item.parent_slug ORDER BY created_at LIMIT 1; END IF;
+      IF NOT EXISTS (SELECT 1 FROM categories WHERE household_id=household_row.id AND slug=item.slug) THEN
+        INSERT INTO categories(household_id,parent_id,name,slug,color,icon,is_income,sort_order) VALUES(household_row.id,parent_uuid,item.name,item.slug,item.color,item.icon,item.is_income,item.sort_order);
+      END IF;
+    END LOOP;
+    DELETE FROM categories c WHERE c.household_id=household_row.id AND lower(c.name)='sonstiges'
+      AND NOT EXISTS (SELECT 1 FROM transactions t WHERE t.category_id=c.id)
+      AND NOT EXISTS (SELECT 1 FROM transaction_splits s WHERE s.category_id=c.id)
+      AND NOT EXISTS (SELECT 1 FROM amazon_order_items a WHERE a.category_id=c.id)
+      AND NOT EXISTS (SELECT 1 FROM categorization_rules r WHERE r.category_id=c.id)
+      AND NOT EXISTS (SELECT 1 FROM categories child WHERE child.parent_id=c.id);
+  END LOOP;
+END $$;

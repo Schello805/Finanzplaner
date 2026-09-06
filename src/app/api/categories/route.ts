@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, count, countDistinct, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import { and, asc, count, countDistinct, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { amazonOrderItems, categories, categorizationRules, transactions, transactionSplits } from "@/db/schema";
@@ -19,7 +19,8 @@ export async function GET() {
             eq(categories.householdId, member.householdId),
             isNull(categories.householdId),
           ),
-        ),
+        )
+        .orderBy(asc(categories.isIncome), asc(categories.sortOrder), asc(categories.name)),
       accountIds.length
         ? db
             .select({ categoryId: transactions.categoryId, value: count() })

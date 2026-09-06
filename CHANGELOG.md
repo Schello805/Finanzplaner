@@ -4,6 +4,9 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Neue Haushalte erhalten einen umfassenden deutschen Kategorienbaum für Wohnen, Lebensmittel, Mobilität, Kommunikation, Haushalt, Einkäufe, Gesundheit, Versicherungen, Finanzen, Raten, Freizeit, Reisen, Familie, Beruf, Tierhaltung und Einnahmen.
+- Bestehende Haushalte erhalten fehlende Standardkategorien idempotent per Migration; eigene Kategorien und bestehende Zuordnungen bleiben erhalten. Die unspezifische Standardkategorie „Sonstiges“ wurde vollständig entfernt.
+
 - Von npm und Build-Werkzeugen im Installationsverzeichnis erzeugte `.npm/`- und `.config/`-Verzeichnisse gelten nicht mehr fälschlich als lokale Quellcodeänderungen und blockieren das Updateskript nicht mehr.
 
 - Das Updateskript erkennt nach einer veröffentlichten Historienbereinigung auseinanderlaufende Commit-Verläufe. Bei einem unveränderten Installationsverzeichnis richtet es sich automatisch und sicher wieder an `origin/main` aus; lokale Änderungen führen weiterhin zum Abbruch.
