@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     if (!`${transaction.counterparty ?? ""} ${transaction.purpose ?? ""}`.toLowerCase().includes("amazon")) throw new Error("Der gewählte Umsatz ist keine erkennbare Amazon-Buchung.");
     const first = items[0];
     if (items.some((item) => item.orderIdFingerprint !== first.orderIdFingerprint || Number(item.orderTotal) !== Number(first.orderTotal) || (item.shipDate ?? item.orderDate) !== (first.shipDate ?? first.orderDate))) throw new Error("Die gewählten Artikel gehören nicht zur selben Amazon-Belastung.");
-    if (Math.abs(Math.abs(Number(transaction.amount)) - Number(first.orderTotal)) >= 0.01) throw new Error("Amazon-Bestellsumme und Bankumsatz stimmen nicht überein.");
+    if (cents(Math.abs(Number(transaction.amount))) !== cents(Number(first.orderTotal))) throw new Error("Amazon-Bestellsumme und Bankumsatz stimmen nicht centgenau überein.");
     if (items.some((item) => !item.categoryId)) throw new Error("Bitte zuerst jedem Artikel eine Kategorie zuordnen.");
     const totalCents = cents(Math.abs(Number(transaction.amount)));
     const weights = items.map((item) => Math.max(0, (Number(item.unitPrice) + Number(item.unitTax)) * Number(item.quantity)));

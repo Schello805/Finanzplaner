@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, gte, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, transactions, transactionSplits } from "@/db/schema";
-import { categoryComparison, type MonthlyCategoryTotal } from "@/features/analytics/calculations";
+import { categoryComparison, comparisonTotals, normalizeAnalysisTransactions, spendingTotal } from "@/features/analytics/calculations";
 import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 
@@ -43,29 +43,27 @@ export async function GET(request: NextRequest) {
       ? await db.select({ transactionId: transactionSplits.transactionId, categoryId: transactionSplits.categoryId, categoryName: categories.name, amount: transactionSplits.amount, color: categories.color }).from(transactionSplits).leftJoin(categories, eq(transactionSplits.categoryId, categories.id)).where(inArray(transactionSplits.transactionId, rows.map((row) => row.id)))
       : [];
     const colors = new Map<string, string>();
-    const normalized: MonthlyCategoryTotal[] = rows.flatMap((row) => {
-      const ownSplits = splits.filter((split) => split.transactionId === row.id);
-      if (ownSplits.length) return ownSplits.map((split) => {
-        colors.set(split.categoryId, split.color ?? "#7c898c");
-        return { bookedOn: row.bookedOn, month: row.bookedOn.slice(0, 7), categoryId: split.categoryId, categoryName: split.categoryName ?? "Nicht zugeordnet", amount: row.specialType === "refund" ? Number(split.amount) : -Number(split.amount) };
-      });
-      const categoryId = row.categoryId ?? "uncategorized";
-      colors.set(categoryId, row.color ?? "#7c898c");
-      return [{ bookedOn: row.bookedOn, month: row.bookedOn.slice(0, 7), categoryId, categoryName: row.categoryName ?? "Nicht zugeordnet", amount: row.specialType === "refund" ? Math.abs(Number(row.amount)) : -Math.abs(Number(row.amount)) }];
-    });
+    for(const row of rows)colors.set(row.categoryId??"uncategorized",row.color??"#7c898c");
+    for(const split of splits)colors.set(split.categoryId,split.color??"#7c898c");
+    const normalized = normalizeAnalysisTransactions(rows, splits);
     const rowsThroughToday = normalized.filter((row) => !row.bookedOn || row.bookedOn <= asOfDate);
     const comparisons = categoryComparison(rowsThroughToday, lastMonth, currentMonth).map((item) => ({ ...item, color: colors.get(item.categoryId) ?? "#7c898c" }));
     const months = [...new Set(normalized.map((row) => row.month))]
       .filter((month) => month < currentMonth)
       .sort()
-      .map((month) => ({ month, value: Math.max(0, -normalized.filter((row) => row.month === month).reduce((sum, row) => sum + row.amount, 0)) }));
+      .map((month) => ({ month, value: spendingTotal(normalized.filter((row) => row.month === month)) }));
+    const totals=comparisonTotals(comparisons);
+    const lastSeriesValue=months.find(item=>item.month===lastMonth)?.value??0;
+    if(Math.round(lastSeriesValue*100)!==Math.round(totals.last*100))throw new Error("Interne Summenprüfung fehlgeschlagen: Monatsverlauf und Kategorien stimmen nicht überein.");
     return NextResponse.json({
       empty: rows.length === 0,
       currentMonth,
       lastMonth,
       asOfDate,
       historyMonths: Math.max(0, ...comparisons.map((item) => item.historyMonths)),
-      categories: comparisons.filter((item) => item.last > 0 || item.current > 0),
+      totals,
+      integrityCheck:"passed",
+      categories: comparisons.filter((item) => item.last !== 0 || item.current !== 0 || (item.average ?? 0) !== 0),
       months: months.slice(-6),
     });
   } catch (error) {

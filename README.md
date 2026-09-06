@@ -102,6 +102,7 @@ Details stehen in [docs/PRIVACY.md](docs/PRIVACY.md) und [SECURITY.md](SECURITY.
 ## Dokumentation
 
 - [Architektur](docs/ARCHITECTURE.md)
+- [Verbindliche Berechnungsregeln](docs/BERECHNUNGEN.md)
 - [Installation und Updates](docs/INSTALLATION.md)
 - [Berechtigungsmodell](docs/PERMISSIONS.md)
 - [Datenschutz](docs/PRIVACY.md)

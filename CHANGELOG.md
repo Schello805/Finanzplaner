@@ -4,6 +4,16 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-09-06
+
+- Sämtliche Analysepfade verwenden eine gemeinsame, centgenaue Umsatznormalisierung für Ausgaben, Erstattungen und Kategorieaufteilungen. Monatsverlauf, Kategorien und KI-Zusammenfassung stimmen dadurch rechnerisch überein.
+- Die 12-Monats-Basis berücksichtigt historische Kategorien und echte Nullmonate vollständig. Eine serverseitige Integritätsprüfung erkennt künftig Abweichungen zwischen Monats- und Kategoriesumme sofort.
+- Importdaten werden strenger geprüft: unmögliche Kalenderdaten, leere oder übergenaue Beträge und andere Währungen als EUR werden nicht mehr stillschweigend verfälscht.
+- Amazon-Bestellsummen werden mit dem Größte-Reste-Verfahren garantiert centgenau und ohne negative Restpositionen verteilt; Split- und Betragsvergleiche erfolgen ebenfalls in ganzen Cent.
+- KI-Kosten werden nur noch bei administrativ hinterlegten Europreisen angezeigt. Fehlende Preise erscheinen nicht länger als null Euro und Dollarpreise werden nicht als Euro ausgegeben.
+- Händlernormalisierung entfernt Rechtsformen nur als eigenständige Wörter und beschädigt keine realen Händlernamen mehr.
+- Die verbindlichen Rechenregeln und Grenzen sind in `docs/BERECHNUNGEN.md` dokumentiert und durch Regressionstests abgesichert.
+
 ## [0.3.1] - 2026-09-06
 
 - Monatskennzahlen werden wieder aus allen Kategorien berechnet. Die Top-5-Begrenzung gilt nur für die Rangliste; der Ring fasst kleinere Kategorien transparent als „Weitere Kategorien“ zusammen.

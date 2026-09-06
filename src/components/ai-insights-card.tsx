@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Banknote, Car, House, Lightbulb, PartyPopper, Repeat2, ShoppingBasket, Sparkles, TriangleAlert, Volume2 } from "lucide-react";
 
-type Preview = { provider: "openai" | "gemini"; model: string; cost: { lowEur: number; highEur: number } | null; pricingSource: "configured" | "model-default" | null };
+type Preview = { provider: "openai" | "gemini"; model: string; cost: { lowEur: number; highEur: number } | null; pricingSource: "configured" | null };
 type Opportunity = { category: string; action: string; reason: string; icon: "home" | "car" | "shopping" | "subscription" | "bank" | "leisure" | "general"; potentialEur: number };
 type Insight = { summary: string; opportunities: Opportunity[]; watchouts: string[]; estimatedCostEur: number | null; pricingAvailable: boolean };
 
@@ -70,6 +70,6 @@ export function AiInsightsCard() {
     {error&&<div role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</div>}
     {audioUrl&&<audio controls autoPlay src={audioUrl} className="mt-4 w-full" aria-label="Vorgelesene Sparchancen"/>}
     <button disabled={busy||!preview} onClick={()=>create(false)} className="btn-primary mt-5">{busy?"KI priorisiert Sparchancen …":insight?"Hinweise aktualisieren":"Sparchancen ermitteln"} <Sparkles size={17}/></button>
-    {preview&&<p className="mt-3 text-xs muted">{preview.provider==="openai"?"OpenAI":"Gemini"} · {preview.model} · {preview.cost?`geschätzt ${aiCost(preview.cost.lowEur)}–${aiCost(preview.cost.highEur)}`:"Preisangaben im Adminbereich ergänzen"}{preview.pricingSource==="model-default"?" · Modellpreis automatisch ergänzt":""}</p>}
+    {preview&&<p className="mt-3 text-xs muted">{preview.provider==="openai"?"OpenAI":"Gemini"} · {preview.model} · {preview.cost?`geschätzt ${aiCost(preview.cost.lowEur)}–${aiCost(preview.cost.highEur)}`:"Preisangaben im Adminbereich ergänzen"}</p>}
   </article>;
 }

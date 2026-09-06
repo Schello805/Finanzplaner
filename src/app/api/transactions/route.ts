@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
 }
 const splitSchema = z.object({
   categoryId: z.string().uuid(),
-  amount: z.number().positive().finite(),
+  amount: z.number().positive().finite().refine((value)=>Math.abs(value*100-Math.round(value*100))<1e-8,"Teilbeträge dürfen höchstens zwei Nachkommastellen haben."),
   note: z.string().trim().max(200).nullable().optional(),
 });
 const patchSchema = z.object({
@@ -162,11 +162,9 @@ export async function PATCH(request: Request) {
         throw new Error("Die verknüpfte Buchung ist nicht sichtbar.");
     }
     if (body.splits) {
-      const splitTotal = body.splits.reduce(
-        (sum, split) => sum + split.amount,
-        0,
-      );
-      if (Math.abs(splitTotal - Math.abs(Number(row.amount))) > 0.01)
+      const splitTotalCents = body.splits.reduce((sum, split) => sum + Math.round(split.amount * 100), 0);
+      const transactionCents = Math.round(Math.abs(Number(row.amount)) * 100);
+      if (splitTotalCents !== transactionCents)
         throw new Error(
           `Die Aufteilung muss zusammen ${Math.abs(Number(row.amount)).toFixed(2)} € ergeben.`,
         );

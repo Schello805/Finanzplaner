@@ -21,4 +21,9 @@ describe("Amazon-Kategorieaufteilung", () => {
     expect(result.get("lebensmittel")).toBe(3000);
     expect(result.get("haushalt")).toBe(3000);
   });
+  it("erzeugt auch bei mehr Artikeln als Cent niemals negative Teilbeträge",()=>{
+    const result=allocateAmazonCategories(["a","b","c","d"].map(categoryId=>({categoryId,weight:1})),2);
+    expect([...result.values()].reduce((sum,value)=>sum+value,0)).toBe(2);
+    expect([...result.values()].every(value=>value>=0)).toBe(true);
+  });
 });

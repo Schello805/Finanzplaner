@@ -15,17 +15,20 @@ const formatMonth=(value:string)=>value?new Intl.DateTimeFormat("de-DE",{month:"
 export function AnalysisDashboard() {
   const [account, setAccount] = useState("all");
   const [accounts,setAccounts]=useState<AccountRow[]>([]);const[lastMonth,setLastMonth]=useState("");const[currentMonth,setCurrentMonth]=useState("");
+  const [totals,setTotals]=useState({last:0,current:0,average:0});
   const [categories,setCategories]=useState<CategoryRow[]>([]);const[months,setMonths]=useState<Array<{month:string;value:number}>>([]);const[historyMonths,setHistoryMonths]=useState(0);const[loading,setLoading]=useState(true);const[loadError,setLoadError]=useState("");
   useEffect(()=>{fetch("/api/accounts").then(r=>r.json()).then(body=>{if(Array.isArray(body))setAccounts(body.map((item:AccountRow)=>({id:item.id,name:item.name})))})},[]);
-  useEffect(()=>{const suffix=account==="all"?"":`?accountId=${encodeURIComponent(account)}`;fetch(`/api/analytics/overview${suffix}`).then(r=>r.json()).then(body=>{if(body.error){setLoadError(body.error);return}setLastMonth(body.lastMonth??"");setCurrentMonth(body.currentMonth??"");setCategories((body.categories??[]).map((c:{categoryName:string;current:number;last:number;average:number|null;color:string})=>({name:c.categoryName,current:c.current,last:c.last,average:c.average??0,color:c.color})));setMonths((body.months??[]).map((m:{month:string;value:number})=>({month:new Intl.DateTimeFormat("de-DE",{month:"short"}).format(new Date(`${m.month}-01T00:00:00Z`)),value:m.value})));setHistoryMonths(body.historyMonths??0)}).catch(()=>setLoadError("Analyse konnte nicht geladen werden.")).finally(()=>setLoading(false))},[account]);
-  const lastTotal = categories.reduce((sum, item) => sum + item.last, 0);
-  const averageTotal = categories.reduce((sum, item) => sum + item.average, 0);
-  const currentTotal = categories.reduce((sum, item) => sum + item.current, 0);
+  useEffect(()=>{const suffix=account==="all"?"":`?accountId=${encodeURIComponent(account)}`;fetch(`/api/analytics/overview${suffix}`).then(r=>r.json()).then(body=>{if(body.error){setLoadError(body.error);return}setLastMonth(body.lastMonth??"");setCurrentMonth(body.currentMonth??"");setTotals(body.totals??{last:0,current:0,average:0});setCategories((body.categories??[]).map((c:{categoryName:string;current:number;last:number;average:number|null;color:string})=>({name:c.categoryName,current:c.current,last:c.last,average:c.average??0,color:c.color})));setMonths((body.months??[]).map((m:{month:string;value:number})=>({month:new Intl.DateTimeFormat("de-DE",{month:"short"}).format(new Date(`${m.month}-01T00:00:00Z`)),value:m.value})));setHistoryMonths(body.historyMonths??0)}).catch(()=>setLoadError("Analyse konnte nicht geladen werden.")).finally(()=>setLoading(false))},[account]);
+  const lastTotal = totals.last;
+  const averageTotal = totals.average;
+  const currentTotal = totals.current;
   const delta = lastTotal - averageTotal;
-  const totalDeltaPercent = averageTotal ? Math.abs(delta / averageTotal * 100) : 0;
-  const usagePercent = averageTotal ? currentTotal / averageTotal * 100 : 0;
-  const topCategories = [...categories].sort((a,b) => b.last-a.last).slice(0,5);
-  const remainingTotal = Math.max(0,lastTotal-topCategories.reduce((sum,item)=>sum+item.last,0));
+  const totalDeltaPercent = averageTotal > 0 ? Math.abs(delta / averageTotal * 100) : null;
+  const usagePercent = averageTotal > 0 ? currentTotal / averageTotal * 100 : null;
+  const positiveCategoryTotal=categories.reduce((sum,item)=>sum+Math.max(0,item.last),0);
+  const refundOffset=Math.max(0,positiveCategoryTotal-lastTotal);
+  const topCategories = [...categories].filter(item=>item.last>0).sort((a,b) => b.last-a.last).slice(0,5);
+  const remainingTotal = Math.max(0,positiveCategoryTotal-topCategories.reduce((sum,item)=>sum+item.last,0));
   const distribution = remainingTotal>0?[...topCategories,{name:"Weitere Kategorien",current:0,last:remainingTotal,average:0,color:"#94a3b8"}]:topCategories;
 
   return <div className="space-y-7">
@@ -47,24 +50,24 @@ export function AnalysisDashboard() {
     {!loading&&historyMonths>0&&historyMonths<3&&<div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Der Durchschnitt basiert erst auf {historyMonths} vollständigen {historyMonths===1?"Monat":"Monaten"}. Mit weiteren Importen wird der Vergleich belastbarer.</div>}
     {!loading&&categories.length===0&&<div className="card p-6"><h2 className="font-bold">Noch keine Ausgaben vorhanden</h2><p className="mt-2 text-sm muted">Lege unter „Konten“ ein Konto an und importiere anschließend in den Einstellungen deinen ersten Kontoauszug.</p></div>}
     <section id="analyse" aria-label="Monatskennzahlen" className="grid scroll-mt-6 gap-4 md:grid-cols-3">
-      <article className="card p-5"><div className="text-sm font-semibold muted">Letzter Monat</div><div className="mt-2 text-3xl font-bold tracking-tight">{eur.format(lastTotal)}</div><div className={`mt-3 flex items-center gap-1 text-sm font-semibold ${delta > 0 ? "text-[var(--danger)]" : "text-[var(--primary)]"}`}>{delta > 0 ? <ArrowUpRight size={17}/> : <ArrowDownRight size={17}/>} {eur.format(Math.abs(delta))} · {totalDeltaPercent.toFixed(1)} % zum Ø</div></article>
+      <article className="card p-5"><div className="text-sm font-semibold muted">Letzter Monat</div><div className="mt-2 text-3xl font-bold tracking-tight">{eur.format(lastTotal)}</div>{totalDeltaPercent===null?<div className="mt-3 text-sm muted">Noch kein historischer Vergleichswert</div>:<div className={`mt-3 flex items-center gap-1 text-sm font-semibold ${delta > 0 ? "text-[var(--danger)]" : "text-[var(--primary)]"}`}>{delta > 0 ? <ArrowUpRight size={17}/> : <ArrowDownRight size={17}/>} {eur.format(Math.abs(delta))} · {totalDeltaPercent.toFixed(1)} % zum Ø</div>}</article>
       <article className="card p-5"><div className="text-sm font-semibold muted">12-Monats-Durchschnitt</div><div className="mt-2 text-3xl font-bold tracking-tight">{eur.format(averageTotal)}</div><div className="mt-3 text-sm muted">Grundlage: {historyMonths} vollständige {historyMonths===1?"Monat":"Monate"}</div></article>
-      <article className="card p-5"><div className="text-sm font-semibold muted">Aktueller Monat · {formatMonth(currentMonth)||"laufend"}</div><div className="mt-2 text-3xl font-bold tracking-tight">{eur.format(currentTotal)}</div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]"><div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${Math.min(100, usagePercent)}%` }} /></div><div className="mt-2 text-sm font-semibold">{usagePercent.toFixed(0)} % des üblichen Monatswerts</div></article>
+      <article className="card p-5"><div className="text-sm font-semibold muted">Aktueller Monat · {formatMonth(currentMonth)||"laufend"}</div><div className="mt-2 text-3xl font-bold tracking-tight">{eur.format(currentTotal)}</div>{usagePercent===null?<div className="mt-3 text-sm muted">Noch kein historischer Vergleichswert</div>:<><div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]"><div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${Math.min(100, usagePercent)}%` }} /></div><div className="mt-2 text-sm font-semibold">{usagePercent.toFixed(0)} % des üblichen Monatswerts</div></>}</article>
     </section>
 
     <section className="grid gap-5 xl:grid-cols-[1.45fr_.8fr]">
       <article className="card p-5 sm:p-6">
         <div className="mb-5 flex items-start justify-between"><div><h2 className="text-lg font-bold">Top 5 Kategorien</h2><p className="mt-1 text-sm muted">{formatMonth(lastMonth)||"Letzter Monat"} gegenüber dem Durchschnitt</p></div><Link href="/umsaetze" className="btn-secondary !min-h-9 !px-3 text-sm">Alle anzeigen <ArrowRight size={15}/></Link></div>
         <div className="space-y-1">
-          {topCategories.map((item) => { const pct = item.average ? (item.last-item.average)/item.average*100 : 0; return (
+          {topCategories.map((item) => { const pct = item.average > 0 ? (item.last-item.average)/item.average*100 : null; return (
             <button key={item.name} className="grid w-full grid-cols-[1fr_auto] items-center gap-4 rounded-xl border-0 bg-transparent px-2 py-3 text-left hover:bg-[var(--surface-soft)] sm:grid-cols-[1fr_110px_150px_auto]">
               <span className="flex items-center gap-3 font-semibold"><span className="h-3 w-3 rounded-full" style={{background:item.color}} />{item.name}</span>
-              <span className="font-bold">{eur.format(item.last)}</span><span className={`hidden text-right text-sm font-semibold sm:block ${pct > 0 ? "text-[var(--danger)]" : "text-[var(--primary)]"}`}>{pct > 0 ? "+" : ""}{eur.format(item.last-item.average)} · {pct > 0 ? "+" : ""}{pct.toFixed(0)} %</span><ChevronRight size={18} className="muted" />
+              <span className="font-bold">{eur.format(item.last)}</span><span className={`hidden text-right text-sm font-semibold sm:block ${pct!==null&&pct>0 ? "text-[var(--danger)]" : "text-[var(--primary)]"}`}>{item.last-item.average>0?"+":""}{eur.format(item.last-item.average)} · {pct===null?"kein Vergleich":`${pct>0?"+":""}${pct.toFixed(0)} %`}</span><ChevronRight size={18} className="muted" />
             </button>
           ); })}
         </div>
       </article>
-      <article className="card p-5 sm:p-6"><h2 className="text-lg font-bold">Verteilung</h2><p className="mt-1 text-sm muted">Top-Kategorien im {formatMonth(lastMonth)||"letzten Monat"}; kleinere Kategorien sind als Rest zusammengefasst.</p><div className="h-[230px] w-full"><ResponsiveContainer><PieChart><Pie data={distribution} dataKey="last" nameKey="name" innerRadius={58} outerRadius={88} paddingAngle={2}>{distribution.map(c=><Cell key={c.name} fill={c.color}/>)}</Pie><Tooltip formatter={(v)=>eur.format(Number(v))}/></PieChart></ResponsiveContainer></div><div className="space-y-2">{distribution.map((item)=><div key={item.name} className="flex items-center justify-between gap-3 text-sm"><span className="flex min-w-0 items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-full" style={{background:item.color}}/><span className="truncate">{item.name}</span></span><strong>{eur.format(item.last)} · {lastTotal?`${(item.last/lastTotal*100).toFixed(0)} %`:"0 %"}</strong></div>)}</div></article>
+      <article className="card p-5 sm:p-6"><h2 className="text-lg font-bold">Verteilung</h2><p className="mt-1 text-sm muted">Top-Kategorien im {formatMonth(lastMonth)||"letzten Monat"}; kleinere Kategorien sind als Rest zusammengefasst.</p><div className="h-[230px] w-full"><ResponsiveContainer><PieChart><Pie data={distribution} dataKey="last" nameKey="name" innerRadius={58} outerRadius={88} paddingAngle={2}>{distribution.map(c=><Cell key={c.name} fill={c.color}/>)}</Pie><Tooltip formatter={(v)=>eur.format(Number(v))}/></PieChart></ResponsiveContainer></div><div className="space-y-2">{distribution.map((item)=><div key={item.name} className="flex items-center justify-between gap-3 text-sm"><span className="flex min-w-0 items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-full" style={{background:item.color}}/><span className="truncate">{item.name}</span></span><strong>{eur.format(item.last)} · {positiveCategoryTotal?`${(item.last/positiveCategoryTotal*100).toFixed(0)} %`:"0 %"}</strong></div>)}</div>{refundOffset>0&&<p className="mt-3 rounded-lg bg-emerald-50 p-2 text-xs text-emerald-900">Erstattungen von {eur.format(refundOffset)} reduzieren den Monatsgesamtwert auf {eur.format(lastTotal)}.</p>}</article>
     </section>
 
     <section className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">

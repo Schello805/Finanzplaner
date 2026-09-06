@@ -39,12 +39,9 @@ export function estimateCost(input: unknown, modelPrice: { inputPerMillion: numb
   return { approximateInputTokens, lowEur: low, highEur: high };
 }
 
-export function resolveModelPrice(provider: "openai" | "gemini", model: string, configured?: { inputPricePerMillion?: number; outputPricePerMillion?: number }) {
+export function resolveModelPrice(_provider: "openai" | "gemini", _model: string, configured?: { inputPricePerMillion?: number; outputPricePerMillion?: number }) {
   if ((configured?.inputPricePerMillion ?? 0) > 0 && (configured?.outputPricePerMillion ?? 0) > 0) {
     return { inputPerMillion: configured!.inputPricePerMillion!, outputPerMillion: configured!.outputPricePerMillion!, source: "configured" as const };
-  }
-  if (provider === "openai" && /^gpt-5-mini(?:-|$)/i.test(model)) {
-    return { inputPerMillion: 0.25, outputPerMillion: 2, source: "model-default" as const };
   }
   return null;
 }

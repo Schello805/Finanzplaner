@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { and, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { aiUsage, categories, systemSettings, transactions } from "@/db/schema";
-import { categoryComparison, type MonthlyCategoryTotal } from "@/features/analytics/calculations";
+import { aiUsage, categories, systemSettings, transactions, transactionSplits } from "@/db/schema";
+import { categoryComparison, normalizeAnalysisTransactions } from "@/features/analytics/calculations";
 import { estimateCost, generateInsightsWithAi, resolveModelPrice } from "@/features/ai/provider";
 import { requireUser } from "@/lib/current-user";
 import { decryptSecret } from "@/lib/security";
@@ -21,17 +21,18 @@ async function context(userId: string) {
   const lastMonth = monthKey(shift(now, -1));
   const from = `${monthKey(shift(now, -13))}-01`;
   const rows = await db
-    .select({ bookedOn: transactions.bookedOn, amount: transactions.amount, categoryId: transactions.categoryId, categoryName: categories.name })
+    .select({ id:transactions.id,bookedOn: transactions.bookedOn, amount: transactions.amount,specialType:transactions.specialType, categoryId: transactions.categoryId, categoryName: categories.name })
     .from(transactions)
     .leftJoin(categories, eq(transactions.categoryId, categories.id))
     .where(and(
       inArray(transactions.accountId, accountIds),
-      eq(transactions.direction, "expense"),
+      or(eq(transactions.direction, "expense"),eq(transactions.specialType,"refund")),
       eq(transactions.excludedFromAnalysis, false),
       sql`${transactions.amount} <> 0`,
       gte(transactions.bookedOn, from),
     ));
-  const normalized: MonthlyCategoryTotal[] = rows.map((row) => ({ month: row.bookedOn.slice(0, 7), categoryId: row.categoryId ?? "uncategorized", categoryName: row.categoryName ?? "Nicht zugeordnet", amount: Number(row.amount) }));
+  const splits=rows.length?await db.select({transactionId:transactionSplits.transactionId,categoryId:transactionSplits.categoryId,categoryName:categories.name,amount:transactionSplits.amount}).from(transactionSplits).leftJoin(categories,eq(transactionSplits.categoryId,categories.id)).where(inArray(transactionSplits.transactionId,rows.map(row=>row.id))):[];
+  const normalized=normalizeAnalysisTransactions(rows,splits);
   const comparisons = categoryComparison(normalized, lastMonth, currentMonth)
     .filter((item) => item.last > 0 || item.current > 0)
     .map((item) => ({

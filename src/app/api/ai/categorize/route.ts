@@ -225,8 +225,7 @@ export async function POST(request: Request) {
       } else suggestions.push({ ...item, categoryId });
     }
     const price = resolveModelPrice(ai.provider, ai.config.model, ai.config);
-    const inputCost = price ? result.usage.inputTokens * price.inputPerMillion / 1_000_000 : 0;
-    const outputCost = price ? result.usage.outputTokens * price.outputPerMillion / 1_000_000 : 0;
+    const totalCost = price ? result.usage.inputTokens * price.inputPerMillion / 1_000_000 + result.usage.outputTokens * price.outputPerMillion / 1_000_000 : null;
     await db
       .insert(aiUsage)
       .values({
@@ -237,7 +236,7 @@ export async function POST(request: Request) {
         purpose: "categorization",
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens,
-        estimatedCostEur: (inputCost + outputCost).toFixed(6),
+        estimatedCostEur: totalCost?.toFixed(6),
       });
     await writeAudit(
       "ai",
@@ -260,7 +259,7 @@ export async function POST(request: Request) {
       categoryProposals: [...categoryProposalMap.values()],
       automaticMode: trustedAutomaticMode,
       usage: result.usage,
-      estimatedCostEur: inputCost + outputCost,
+      estimatedCostEur: totalCost,
       pricingAvailable: Boolean(price),
     });
   } catch (e) {

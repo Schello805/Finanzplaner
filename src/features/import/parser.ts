@@ -7,18 +7,26 @@ const sha256 = (value: string) => createHash("sha256").update(value).digest("hex
 
 function toIsoDate(value: string, format: ImportTemplate["dateFormat"]): string {
   const clean = normalize(value);
-  if (format === "yyyy-MM-dd" && /^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
-  const match = /^(\d{2})\.(\d{2})\.(\d{2}|\d{4})$/.exec(clean);
-  if (!match) throw new Error(`Ungültiges Datum: ${clean || "(leer)"}`);
-  const year=match[3].length===2?(Number(match[3])>=70?`19${match[3]}`:`20${match[3]}`):match[3];
-  return `${year}-${match[2]}-${match[1]}`;
+  let iso:string;
+  if (format === "yyyy-MM-dd" && /^\d{4}-\d{2}-\d{2}$/.test(clean)) iso=clean;
+  else {
+    const match = /^(\d{2})\.(\d{2})\.(\d{2}|\d{4})$/.exec(clean);
+    if (!match) throw new Error(`Ungültiges Datum: ${clean || "(leer)"}`);
+    const year=match[3].length===2?(Number(match[3])>=70?`19${match[3]}`:`20${match[3]}`):match[3];
+    iso=`${year}-${match[2]}-${match[1]}`;
+  }
+  const parsed=new Date(`${iso}T12:00:00Z`);
+  if(Number.isNaN(parsed.getTime())||parsed.toISOString().slice(0,10)!==iso)throw new Error(`Ungültiges Datum: ${clean || "(leer)"}`);
+  return iso;
 }
 
 function toAmount(value: string, decimalSeparator: "," | "."): number {
   const clean = normalize(value).replace(/\s/g, "");
+  if(!clean)throw new Error("Ungültiger Betrag: (leer)");
   const normalized = decimalSeparator === "," ? clean.replace(/\./g, "").replace(",", ".") : clean.replace(/,/g, "");
   const amount = Number(normalized);
   if (!Number.isFinite(amount)) throw new Error(`Ungültiger Betrag: ${value || "(leer)"}`);
+  if(Math.abs(amount*100-Math.round(amount*100))>=1e-8)throw new Error(`Betrag hat mehr als zwei Nachkommastellen: ${value}`);
   return amount;
 }
 
@@ -65,6 +73,8 @@ export function parseBankCsv(input: string, template: ImportTemplate): ImportRes
         bankReference: get(row, template, "endToEndReference") || undefined,
         originalData: row,
       };
+      if(!/^[A-Z]{3}$/.test(tx.currency))throw new Error(`Ungültige Währung: ${tx.currency||"(leer)"}`);
+      if(tx.currency!=="EUR")throw new Error(`Nicht unterstützte Währung: ${tx.currency}. Auswertungen sind derzeit ausschließlich in EUR möglich.`);
       const identity = [tx.accountReference, tx.bookedOn, tx.valuedOn, amount.toFixed(2), tx.currency, tx.counterpartyAccount, tx.counterparty, tx.purpose, tx.bankReference].map(v => normalize(String(v ?? "")).toLocaleLowerCase("de-DE")).join("|");
       transactions.push({ ...tx, fingerprint: sha256(identity) });
     } catch (error) { warnings.push(`Zeile ${index + headerRow + 1}: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`); }

@@ -46,6 +46,18 @@ describe("Sparkasse CAMT V8", () => {
     const invalid = row.replace('"-42,50"', "ungültig");
     expect(() => parseBankCsv(`Hinweis\n${header}\n${invalid}`, {...sparkasseCamtV8, headerRow: 2})).toThrow("Zeile 3");
   });
+  it("verwirft unmögliche Kalendertage statt sie in einen anderen Monat zu verschieben",()=>{
+    const invalid=row.replaceAll("01.08.2026","31.02.2026");
+    expect(()=>parseBankCsv(`${header}\n${invalid}`,sparkasseCamtV8)).toThrow("Ungültiges Datum");
+  });
+  it("behandelt einen leeren Betrag nicht als Nullbuchung",()=>{
+    const invalid=row.replace('"-42,50"','');
+    expect(()=>parseBankCsv(`${header}\n${invalid}`,sparkasseCamtV8)).toThrow("Ungültiger Betrag");
+  });
+  it("verhindert das Addieren unterschiedlicher Währungen",()=>{
+    const invalid=row.replace(",EUR,",",USD,");
+    expect(()=>parseBankCsv(`${header}\n${invalid}`,sparkasseCamtV8)).toThrow("ausschließlich in EUR");
+  });
   it("erkennt nur den eindeutigen Sparkassen-Platzhalter als vorgemerkt", () => {
     expect(isPendingTransaction({ counterparty: "**Unbekannt" })).toBe(true);
     expect(isPendingTransaction({ counterparty: "  ** unbekannt vorgemerkt " })).toBe(true);
