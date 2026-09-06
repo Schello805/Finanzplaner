@@ -18,7 +18,8 @@ export async function GET() {
       .from(categorizationRules).innerJoin(categories, eq(categorizationRules.categoryId, categories.id)).leftJoin(accounts,eq(categorizationRules.accountId,accounts.id))
       .where(and(eq(categorizationRules.householdId, member.householdId), or(eq(categorizationRules.shared,true),and(eq(categorizationRules.ownerMemberId,member.id),accountIds.length?inArray(categorizationRules.accountId,accountIds):sql`false`))));
     const counts = accountIds.length ? await db.select({ accountId:transactions.accountId,value: transactions.counterpartyNormalized, count: sql<number>`count(*)::int` }).from(transactions).where(inArray(transactions.accountId, accountIds)).groupBy(transactions.accountId,transactions.counterpartyNormalized) : [];
-    return NextResponse.json(rows.map((row) => ({ ...row,accountName:row.shared?null:row.accountName, matchedTransactions: counts.filter(count=>count.value===row.value&&(row.shared||count.accountId===row.accountId)).reduce((sum,count)=>sum+count.count,0), editable: row.ownerMemberId === member.id })));
+    const conflicts=new Set(rows.filter(row=>rows.some(other=>other.id!==row.id&&other.value===row.value&&other.categoryId!==row.categoryId&&(row.shared||other.shared))).map(row=>row.value));
+    return NextResponse.json(rows.map((row) => ({ ...row,accountName:row.shared?null:row.accountName,conflict:conflicts.has(row.value), matchedTransactions: counts.filter(count=>count.value===row.value&&(row.shared||count.accountId===row.accountId)).reduce((sum,count)=>sum+count.count,0), editable: row.ownerMemberId === member.id })));
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Regeln konnten nicht geladen werden." }, { status: 400 }); }
 }
 

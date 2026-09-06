@@ -4,6 +4,15 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-06
+
+- Neue Gemeinschaftskonten benötigen eine formal gültige IBAN, damit spätere CSV-Importe dem Zielkonto sicher zugeordnet werden können. Die Oberfläche erklärt die verschlüsselte Speicherung.
+- Der geheime IBAN-Fingerabdruck wird nicht mehr an den Browser übertragen; Konto-Freigaben werden ausschließlich für sichtbare Konten geladen.
+- Profilbilder gemeinsamer und persönlicher Konten werden zusätzlich serverseitig gegen Kontosichtbarkeit, Eigentum und Erwachsenenstatus geprüft.
+- Widersprüchliche freigegebene Händlerregeln werden erkannt, sichtbar gemeldet und bis zur Korrektur nicht automatisch angewendet.
+- Vorschläge für interne Umbuchungen zeigen beide Buchungstexte zur sicheren manuellen Entscheidung.
+- Der Gemeinschaftskonto-Workflow besteht Typprüfung, Lint, Produktions-Build und 69 Regressionstests.
+
 ## [0.4.0] - 2026-09-06
 
 - Die zentrale Kontoberechtigung ist als getestete Sicherheitsregel gekapselt: Erwachsene sehen Gemeinschaftskonten, eigene Konten, betreute Kinderkonten und ausdrücklich freigegebene Partnerkonten; Kinder sehen weder Gemeinschafts- noch fremde Privatkonten.

@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { categorizationRules, categories, transactions, transactionSplits } from "@/db/schema";
 import { canLearnMerchant, normalizeMerchant } from "./normalize";
 import { keywordCategory } from "./keyword-rules";
+import {resolveRuleAssignments} from "./rule-resolution";
 export { normalizeMerchant } from "./normalize";
 
 export async function merchantRuleMap(householdId: string, ownerMemberId: string, accountId:string) {
@@ -18,7 +19,7 @@ export async function merchantRuleMap(householdId: string, ownerMemberId: string
         or(and(eq(categorizationRules.ownerMemberId, ownerMemberId),eq(categorizationRules.accountId,accountId)), eq(categorizationRules.shared, true)),
       ),
     );
-  return new Map(rows.map((row) => [row.value, row.categoryId]));
+  return resolveRuleAssignments(rows).assignments;
 }
 
 export async function learnMerchantRule(input: {

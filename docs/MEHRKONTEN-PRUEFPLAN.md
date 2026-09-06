@@ -22,6 +22,8 @@ Dieser Prüfplan ist vor und nach dem Hinzufügen weiterer echter Konten auszuf�
 7. Eine Überweisung von Konto A nach Konto B importieren und den Vorschlag unter „Datenqualität“ bestätigen. Beide Buchungen dürfen danach nicht mehr in Ausgaben oder Einnahmen zählen.
 8. Einzelkonto- und Gesamtfilter vergleichen; die Gesamtzahl muss der Summe der einzeln sichtbaren Konten entsprechen.
 
+Für ein Gemeinschaftskonto muss bei der Anlage die vollständige IBAN hinterlegt werden. Sie wird verschlüsselt gespeichert; die Oberfläche zeigt anschließend ausschließlich die letzten vier Zeichen. Ein späterer Kontoauszug mit abweichender Kontoreferenz wird vor dem Import blockiert.
+
 ## Offene Roadmap
 
 - Browsergestützte Ende-zu-Ende-Tests mit einer isolierten Testdatenbank, sobald eine separate Testinstallation vorgesehen ist.
