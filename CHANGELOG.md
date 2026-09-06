@@ -4,6 +4,8 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Reale Transaktionsfragmente wurden in Tests durch vollständig synthetische Werte ersetzt. Zusätzliche Git-Ausschlussregeln schützen lokale Umgebungsdateien, Archive, Datenbankabbilder und Sicherungsdateien vor versehentlichem Einchecken.
+
 - Der Ubuntu-Installer führt jetzt verständlich durch Subnetz, Port, Admin-E-Mail und Anzeigename, erklärt die Firewall-Einschränkung und zeigt vor dem Start eine Zusammenfassung.
 - Die Admin-E-Mail wird schon bei der Installation gespeichert und steht damit sofort für den Passwort-Reset bereit. Unbeaufsichtigte Installationen bleiben über Umgebungsvariablen möglich.
 
