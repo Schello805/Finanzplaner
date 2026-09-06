@@ -1,21 +1,25 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { applyMerchantRules } from "@/features/categorization/merchant-rules";
 import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const user = await requireUser();
     const { member, accountIds } = await memberAndVisibleAccountIds(user.userId);
+    const body = await request.json().catch(() => ({})) as { accountId?: string };
+    if (body.accountId && !accountIds.includes(body.accountId))
+      throw new Error("Das ausgewählte Konto ist nicht sichtbar.");
+    const scopedAccountIds = body.accountId ? [body.accountId] : accountIds;
     const result = await applyMerchantRules({
       householdId: member.householdId,
       ownerMemberId: member.id,
-      visibleAccountIds: accountIds,
+      visibleAccountIds: scopedAccountIds,
     });
     await writeAudit("categorization", "Gelernte lokale Händlerregeln wurden manuell angewendet.", {
       userId: user.userId,
-      metadata: result,
+      metadata: { ...result, accountId: body.accountId ?? null },
     });
     return NextResponse.json(result);
   } catch (error) {

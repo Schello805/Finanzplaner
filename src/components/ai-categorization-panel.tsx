@@ -38,8 +38,10 @@ type CategoryProposal = {
 };
 export function AiCategorizationPanel({
   onApplied,
+  accountId,
 }: {
   onApplied: () => void;
+  accountId?: string;
 }) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [open, setOpen] = useState(false);
@@ -50,7 +52,9 @@ export function AiCategorizationPanel({
   const [categories, setCategories] = useState<SelectCategory[]>([]);
   const [mode, setMode] = useState<Mode>("minimal");
   async function requestPreview(nextMode: Mode, preserveMessage = false) {
-    const response = await fetch(`/api/ai/categorize?privacyMode=${nextMode}`);
+    const params = new URLSearchParams({ privacyMode: nextMode });
+    if (accountId) params.set("accountId", accountId);
+    const response = await fetch(`/api/ai/categorize?${params}`);
     const body = await response.json();
     if (response.ok && body.available === false) {
       setPreview(null);
@@ -195,7 +199,7 @@ export function AiCategorizationPanel({
   useEffect(() => {
     Promise.all([
       fetch("/api/user/preferences").then((r) => r.json()),
-      fetch("/api/ai/categorize?privacyMode=minimal").then((r) => r.json()),
+      fetch(`/api/ai/categorize?privacyMode=minimal${accountId ? `&accountId=${encodeURIComponent(accountId)}` : ""}`).then((r) => r.json()),
       fetch("/api/categories").then((r) => r.json()),
     ]).then(async ([preferences, initial, categoryRows]) => {
       if (Array.isArray(categoryRows)) setCategories(categoryRows);
@@ -219,7 +223,7 @@ export function AiCategorizationPanel({
         }
       }
     });
-  }, []);
+  }, [accountId]);
   async function changeMode(next: Mode) {
     setMode(next);
     await requestPreview(next);

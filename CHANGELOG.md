@@ -4,6 +4,11 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Mehrkonten-Workflow nach Nutzersicht geprüft: Bei mehreren Konten verlangt der Import jetzt eine bewusste Zielkontowahl und öffnet danach direkt die Umsätze dieses Kontos.
+- Umsatzprüfung, lokale Regeln und KI-Zuordnung können auf ein einzelnes Konto begrenzt werden; der neue Kontofilter verhindert Vermischungen beim Monatsabschluss.
+- Datenqualitäts-Kacheln öffnen direkt die passende Prüfliste. Der Amazon-Abgleich ist im Monatsablauf eindeutig als optional gekennzeichnet.
+- Irreführende, nicht anklickbare Elemente in der Analyse wurden bereinigt.
+
 ## [0.4.1] - 2026-09-06
 
 - Neue Gemeinschaftskonten benötigen eine formal gültige IBAN, damit spätere CSV-Importe dem Zielkonto sicher zugeordnet werden können. Die Oberfläche erklärt die verschlüsselte Speicherung.

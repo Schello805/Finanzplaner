@@ -76,7 +76,9 @@ export default function ImportPage() {
     ]).then(([accountRows, templateRows]) => {
       if (Array.isArray(accountRows)) {
         setAccounts(accountRows);
-        setAccountId(accountRows[0]?.id ?? "");
+        // Bei mehreren Konten muss das Ziel bewusst gewählt werden. So landet
+        // ein Gemeinschaftsauszug nicht versehentlich auf dem ersten Konto.
+        setAccountId(accountRows.length === 1 ? accountRows[0].id : "");
       }
       if (Array.isArray(templateRows)) {
         setTemplates(templateRows);
@@ -111,7 +113,7 @@ export default function ImportPage() {
       setFile(null);
       setKeepSuspected(new Set());
       setHistoryVersion((version) => version + 1);
-      router.push("/umsaetze");
+      router.push(`/umsaetze?accountId=${encodeURIComponent(accountId)}`);
     }
   }
   async function deleteStoredCleanup(kind: "pending" | "zero") {

@@ -42,9 +42,10 @@ export default function TransactionsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [query, setQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [accountFilter, setAccountFilter] = useState(()=>typeof window==="undefined"?"all":new URLSearchParams(window.location.search).get("accountId")??"all");
+  const [categoryFilter, setCategoryFilter] = useState(()=>typeof window==="undefined"?"all":new URLSearchParams(window.location.search).get("categoryId")??"all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [confidenceFilter,setConfidenceFilter]=useState("all");
+  const [confidenceFilter,setConfidenceFilter]=useState(()=>typeof window==="undefined"?"all":new URLSearchParams(window.location.search).get("confidence")??"all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [error, setError] = useState("");
   const [localBusy, setLocalBusy] = useState(false);
@@ -71,14 +72,16 @@ export default function TransactionsPage() {
       if (Array.isArray(cats)) setCategories(cats);
     });
   }, []);
+  const accountOptions = useMemo(() => [...new Map(rows.map((row) => [row.accountId, row.accountName])).entries()].map(([id, name]) => ({ id, name })).sort((a,b)=>a.name.localeCompare(b.name,"de")), [rows]);
+  const accountRows = useMemo(() => rows.filter((row) => accountFilter === "all" || row.accountId === accountFilter), [rows, accountFilter]);
   const unassignedCount = useMemo(
-    () => rows.filter(isUnassigned).length,
-    [rows],
+    () => accountRows.filter(isUnassigned).length,
+    [accountRows],
   );
-  const sampleIds=useMemo(()=>{const safe=rows.filter(row=>confidenceBand(row)==="very-safe");const sampled=safe.filter(row=>{let hash=0;for(const char of row.id)hash=(hash*31+char.charCodeAt(0))|0;return Math.abs(hash)%20===0}).slice(0,10);if(!sampled.length&&safe.length)sampled.push(safe[0]);return new Set(sampled.map(row=>row.id))},[rows]);
+  const sampleIds=useMemo(()=>{const safe=accountRows.filter(row=>confidenceBand(row)==="very-safe");const sampled=safe.filter(row=>{let hash=0;for(const char of row.id)hash=(hash*31+char.charCodeAt(0))|0;return Math.abs(hash)%20===0}).slice(0,10);if(!sampled.length&&safe.length)sampled.push(safe[0]);return new Set(sampled.map(row=>row.id))},[accountRows]);
   const visible = useMemo(() => {
     const q = query.toLocaleLowerCase("de-DE");
-    return rows.filter(
+    return accountRows.filter(
       (r) =>
         (!q ||
           `${r.counterparty} ${r.purpose} ${r.categoryName} ${r.note} ${r.tags.join(" ")}`
@@ -91,7 +94,7 @@ export default function TransactionsPage() {
         (typeFilter === "all" || r.specialType === typeFilter) &&
         (confidenceFilter === "all" || (confidenceFilter === "review" ? ["likely","check"].includes(confidenceBand(r)) : confidenceFilter==="sample"?sampleIds.has(r.id):confidenceBand(r) === confidenceFilter)),
     );
-  }, [rows, query, categoryFilter, typeFilter,confidenceFilter,sampleIds]);
+  }, [accountRows, query, categoryFilter, typeFilter,confidenceFilter,sampleIds]);
   async function patch(body: Record<string, unknown>) {
     const response = await fetch("/api/transactions", {
       method: "PATCH",
@@ -117,7 +120,7 @@ export default function TransactionsPage() {
     setLocalMessage("");
     setError("");
     try {
-      const response = await fetch("/api/categorization/local", { method: "POST" });
+      const response = await fetch("/api/categorization/local", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(accountFilter === "all" ? {} : { accountId: accountFilter }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Automatische Erkennung konnte nicht ausgeführt werden.");
       if (result.applied > 0) {
@@ -177,7 +180,7 @@ export default function TransactionsPage() {
           {localMessage}
         </div>
       )}
-      <AiCategorizationPanel onApplied={refreshTransactions} />
+      <AiCategorizationPanel onApplied={refreshTransactions} accountId={accountFilter === "all" ? undefined : accountFilter} />
       <section className="card overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-[var(--border)] p-4 sm:flex-row">
           <label className="flex min-h-11 flex-1 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3">
@@ -205,11 +208,18 @@ export default function TransactionsPage() {
             aria-expanded={filtersOpen}
           >
             <Filter size={17} /> Filter
-            {categoryFilter !== "all" || typeFilter !== "all" || confidenceFilter!=="all" ? " · aktiv" : ""}
+            {accountFilter !== "all" || categoryFilter !== "all" || typeFilter !== "all" || confidenceFilter!=="all" ? " · aktiv" : ""}
           </button>
         </div>
         {filtersOpen && (
-          <div className="grid gap-3 border-b border-[var(--border)] bg-[var(--surface-soft)] p-4 sm:grid-cols-3">
+          <div className="grid gap-3 border-b border-[var(--border)] bg-[var(--surface-soft)] p-4 sm:grid-cols-2 xl:grid-cols-4">
+            <label className="text-sm font-semibold">
+              Konto
+              <select value={accountFilter} onChange={(event)=>setAccountFilter(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3">
+                <option value="all">Alle sichtbaren Konten</option>
+                {accountOptions.map((account)=><option key={account.id} value={account.id}>{account.name}</option>)}
+              </select>
+            </label>
             <label className="text-sm font-semibold">
               Kategorie
               <select

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays, ChevronRight } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { PieLabelRenderProps } from "recharts";
 import {AiInsightsCard} from "@/components/ai-insights-card";
@@ -65,7 +65,7 @@ export function AnalysisDashboard() {
     {loadError&&<div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{loadError}</div>}
     {loading&&<div className="card p-5 text-sm muted">Analysedaten werden geladen …</div>}
     {!loading&&historyMonths>0&&historyMonths<3&&<div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Der Durchschnitt basiert erst auf {historyMonths} vollständigen {historyMonths===1?"Monat":"Monaten"}. Mit weiteren Importen wird der Vergleich belastbarer.</div>}
-    {!loading&&categories.length===0&&<div className="card p-6"><h2 className="font-bold">Noch keine Ausgaben vorhanden</h2><p className="mt-2 text-sm muted">Lege unter „Konten“ ein Konto an und importiere anschließend in den Einstellungen deinen ersten Kontoauszug.</p></div>}
+    {!loading&&categories.length===0&&<div className="card p-6"><h2 className="font-bold">Noch keine Ausgaben für diese Auswahl</h2><p className="mt-2 text-sm muted">Lege bei Bedarf zuerst ein Konto an und importiere danach den passenden Kontoauszug. Bereits vorhandene Konten kannst du oben auswählen.</p><div className="mt-4 flex flex-wrap gap-2"><Link href="/konten" className="btn-secondary">Konten verwalten</Link><Link href="/einstellungen/import" className="btn-primary">Kontoauszug importieren</Link></div></div>}
     <section id="analyse" aria-label="Monatskennzahlen" className="grid scroll-mt-6 gap-4 md:grid-cols-3">
       <article className="card p-5"><div className="text-sm font-semibold muted">Letzter Monat</div><div className="mt-2 text-3xl font-bold tracking-tight">{eur.format(lastTotal)}</div>{totalDeltaPercent===null?<div className="mt-3 text-sm muted">Noch kein historischer Vergleichswert</div>:<div className={`mt-3 flex items-center gap-1 text-sm font-semibold ${delta > 0 ? "text-[var(--danger)]" : "text-[var(--primary)]"}`}>{delta > 0 ? <ArrowUpRight size={17}/> : <ArrowDownRight size={17}/>} {eur.format(Math.abs(delta))} · {totalDeltaPercent.toFixed(1)} % zum Ø</div>}</article>
       <article className="card p-5"><div className="text-sm font-semibold muted">12-Monats-Durchschnitt</div><div className="mt-2 text-3xl font-bold tracking-tight">{eur.format(averageTotal)}</div><div className="mt-3 text-sm muted">Grundlage: {historyMonths} vollständige {historyMonths===1?"Monat":"Monate"}</div></article>
@@ -77,10 +77,10 @@ export function AnalysisDashboard() {
         <div className="mb-5 flex items-start justify-between"><div><h2 className="text-lg font-bold">Top 5 Kategorien</h2><p className="mt-1 text-sm muted">{formatMonth(lastMonth)||"Letzter Monat"} gegenüber dem Durchschnitt</p></div><Link href="/umsaetze" className="btn-secondary !min-h-9 !px-3 text-sm">Alle anzeigen <ArrowRight size={15}/></Link></div>
         <div className="space-y-1">
           {topCategories.map((item) => { const pct = item.average > 0 ? (item.last-item.average)/item.average*100 : null; return (
-            <button key={item.name} className="grid w-full grid-cols-[1fr_auto] items-center gap-4 rounded-xl border-0 bg-transparent px-2 py-3 text-left hover:bg-[var(--surface-soft)] sm:grid-cols-[1fr_110px_150px_auto]">
+            <div key={item.name} className="grid w-full grid-cols-[1fr_auto] items-center gap-4 rounded-xl px-2 py-3 text-left sm:grid-cols-[1fr_110px_150px]">
               <span className="flex items-center gap-3 font-semibold"><span className="h-3 w-3 rounded-full" style={{background:item.color}} />{item.name}</span>
-              <span className="font-bold">{eur.format(item.last)}</span><span className={`hidden text-right text-sm font-semibold sm:block ${pct!==null&&pct>0 ? "text-[var(--danger)]" : "text-[var(--primary)]"}`}>{item.last-item.average>0?"+":""}{eur.format(item.last-item.average)} · {pct===null?"kein Vergleich":`${pct>0?"+":""}${pct.toFixed(0)} %`}</span><ChevronRight size={18} className="muted" />
-            </button>
+              <span className="font-bold">{eur.format(item.last)}</span><span className={`hidden text-right text-sm font-semibold sm:block ${pct!==null&&pct>0 ? "text-[var(--danger)]" : "text-[var(--primary)]"}`}>{item.last-item.average>0?"+":""}{eur.format(item.last-item.average)} · {pct===null?"kein Vergleich":`${pct>0?"+":""}${pct.toFixed(0)} %`}</span>
+            </div>
           ); })}
         </div>
       </article>

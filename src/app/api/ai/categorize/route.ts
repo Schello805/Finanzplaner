@@ -45,11 +45,14 @@ async function settings() {
     );
   }
 }
-async function pending(userId: string, ids?: string[]) {
+async function pending(userId: string, ids?: string[], requestedAccountId?: string | null) {
   const { member, accountIds } = await memberAndVisibleAccountIds(userId);
   if (!accountIds.length) return { member, rows: [], total: 0 };
+  if (requestedAccountId && !accountIds.includes(requestedAccountId))
+    throw new Error("Das ausgewählte Konto ist nicht sichtbar.");
+  const scopedAccountIds = requestedAccountId ? [requestedAccountId] : accountIds;
   const baseFilters = [
-    inArray(transactions.accountId, accountIds),
+    inArray(transactions.accountId, scopedAccountIds),
     eq(transactions.excludedFromAnalysis,false),
     sql`${transactions.amount} <> 0`,
     sql`not (${transactions.counterparty} is null and ${transactions.bookingType} ilike 'SONSTIGER EINZUG' and ${transactions.purpose} ilike 'MO %')`,
@@ -106,7 +109,7 @@ export async function GET(request: NextRequest) {
       request.nextUrl.searchParams.get("privacyMode") === "full_text"
         ? "full_text"
         : "minimal";
-    const { rows, total } = await pending(user.userId);
+    const { rows, total } = await pending(user.userId, undefined, request.nextUrl.searchParams.get("accountId"));
     if (!rows.length) return NextResponse.json({ count: 0, transactions: [] });
     let ai: Awaited<ReturnType<typeof settings>>;
     try {
