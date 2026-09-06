@@ -37,7 +37,7 @@ HTTP verschlüsselt Passwörter und Finanzdaten nicht. Der vorgesehene Betrieb s
 1. Auf der Analyseseite „Neuen Kontoauszug auswerten“ wählen und die aktuelle Bank-CSV importieren.
 2. Die Vorschau prüft Dubletten, Vormerkungen und im neuen Export fehlende Buchungen. Löschungen erfolgen ausschließlich nach Auswahl und Rückfrage.
 3. Bereits bestätigte Händler sowie eindeutige Begriffe werden lokal und ohne API-Kosten zugeordnet. Nur der verbleibende Rest wird optional an die KI übergeben.
-4. KI-Vorschläge einzeln oder gesammelt prüfen. Die vorgeschlagene Kategorie kann vor der Bestätigung geändert werden; erst eine persönliche Vertrauenseinstellung erlaubt die automatische Übernahme sicherer Treffer.
+4. KI-Vorschläge einzeln oder gesammelt prüfen. Die vorgeschlagene Kategorie kann vor der Bestätigung geändert oder mit „Später prüfen“ dauerhaft zurückgestellt werden; erst eine persönliche Vertrauenseinstellung erlaubt die automatische Übernahme sicherer Treffer.
 5. Optional Amazons `Order History.csv` importieren. Lokale Artikelvorschläge bestätigen und Sammelbestellungen anschließend mit der passenden Bankbuchung abstimmen.
 6. Zur Analyseseite zurückkehren. Sie vergleicht den letzten vollständigen Monat mit bis zu zwölf Vormonaten und zeigt den aktuellen Monat als Anteil des üblichen Monatswerts. Eine spekulative Hochrechnung wird bewusst nicht angezeigt.
 

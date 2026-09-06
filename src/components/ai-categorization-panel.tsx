@@ -3,11 +3,12 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ShieldCheck, Sparkles } from "lucide-react";
+import { ChevronDown, Clock3, ShieldCheck, Sparkles } from "lucide-react";
 import { CategorySelectOptions, type SelectCategory } from "@/components/category-select-options";
 type Mode = "minimal" | "full_text";
 type Preview = {
   count: number;
+  deferredCount: number;
   batchSize: number;
   provider: "openai" | "gemini";
   model: string;
@@ -51,6 +52,7 @@ export function AiCategorizationPanel({
   const [categoryProposals, setCategoryProposals] = useState<CategoryProposal[]>([]);
   const [categories, setCategories] = useState<SelectCategory[]>([]);
   const [mode, setMode] = useState<Mode>("minimal");
+  const [analyzedTransactions, setAnalyzedTransactions] = useState<Preview["transactions"]>([]);
   async function requestPreview(nextMode: Mode, preserveMessage = false) {
     const params = new URLSearchParams({ privacyMode: nextMode });
     if (accountId) params.set("accountId", accountId);
@@ -95,6 +97,7 @@ export function AiCategorizationPanel({
       );
       setSuggestions(body.suggestions);
       setCategoryProposals(body.categoryProposals);
+      setAnalyzedTransactions(current.transactions);
       await requestPreview(currentMode, true);
       onApplied();
     } catch {
@@ -151,6 +154,29 @@ export function AiCategorizationPanel({
       onApplied();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Kategorie konnte nicht angelegt werden.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function deferTransactions(ids: string[]) {
+    setBusy(true);
+    setMessage("");
+    try {
+      for (const id of ids) {
+        const response = await fetch("/api/transactions", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, deferAiReview: true }),
+        });
+        if (!response.ok) throw new Error((await response.json()).error);
+      }
+      setSuggestions((current) => current.filter((item) => !ids.includes(item.id)));
+      setCategoryProposals((current) => current.filter((item) => !item.transactionIds.some((id) => ids.includes(id))));
+      setMessage(`${ids.length} ${ids.length === 1 ? "Umsatz wurde" : "Umsätze wurden"} für die spätere Prüfung zurückgestellt.`);
+      await requestPreview(mode, true);
+      onApplied();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Der Umsatz konnte nicht zurückgestellt werden.");
     } finally {
       setBusy(false);
     }
@@ -339,6 +365,11 @@ export function AiCategorizationPanel({
             </div>
           )}
         </>
+      ) : preview?.deferredCount ? (
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div><h2 className="font-bold">{preview.deferredCount} {preview.deferredCount === 1 ? "Umsatz wartet" : "Umsätze warten"} auf deine spätere Prüfung</h2><p className="mt-1 text-sm muted">Zurückgestellte Umsätze werden nicht erneut an die KI gesendet.</p></div>
+          <a href="/umsaetze?confidence=deferred" className="btn-secondary shrink-0">Zur Prüfliste</a>
+        </div>
       ) : preview ? (
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div><h2 className="font-bold">Alle Umsätze sind zugeordnet</h2><p className="mt-1 text-sm muted">Die Kategorieprüfung ist abgeschlossen. Als Nächstes kannst du die Monatsanalyse ansehen.</p></div>
@@ -351,6 +382,7 @@ export function AiCategorizationPanel({
           className="mt-4 rounded-xl bg-[var(--surface-soft)] p-4 text-sm"
         >
           {message}
+          {message.includes("zurückgestellt") && <span className="mt-3 block"><a href="/umsaetze?confidence=deferred" className="font-semibold text-[var(--primary)]">Zur Liste „Später prüfen“</a></span>}
           {(message.includes("eingerichtet") || message.includes("Adminbereich")) && (
             <span className="mt-3 block">
               Ein Administrator kann den Anbieter unter{" "}
@@ -378,7 +410,7 @@ export function AiCategorizationPanel({
             </p>
           </div>
           {suggestions.map((suggestion) => {
-            const transaction = preview?.transactions.find(
+            const transaction = analyzedTransactions.find(
               (item) => item.id === suggestion.id,
             );
             return (
@@ -405,14 +437,10 @@ export function AiCategorizationPanel({
                   {transaction && <div className="mt-2 text-xs muted">{transaction.date} · {transaction.amount.toLocaleString("de-DE", { style: "currency", currency: transaction.currency })} · {transaction.purpose}</div>}
                   <div className="mt-1 text-xs muted">{suggestion.reason}</div>
                 </div>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => acceptSuggestion(suggestion)}
-                  className="btn-secondary shrink-0"
-                >
-                  Übernehmen
-                </button>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <button type="button" disabled={busy} onClick={() => deferTransactions([suggestion.id])} className="btn-secondary"><Clock3 size={16}/> Später prüfen</button>
+                  <button type="button" disabled={busy} onClick={() => acceptSuggestion(suggestion)} className="btn-secondary">Übernehmen</button>
+                </div>
               </article>
             );
           })}
@@ -431,9 +459,10 @@ export function AiCategorizationPanel({
                 <div className="mt-1 text-sm">{proposal.isIncome ? "Einnahme" : "Ausgabe"} · für {proposal.transactionIds.length} {proposal.transactionIds.length === 1 ? "Umsatz" : "Umsätze"} · {(proposal.confidence * 100).toFixed(0)} % Sicherheit</div>
                 <div className="mt-1 text-xs muted">{proposal.reason}</div>
               </div>
-              <button type="button" disabled={busy} onClick={() => createCategory(proposal)} className="btn-secondary shrink-0">
-                Kategorie anlegen & zuordnen
-              </button>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <button type="button" disabled={busy} onClick={() => deferTransactions(proposal.transactionIds)} className="btn-secondary"><Clock3 size={16}/> Später prüfen</button>
+                <button type="button" disabled={busy} onClick={() => createCategory(proposal)} className="btn-secondary">Kategorie anlegen & zuordnen</button>
+              </div>
             </article>
           ))}
         </div>

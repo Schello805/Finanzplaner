@@ -66,6 +66,7 @@ export async function learnMerchantRule(input: {
       and(
         eq(transactions.accountId,input.sourceAccountId),
         eq(transactions.excludedFromAnalysis,false),
+        isNull(transactions.aiReviewDeferredAt),
         ...(input.applyExisting === "all" ? [] : [isNull(transactions.categoryId)]),
         notExists(db.select({ id: transactionSplits.transactionId }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))),
         eq(transactions.counterpartyNormalized, value),
@@ -135,6 +136,7 @@ export async function applyMerchantRules(input: {
         and(
           eq(transactions.accountId,accountId),
           eq(transactions.excludedFromAnalysis,false),
+          isNull(transactions.aiReviewDeferredAt),
           isNull(transactions.categoryId),
           notExists(db.select({ id: transactionSplits.transactionId }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))),
           eq(transactions.counterpartyNormalized, merchant),
@@ -145,7 +147,7 @@ export async function applyMerchantRules(input: {
   }
   const [availableCategories, remaining] = await Promise.all([
     db.select({ id: categories.id, name: categories.name, isIncome: categories.isIncome }).from(categories).where(eq(categories.householdId, input.householdId)),
-    db.select({ id: transactions.id, merchant: transactions.counterparty, purpose: transactions.purpose, amount: transactions.amount }).from(transactions).where(and(inArray(transactions.accountId, input.visibleAccountIds),eq(transactions.excludedFromAnalysis,false), isNull(transactions.categoryId), notExists(db.select({ id: transactionSplits.transactionId }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))))),
+    db.select({ id: transactions.id, merchant: transactions.counterparty, purpose: transactions.purpose, amount: transactions.amount }).from(transactions).where(and(inArray(transactions.accountId, input.visibleAccountIds),eq(transactions.excludedFromAnalysis,false), isNull(transactions.aiReviewDeferredAt), isNull(transactions.categoryId), notExists(db.select({ id: transactionSplits.transactionId }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))))),
   ]);
   let keywordApplied = 0;
   for (const row of remaining) {

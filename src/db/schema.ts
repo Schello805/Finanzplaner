@@ -178,6 +178,7 @@ export const transactions = pgTable("transactions", {
   duplicateOfId: uuid("duplicate_of_id"),
   categorizationConfidence: numeric("categorization_confidence", { precision: 4, scale: 3 }),
   categorizedBy: text("categorized_by"),
+  aiReviewDeferredAt: timestamp("ai_review_deferred_at", { withTimezone: true }),
   originalDataEncrypted: text("original_data_encrypted").notNull(),
   ...timestamps,
 }, (t) => [uniqueIndex("transactions_account_fingerprint_unique").on(t.accountId, t.fingerprint)]);

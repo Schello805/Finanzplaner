@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, count, eq, inArray, isNull, notExists, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, isNull, notExists, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { aiUsage, categories, systemSettings, transactions, transactionSplits, userPreferences } from "@/db/schema";
@@ -47,7 +47,7 @@ async function settings() {
 }
 async function pending(userId: string, ids?: string[], requestedAccountId?: string | null) {
   const { member, accountIds } = await memberAndVisibleAccountIds(userId);
-  if (!accountIds.length) return { member, rows: [], total: 0 };
+  if (!accountIds.length) return { member, rows: [], total: 0, deferred: 0 };
   if (requestedAccountId && !accountIds.includes(requestedAccountId))
     throw new Error("Das ausgewählte Konto ist nicht sichtbar.");
   const scopedAccountIds = requestedAccountId ? [requestedAccountId] : accountIds;
@@ -57,6 +57,7 @@ async function pending(userId: string, ids?: string[], requestedAccountId?: stri
     sql`${transactions.amount} <> 0`,
     sql`not (${transactions.counterparty} is null and ${transactions.bookingType} ilike 'SONSTIGER EINZUG' and ${transactions.purpose} ilike 'MO %')`,
     isNull(transactions.categoryId),
+    isNull(transactions.aiReviewDeferredAt),
     notExists(
       db
         .select({ id: transactionSplits.transactionId })
@@ -68,6 +69,16 @@ async function pending(userId: string, ids?: string[], requestedAccountId?: stri
     .select({ value: count() })
     .from(transactions)
     .where(and(...baseFilters));
+  const [{ value: deferred }] = await db
+    .select({ value: count() })
+    .from(transactions)
+    .where(and(
+      inArray(transactions.accountId, scopedAccountIds),
+      eq(transactions.excludedFromAnalysis, false),
+      sql`${transactions.amount} <> 0`,
+      isNull(transactions.categoryId),
+      isNotNull(transactions.aiReviewDeferredAt),
+    ));
   const filters = [...baseFilters];
   if (ids) filters.push(inArray(transactions.id, ids));
   const rows = await db
@@ -87,6 +98,7 @@ async function pending(userId: string, ids?: string[], requestedAccountId?: stri
   return {
     member,
     total,
+    deferred,
     rows: rows.map(
       (r) =>
         ({
@@ -109,8 +121,8 @@ export async function GET(request: NextRequest) {
       request.nextUrl.searchParams.get("privacyMode") === "full_text"
         ? "full_text"
         : "minimal";
-    const { rows, total } = await pending(user.userId, undefined, request.nextUrl.searchParams.get("accountId"));
-    if (!rows.length) return NextResponse.json({ count: 0, transactions: [] });
+    const { rows, total, deferred } = await pending(user.userId, undefined, request.nextUrl.searchParams.get("accountId"));
+    if (!rows.length) return NextResponse.json({ count: 0, deferredCount: deferred, transactions: [] });
     let ai: Awaited<ReturnType<typeof settings>>;
     try {
       ai = await settings();
@@ -130,6 +142,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       available: true,
       count: total,
+      deferredCount: deferred,
       batchSize: rows.length,
       provider: ai.provider,
       model: ai.config.model,
@@ -217,6 +230,7 @@ export async function POST(request: Request) {
             categoryId,
             categorizationConfidence: item.confidence.toFixed(3),
             categorizedBy: `ai:${ai.provider}`,
+            aiReviewDeferredAt: null,
             counterpartyNormalized: normalizeMerchant(source?.merchant),
             updatedAt: new Date(),
           })

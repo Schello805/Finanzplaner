@@ -4,6 +4,8 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Einzelne Ergebnisse eines KI-Stapels lassen sich mit „Später prüfen“ zurückstellen. Sie werden nicht im nächsten 25er-Stapel erneut gesendet, sind über einen eigenen Umsatzfilter auffindbar und können dort wieder für die KI freigegeben werden.
+
 - Wiederkehrende Kosten sind in „Abonnements“ und „Regelmäßige Zahlungen“ getrennt. Die App sortiert bestehende Treffer vor, erlaubt jederzeit die manuelle Verschiebung und zeigt für Abos geschätzte Jahreskosten.
 
 - Reale Transaktionsfragmente wurden in Tests durch vollständig synthetische Werte ersetzt. Zusätzliche Git-Ausschlussregeln schützen lokale Umgebungsdateien, Archive, Datenbankabbilder und Sicherungsdateien vor versehentlichem Einchecken.

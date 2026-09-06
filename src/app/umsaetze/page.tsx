@@ -24,6 +24,7 @@ type Row = {
   linkedTransactionId: string | null;
   categorizationConfidence: string | null;
   categorizedBy: string | null;
+  aiReviewDeferredAt: string | null;
   splits: Array<{ categoryId: string; amount: string; note?: string | null }>;
 };
 type Category = { id: string; name: string; parentId: string | null; isIncome: boolean };
@@ -31,6 +32,7 @@ function isUnassigned(row: Row) {
   return !row.categoryId && row.splits.length === 0;
 }
 function confidenceBand(row:Row){
+  if(row.aiReviewDeferredAt)return "deferred";
   if(!row.categoryId)return "unassigned";
   if(row.categorizedBy==="manual")return "manual";
   const confidence=Number(row.categorizationConfidence??0);
@@ -249,6 +251,7 @@ export default function TransactionsPage() {
               <select value={confidenceFilter} onChange={(event)=>setConfidenceFilter(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3">
                 <option value="all">Alle Sicherheitsstufen</option>
                 <option value="review">Noch prüfen (wahrscheinlich + unsicher)</option>
+                <option value="deferred">Für später zurückgestellt</option>
                 <option value="likely">Wahrscheinlich</option>
                 <option value="check">Bitte prüfen</option>
                 <option value="very-safe">Sehr sicher</option>
@@ -318,6 +321,7 @@ export default function TransactionsPage() {
                       </select>
                     )}
                     {row.categoryId&&<div className="mt-1 flex items-center gap-2"><span className={`text-xs font-semibold ${Number(row.categorizationConfidence??1)>=.9?"text-emerald-700":Number(row.categorizationConfidence??0)>=.7?"text-amber-700":"text-red-700"}`}>{row.categorizedBy==="manual"?"Manuell bestätigt":Number(row.categorizationConfidence??0)>=.9?"Sehr sicher":Number(row.categorizationConfidence??0)>=.7?"Wahrscheinlich":"Bitte prüfen"}</span>{row.categorizedBy!=="manual"&&<button type="button" onClick={()=>confirmSuggestion(row)} className="text-xs font-semibold text-[var(--primary)] underline decoration-dotted underline-offset-2">Bestätigen</button>}</div>}
+                    {row.aiReviewDeferredAt&&<div className="mt-1 flex items-center gap-2"><span className="text-xs font-semibold text-amber-700">Später prüfen</span><button type="button" onClick={()=>patch({id:row.id,deferAiReview:false})} className="text-xs font-semibold text-[var(--primary)] underline decoration-dotted underline-offset-2">Wieder für KI freigeben</button></div>}
                   </td>
                   <td
                     className={`px-5 py-4 text-right font-bold ${Number(row.amount) > 0 ? "text-[var(--primary)]" : ""}`}

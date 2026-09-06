@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
         linkedTransactionId: transactions.linkedTransactionId,
         categorizationConfidence: transactions.categorizationConfidence,
         categorizedBy: transactions.categorizedBy,
+        aiReviewDeferredAt: transactions.aiReviewDeferredAt,
       })
       .from(transactions)
       .innerJoin(accounts, eq(transactions.accountId, accounts.id))
@@ -115,6 +116,7 @@ const patchSchema = z.object({
   linkedTransactionId: z.string().uuid().nullable().optional(),
   splits: z.array(splitSchema).min(2).max(20).optional(),
   ruleMode: z.enum(["none", "future", "all"]).optional(),
+  deferAiReview: z.boolean().optional(),
 });
 export async function PATCH(request: Request) {
   try {
@@ -194,6 +196,12 @@ export async function PATCH(request: Request) {
             body.categoryId !== undefined || body.splits ? "manual" : undefined,
           categorizationConfidence:
             body.categoryId !== undefined || body.splits ? "1.000" : undefined,
+          aiReviewDeferredAt:
+            body.deferAiReview === true
+              ? new Date()
+              : body.deferAiReview === false || body.categoryId !== undefined || body.splits
+                ? null
+                : undefined,
         })
         .where(eq(transactions.id, body.id));
       if(body.specialType==="transfer"&&body.linkedTransactionId)await tx.update(transactions).set({specialType:"transfer",excludedFromAnalysis:true,linkedTransactionId:body.id,isTransfer:true,transferPeerId:body.id,updatedAt:new Date()}).where(eq(transactions.id,body.linkedTransactionId));
@@ -228,7 +236,7 @@ export async function PATCH(request: Request) {
           applyExisting: body.ruleMode === "all" ? "all" : "none",
         })
       : { learned: false, applied: 0 };
-    await writeAudit("transaction-updated","Ein Umsatz wurde bearbeitet.",{userId:user.userId,metadata:{transactionId:body.id,accountId:row.accountId,categoryChanged:body.categoryId!==undefined,splitChanged:Boolean(body.splits),specialType:body.specialType,linkedTransactionId:body.linkedTransactionId,ruleMode:body.ruleMode}});
+    await writeAudit("transaction-updated","Ein Umsatz wurde bearbeitet.",{userId:user.userId,metadata:{transactionId:body.id,accountId:row.accountId,categoryChanged:body.categoryId!==undefined,splitChanged:Boolean(body.splits),specialType:body.specialType,linkedTransactionId:body.linkedTransactionId,ruleMode:body.ruleMode,deferAiReview:body.deferAiReview}});
     return NextResponse.json({ ok: true, ruleLearned: learned.learned, additionallyApplied: learned.applied });
   } catch (error) {
     return NextResponse.json(

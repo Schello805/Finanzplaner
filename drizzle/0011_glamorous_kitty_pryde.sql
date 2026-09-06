@@ -1,0 +1,1 @@
+ALTER TABLE "transactions" ADD COLUMN "ai_review_deferred_at" timestamp with time zone;
