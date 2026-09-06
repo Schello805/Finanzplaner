@@ -12,5 +12,9 @@ export function detectRecurring(inputs:RecurringInput[]):RecurringCandidate[]{
   return candidates.sort((a,b)=>b.confidence-a.confidence);
 }
 export const normalizeRecurringMerchant=(v:string)=>v.toLocaleLowerCase("de-DE").replace(/\b(gmbh|ag|kg)\b/g,"").replace(/[^a-z0-9äöüß]/g,"");
+export function classifyRecurringPayment(merchant:string,categoryName?:string|null):"subscription"|"regular"{
+  const value=`${merchant} ${categoryName??""}`.toLocaleLowerCase("de-DE");
+  return /\b(abo|abonnement|streaming|software|cloud|hosting|mitgliedschaft|fitness|telefon|internet|mobilfunk|app[s ]|gaming)\b|netflix|spotify|disney|dazn|audible|prime|adobe|microsoft|openai|apple\.com\/bill|google\s*play/.test(value)?"subscription":"regular";
+}
 const median=(a:number[])=>{const s=[...a].sort((x,y)=>x-y);return s[Math.floor(s.length/2)]};
 const round=(n:number)=>Math.round(n*100)/100;

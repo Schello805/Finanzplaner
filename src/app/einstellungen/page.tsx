@@ -8,7 +8,7 @@ const settings = [
   { icon:Bot, title:"KI & Datenschutz", detail:"Einwilligungen, Übertragungsmodus und Kostennutzung", href:"/einstellungen/ki" },
   { icon:Tags, title:"Kategorien", detail:"Ausgaben, Einnahmen und Unterkategorien verwalten", href:"/einstellungen/kategorien" },
   { icon:WandSparkles, title:"Gelernte Regeln", detail:"Automatische Händlerzuordnungen korrigieren oder pausieren", href:"/einstellungen/regeln" },
-  { icon:Repeat2, title:"Wiederkehrende Kosten", detail:"Abos, regelmäßige Zahlungen und Preisänderungen erkennen", href:"/einstellungen/wiederkehrend" },
+  { icon:Repeat2, title:"Abos & regelmäßige Kosten", detail:"Kündbare Abonnements, Fixkosten und Preisänderungen prüfen", href:"/einstellungen/wiederkehrend" },
   { icon:Activity, title:"Datenqualität", detail:"Importstand, Zeiträume und offene Aufgaben je Konto prüfen", href:"/einstellungen/datenqualitaet" },
   { icon:UserRound, title:"Profil & Reset-E-Mail", detail:"Kontaktadresse für den Passwort-Reset verwalten", href:"/einstellungen/profil" },
   { icon:Lock, title:"Sicherheit", detail:"Passwort und optionale Zwei-Faktor-Anmeldung", href:"/einstellungen/sicherheit" },

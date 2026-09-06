@@ -1,4 +1,5 @@
 import {describe,expect,it} from "vitest";
-import {detectRecurring} from "./recurring";
+import {classifyRecurringPayment,detectRecurring} from "./recurring";
 describe("wiederkehrende Zahlungen",()=>{it("erkennt monatliche Zahlungen und Preisänderungen",()=>{const result=detectRecurring([{id:"1",bookedOn:"2026-06-01",amount:-10,merchant:"Video GmbH"},{id:"2",bookedOn:"2026-07-01",amount:-10,merchant:"Video GmbH"},{id:"3",bookedOn:"2026-08-01",amount:-12,merchant:"Video GmbH"}]);expect(result[0].cadenceDays).toBe(31);expect(result[0].priceChangePercent).toBe(20)})});
 it("entfernt Rechtsformen nur als eigenes Wort",()=>{const result=detectRecurring([{id:"1",bookedOn:"2026-06-01",amount:-10,merchant:"Wagenwerk"},{id:"2",bookedOn:"2026-07-01",amount:-10,merchant:"Wagenwerk"},{id:"3",bookedOn:"2026-08-01",amount:-10,merchant:"Wagenwerk"}]);expect(result[0].merchant).toBe("Wagenwerk")});
+it("trennt Abonnements von anderen regelmäßigen Zahlungen",()=>{expect(classifyRecurringPayment("Netflix","Freizeit")).toBe("subscription");expect(classifyRecurringPayment("Telekommunikationsanbieter","Telefon & Internet")).toBe("subscription");expect(classifyRecurringPayment("Vermieter","Wohnen")).toBe("regular");expect(classifyRecurringPayment("Versicherung","Versicherungen")).toBe("regular")});

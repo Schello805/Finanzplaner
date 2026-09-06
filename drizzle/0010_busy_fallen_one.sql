@@ -1,0 +1,1 @@
+ALTER TABLE "recurring_transactions" ADD COLUMN "kind" text DEFAULT 'regular' NOT NULL;

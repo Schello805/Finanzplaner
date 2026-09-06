@@ -250,6 +250,7 @@ export const recurringTransactions = pgTable("recurring_transactions", {
   merchantPattern: text("merchant_pattern").notNull(),
   cadenceDays: integer("cadence_days").notNull(),
   expectedAmount: numeric("expected_amount", { precision: 14, scale: 2 }).notNull(),
+  kind: text("kind").$type<"subscription" | "regular">().default("regular").notNull(),
   status: recurrenceStatus("status").default("suggested").notNull(),
   lastSeenOn: date("last_seen_on").notNull(),
   ...timestamps,

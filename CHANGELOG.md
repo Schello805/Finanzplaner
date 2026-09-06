@@ -4,6 +4,8 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Wiederkehrende Kosten sind in „Abonnements“ und „Regelmäßige Zahlungen“ getrennt. Die App sortiert bestehende Treffer vor, erlaubt jederzeit die manuelle Verschiebung und zeigt für Abos geschätzte Jahreskosten.
+
 - Reale Transaktionsfragmente wurden in Tests durch vollständig synthetische Werte ersetzt. Zusätzliche Git-Ausschlussregeln schützen lokale Umgebungsdateien, Archive, Datenbankabbilder und Sicherungsdateien vor versehentlichem Einchecken.
 
 - Der Ubuntu-Installer führt jetzt verständlich durch Subnetz, Port, Admin-E-Mail und Anzeigename, erklärt die Firewall-Einschränkung und zeigt vor dem Start eine Zusammenfassung.
