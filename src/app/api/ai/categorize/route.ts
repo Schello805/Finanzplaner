@@ -50,6 +50,7 @@ async function pending(userId: string, ids?: string[]) {
   if (!accountIds.length) return { member, rows: [], total: 0 };
   const baseFilters = [
     inArray(transactions.accountId, accountIds),
+    eq(transactions.excludedFromAnalysis,false),
     sql`${transactions.amount} <> 0`,
     sql`not (${transactions.counterparty} is null and ${transactions.bookingType} ilike 'SONSTIGER EINZUG' and ${transactions.purpose} ilike 'MO %')`,
     isNull(transactions.categoryId),
@@ -69,6 +70,7 @@ async function pending(userId: string, ids?: string[]) {
   const rows = await db
     .select({
       id: transactions.id,
+      accountId:transactions.accountId,
       date: transactions.bookedOn,
       amount: transactions.amount,
       currency: transactions.currency,
@@ -86,13 +88,14 @@ async function pending(userId: string, ids?: string[]) {
       (r) =>
         ({
           id: r.id,
+          accountId:r.accountId,
           date: r.date,
           amount: Number(r.amount),
           currency: r.currency,
           bookingType: r.bookingType ?? undefined,
           merchant: r.merchant ?? undefined,
           purpose: r.purpose ?? undefined,
-        }) satisfies AiTransactionInput,
+        }) satisfies AiTransactionInput&{accountId:string},
     ),
   };
 }
@@ -220,7 +223,7 @@ export async function POST(request: Request) {
               inArray(transactions.accountId, visibleAccountIds),
             ),
           );
-        await learnMerchantRule({ householdId: member.householdId, ownerMemberId: member.id, visibleAccountIds, merchant: source?.merchant, categoryId });
+        if(source)await learnMerchantRule({ householdId: member.householdId, ownerMemberId: member.id, visibleAccountIds,sourceAccountId:source.accountId, merchant: source.merchant, categoryId });
         applied++;
       } else suggestions.push({ ...item, categoryId });
     }

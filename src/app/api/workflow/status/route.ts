@@ -11,8 +11,8 @@ export async function GET() {
     const { member, accountIds } = await memberAndVisibleAccountIds(user.userId);
     if (!accountIds.length) return NextResponse.json({ accountCount: 0, transactionCount: 0, uncategorizedCount: 0, amazonOpenCount: 0, lastImportAt: null, aiConfigured: false });
     const [transactionRows, splitRows, lastImportRows, amazonRows, aiDefaultRows] = await Promise.all([
-      db.select({ id: transactions.id, categoryId: transactions.categoryId }).from(transactions).where(and(inArray(transactions.accountId, accountIds), sql`${transactions.amount} <> 0`, sql`not (${transactions.counterparty} is null and ${transactions.bookingType} ilike 'SONSTIGER EINZUG' and ${transactions.purpose} ilike 'MO %')`)),
-      db.select({ transactionId: transactionSplits.transactionId }).from(transactionSplits),
+      db.select({ id: transactions.id, categoryId: transactions.categoryId }).from(transactions).where(and(inArray(transactions.accountId, accountIds),eq(transactions.excludedFromAnalysis,false), sql`${transactions.amount} <> 0`, sql`not (${transactions.counterparty} is null and ${transactions.bookingType} ilike 'SONSTIGER EINZUG' and ${transactions.purpose} ilike 'MO %')`)),
+      db.select({ transactionId: transactionSplits.transactionId }).from(transactionSplits).innerJoin(transactions,eq(transactionSplits.transactionId,transactions.id)).where(inArray(transactions.accountId,accountIds)),
       db.select({ completedAt: imports.completedAt }).from(imports).innerJoin(accounts, eq(imports.accountId, accounts.id)).where(and(inArray(accounts.id, accountIds), eq(imports.status, "completed"))).orderBy(desc(imports.completedAt)).limit(1),
       db.select({ id: amazonOrderItems.id }).from(amazonOrderItems).where(and(eq(amazonOrderItems.ownerMemberId, member.id), isNull(amazonOrderItems.matchedTransactionId))),
       db.select({ valueJson: systemSettings.valueJson }).from(systemSettings).where(eq(systemSettings.key, "ai.default")).limit(1),

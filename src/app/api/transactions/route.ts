@@ -11,6 +11,8 @@ import {
 import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { learnMerchantRule } from "@/features/categorization/merchant-rules";
+import { isBalancedTransfer } from "@/features/analytics/transfers";
+import { writeAudit } from "@/lib/audit";
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUser();
@@ -125,7 +127,9 @@ export async function PATCH(request: Request) {
       .select({
         accountId: transactions.accountId,
         amount: transactions.amount,
+        currency:transactions.currency,
         counterparty: transactions.counterparty,
+        linkedTransactionId:transactions.linkedTransactionId,
       })
       .from(transactions)
       .where(eq(transactions.id, body.id))
@@ -155,12 +159,14 @@ export async function PATCH(request: Request) {
           "Ein Umsatz kann nicht mit sich selbst verknüpft werden.",
         );
       const [linked] = await db
-        .select({ accountId: transactions.accountId })
+        .select({ accountId: transactions.accountId,amount:transactions.amount,currency:transactions.currency,linkedTransactionId:transactions.linkedTransactionId })
         .from(transactions)
         .where(eq(transactions.id, body.linkedTransactionId))
         .limit(1);
       if (!linked || !accountIds.includes(linked.accountId))
         throw new Error("Die verknüpfte Buchung ist nicht sichtbar.");
+      if(body.specialType==="transfer"&&!isBalancedTransfer(row,linked))throw new Error("Eine Umbuchung muss aus centgleichen Gegenbuchungen verschiedener Konten in derselben Währung bestehen.");
+      if(body.specialType==="transfer"&&linked.linkedTransactionId&&linked.linkedTransactionId!==body.id)throw new Error("Die Gegenbuchung ist bereits mit einer anderen Umbuchung verknüpft.");
     }
     if (body.splits) {
       const splitTotalCents = body.splits.reduce((sum, split) => sum + Math.round(split.amount * 100), 0);
@@ -181,6 +187,8 @@ export async function PATCH(request: Request) {
             body.specialType === "transfer" ? true : body.excluded,
           specialType: body.specialType,
           linkedTransactionId: body.linkedTransactionId,
+          isTransfer:body.specialType!==undefined?body.specialType==="transfer":undefined,
+          transferPeerId:body.specialType==="transfer"?body.linkedTransactionId:body.specialType!==undefined?null:undefined,
           updatedAt: new Date(),
           categorizedBy:
             body.categoryId !== undefined || body.splits ? "manual" : undefined,
@@ -188,6 +196,8 @@ export async function PATCH(request: Request) {
             body.categoryId !== undefined || body.splits ? "1.000" : undefined,
         })
         .where(eq(transactions.id, body.id));
+      if(body.specialType==="transfer"&&body.linkedTransactionId)await tx.update(transactions).set({specialType:"transfer",excludedFromAnalysis:true,linkedTransactionId:body.id,isTransfer:true,transferPeerId:body.id,updatedAt:new Date()}).where(eq(transactions.id,body.linkedTransactionId));
+      if(row.linkedTransactionId&&(body.specialType!=="transfer"||row.linkedTransactionId!==body.linkedTransactionId))await tx.update(transactions).set({specialType:"normal",excludedFromAnalysis:false,linkedTransactionId:null,isTransfer:false,transferPeerId:null,updatedAt:new Date()}).where(and(eq(transactions.id,row.linkedTransactionId),eq(transactions.linkedTransactionId,body.id)));
       if (body.splits) {
         await tx
           .delete(transactionSplits)
@@ -212,11 +222,13 @@ export async function PATCH(request: Request) {
           householdId: member.householdId,
           ownerMemberId: member.id,
           visibleAccountIds: accountIds,
+          sourceAccountId:row.accountId,
           merchant: row.counterparty,
           categoryId: body.categoryId ?? null,
           applyExisting: body.ruleMode === "all" ? "all" : "none",
         })
       : { learned: false, applied: 0 };
+    await writeAudit("transaction-updated","Ein Umsatz wurde bearbeitet.",{userId:user.userId,metadata:{transactionId:body.id,accountId:row.accountId,categoryChanged:body.categoryId!==undefined,splitChanged:Boolean(body.splits),specialType:body.specialType,linkedTransactionId:body.linkedTransactionId,ruleMode:body.ruleMode}});
     return NextResponse.json({ ok: true, ruleLearned: learned.learned, additionallyApplied: learned.applied });
   } catch (error) {
     return NextResponse.json(

@@ -103,6 +103,7 @@ Details stehen in [docs/PRIVACY.md](docs/PRIVACY.md) und [SECURITY.md](SECURITY.
 
 - [Architektur](docs/ARCHITECTURE.md)
 - [Verbindliche Berechnungsregeln](docs/BERECHNUNGEN.md)
+- [Mehrkonten-Prüfplan](docs/MEHRKONTEN-PRUEFPLAN.md)
 - [Installation und Updates](docs/INSTALLATION.md)
 - [Berechtigungsmodell](docs/PERMISSIONS.md)
 - [Datenschutz](docs/PRIVACY.md)

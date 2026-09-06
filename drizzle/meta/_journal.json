@@ -64,6 +64,13 @@
       "when": 1788630792833,
       "tag": "0008_cleanup_pending_and_zero_transactions",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788695906169,
+      "tag": "0009_zippy_nighthawk",
+      "breakpoints": true
     }
   ]
 }

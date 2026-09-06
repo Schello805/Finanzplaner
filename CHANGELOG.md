@@ -4,6 +4,15 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-06
+
+- Die zentrale Kontoberechtigung ist als getestete Sicherheitsregel gekapselt: Erwachsene sehen Gemeinschaftskonten, eigene Konten, betreute Kinderkonten und ausdrücklich freigegebene Partnerkonten; Kinder sehen weder Gemeinschafts- noch fremde Privatkonten.
+- Bankimporte prüfen die Kontoreferenz gegen die hinterlegte Zielkonto-IBAN, blockieren falsche beziehungsweise gemischte Kontodateien und kennzeichnen eine mangels IBAN nicht mögliche Prüfung sichtbar.
+- Identische IBANs können innerhalb eines Haushalts nicht als zwei Konten angelegt werden; Kinderkonten benötigen zwingend ein gültiges, betreutes Kinderprofil.
+- Händlerregeln sind standardmäßig an ihr Ursprungskonto gebunden. Nur eine ausdrückliche Familienfreigabe erweitert sie auf freigegebene Konten; bestehende Regeln werden bei der Migration ihrem bisherigen Konto zugeordnet.
+- Die Datenqualität schlägt centgleiche Gegenbuchungen verschiedener sichtbarer Konten als mögliche interne Umbuchung vor. Erst die Bestätigung verknüpft und entfernt beide Seiten gemeinsam aus den Analysen.
+- Mehrkonten-, Import- und Umbuchungsregeln werden mit 15 zusätzlichen Regressionstests abgesichert; ein manueller Abnahmeplan dokumentiert die verbleibenden Ende-zu-Ende-Prüfungen.
+
 ## [0.3.5] - 2026-09-06
 
 - Die Einstellungsübersicht nutzt am Desktop ein platzsparendes dreispaltiges Kartenraster und bleibt auf kleinen Bildschirmen responsiv.

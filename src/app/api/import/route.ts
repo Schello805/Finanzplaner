@@ -15,11 +15,12 @@ import type {
 } from "@/features/import/types";
 import { applyMerchantRules, merchantRuleMap, normalizeMerchant } from "@/features/categorization/merchant-rules";
 import { requireUser } from "@/lib/current-user";
-import { encryptSecret } from "@/lib/security";
+import { encryptSecret, stablePrivateFingerprint } from "@/lib/security";
 import { decodeBankCsv } from "@/features/import/decode";
 import { findMissingStoredTransactions, statementCoverage } from "@/features/import/reconciliation";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { writeAudit } from "@/lib/audit";
+import { validateImportAccount } from "@/features/import/account-binding";
 async function context(userId: string, accountId: string) {
   const { member, accountIds } = await memberAndVisibleAccountIds(userId);
   if (!accountIds.includes(accountId))
@@ -121,6 +122,8 @@ export async function POST(request: Request) {
       throw new Error("Keine aktive Importvorlage vorhanden.");
     const content = decodeBankCsv(bytes, template.encoding);
     const parsed = parseBankCsv(content, template);
+    const accountValidation=validateImportAccount(parsed.transactions.map(transaction=>transaction.accountReference),account.ibanLast4,account.ibanFingerprint,stablePrivateFingerprint);
+    if(accountValidation.status==="mismatch")throw new Error(`Import gestoppt: ${accountValidation.message}`);
     const pendingTransactions = parsed.transactions.filter(isPendingTransaction);
     const zeroTransactions = parsed.transactions.filter(
       (transaction) => !isPendingTransaction(transaction) && Math.abs(transaction.amount) < 0.005,
@@ -187,6 +190,7 @@ export async function POST(request: Request) {
         })),
         warnings: parsed.warnings,
         skippedEmptyRows: parsed.skippedEmptyRows,
+        accountValidation,
       });
     const keep = new Set(
       JSON.parse(String(form.get("keepSuspected") ?? "[]")) as string[],
@@ -195,7 +199,7 @@ export async function POST(request: Request) {
       .filter((x) => keep.has(x.incoming.fingerprint))
       .map((x) => x.incoming);
     const selected = [...duplicateCheck.accepted, ...keptSuspects];
-    const rules = await merchantRuleMap(member.householdId, member.id);
+    const rules = await merchantRuleMap(member.householdId, member.id,account.id);
     const locallyCategorized = selected.filter((item) => rules.has(normalizeMerchant(item.counterparty))).length;
     const result = await db.transaction(async (tx) => {
       const [record] = await tx
@@ -246,6 +250,7 @@ export async function POST(request: Request) {
       ownerMemberId: member.id,
       visibleAccountIds: [account.id],
     });
+    await writeAudit("bank-import","Ein Kontoauszug wurde importiert.",{userId:user.userId,metadata:{accountId:account.id,importId:result.id,imported:selected.length,duplicates:duplicateCheck.exact.length,skippedSuspected:duplicateCheck.suspected.length-keptSuspects.length,accountValidation:accountValidation.status}});
     return NextResponse.json(
       {
         importId: result.id,
@@ -256,6 +261,7 @@ export async function POST(request: Request) {
         skippedSuspected: duplicateCheck.suspected.length - keptSuspects.length,
         ignoredPending: pendingTransactions.length,
         ignoredZero: zeroTransactions.length,
+        accountValidation,
       },
       { status: 201 },
     );

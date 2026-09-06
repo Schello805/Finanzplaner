@@ -62,6 +62,7 @@ export default function ImportPage() {
       };
     }>;
     warnings: string[];
+    accountValidation:{status:"verified"|"unverified";message:string};
   } | null>(null);
   const [keepSuspected, setKeepSuspected] = useState<Set<string>>(new Set());
   const [selectedMissing, setSelectedMissing] = useState<Set<string>>(new Set());
@@ -296,6 +297,7 @@ export default function ImportPage() {
       {preview && (
         <section className="card p-5">
           <h2 className="font-bold">Importvorschau</h2>
+          <div className={`mt-4 rounded-xl p-4 text-sm leading-6 ${preview.accountValidation.status==="verified"?"bg-emerald-50 text-emerald-900":"bg-amber-50 text-amber-900"}`}><strong>{preview.accountValidation.status==="verified"?"Zielkonto bestätigt.":"Zielkonto nicht automatisch prüfbar."}</strong>{" "}{preview.accountValidation.message}</div>
           {preview.alreadyImported && (
             <div className="mt-4 rounded-xl bg-sky-50 p-4 text-sm leading-6 text-sky-900">
               <strong>Diese Datei wurde bereits importiert.</strong>{" "}

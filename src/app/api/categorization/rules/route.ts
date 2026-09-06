@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { and, eq, inArray, notExists, sql } from "drizzle-orm";
+import { and, eq, inArray, notExists, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { categorizationRules, categories, transactions, transactionSplits } from "@/db/schema";
+import { accounts, categorizationRules, categories, transactions, transactionSplits } from "@/db/schema";
 import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { writeAudit } from "@/lib/audit";
@@ -14,12 +14,11 @@ export async function GET() {
   try {
     const user = await requireUser();
     const { member, accountIds } = await memberAndVisibleAccountIds(user.userId);
-    const rows = await db.select({ id: categorizationRules.id, value: categorizationRules.value, categoryId: categorizationRules.categoryId, categoryName: categories.name, enabled: categorizationRules.enabled, shared: categorizationRules.shared, ownerMemberId: categorizationRules.ownerMemberId, updatedAt: categorizationRules.updatedAt })
-      .from(categorizationRules).innerJoin(categories, eq(categorizationRules.categoryId, categories.id))
-      .where(and(eq(categorizationRules.householdId, member.householdId), sql`(${categorizationRules.ownerMemberId} = ${member.id} or ${categorizationRules.shared} = true)`));
-    const counts = accountIds.length ? await db.select({ value: transactions.counterpartyNormalized, count: sql<number>`count(*)::int` }).from(transactions).where(inArray(transactions.accountId, accountIds)).groupBy(transactions.counterpartyNormalized) : [];
-    const countMap = new Map(counts.map((row) => [row.value, row.count]));
-    return NextResponse.json(rows.map((row) => ({ ...row, matchedTransactions: countMap.get(row.value) ?? 0, editable: row.ownerMemberId === member.id })));
+    const rows = await db.select({ id: categorizationRules.id, value: categorizationRules.value, accountId:categorizationRules.accountId,accountName:accounts.name,categoryId: categorizationRules.categoryId, categoryName: categories.name, enabled: categorizationRules.enabled, shared: categorizationRules.shared, ownerMemberId: categorizationRules.ownerMemberId, updatedAt: categorizationRules.updatedAt })
+      .from(categorizationRules).innerJoin(categories, eq(categorizationRules.categoryId, categories.id)).leftJoin(accounts,eq(categorizationRules.accountId,accounts.id))
+      .where(and(eq(categorizationRules.householdId, member.householdId), or(eq(categorizationRules.shared,true),and(eq(categorizationRules.ownerMemberId,member.id),accountIds.length?inArray(categorizationRules.accountId,accountIds):sql`false`))));
+    const counts = accountIds.length ? await db.select({ accountId:transactions.accountId,value: transactions.counterpartyNormalized, count: sql<number>`count(*)::int` }).from(transactions).where(inArray(transactions.accountId, accountIds)).groupBy(transactions.accountId,transactions.counterpartyNormalized) : [];
+    return NextResponse.json(rows.map((row) => ({ ...row,accountName:row.shared?null:row.accountName, matchedTransactions: counts.filter(count=>count.value===row.value&&(row.shared||count.accountId===row.accountId)).reduce((sum,count)=>sum+count.count,0), editable: row.ownerMemberId === member.id })));
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Regeln konnten nicht geladen werden." }, { status: 400 }); }
 }
 
@@ -34,11 +33,12 @@ export async function PATCH(request: Request) {
       const [category] = await db.select({ id: categories.id }).from(categories).where(and(eq(categories.id, body.categoryId), eq(categories.householdId, member.householdId))).limit(1);
       if (!category) throw new Error("Kategorie nicht gefunden.");
     }
-    await db.update(categorizationRules).set({ categoryId: body.categoryId, enabled: body.enabled, shared: body.shared, updatedAt: new Date() }).where(eq(categorizationRules.id, rule.id));
+    await db.update(categorizationRules).set({ categoryId: body.categoryId, enabled: body.enabled, shared: member.kind==="adult"?body.shared:false, updatedAt: new Date() }).where(eq(categorizationRules.id, rule.id));
     let applied = 0;
     const categoryId = body.categoryId ?? rule.categoryId;
     if (body.applyToExisting && accountIds.length) {
-      const changed = await db.update(transactions).set({ categoryId, categorizedBy: "local-rule", categorizationConfidence: "1.000", updatedAt: new Date() }).where(and(inArray(transactions.accountId, accountIds), eq(transactions.counterpartyNormalized, rule.value), notExists(db.select({ id: transactionSplits.id }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))))).returning({ id: transactions.id });
+      const targetIds=body.shared?accountIds:rule.accountId&&accountIds.includes(rule.accountId)?[rule.accountId]:[];
+      const changed = targetIds.length?await db.update(transactions).set({ categoryId, categorizedBy: "local-rule", categorizationConfidence: "1.000", updatedAt: new Date() }).where(and(inArray(transactions.accountId, targetIds), eq(transactions.counterpartyNormalized, rule.value), notExists(db.select({ id: transactionSplits.id }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))))).returning({ id: transactions.id }):[];
       applied = changed.length;
     }
     await writeAudit("configuration", "Eine Zuordnungsregel wurde geändert.", { userId: user.userId, metadata: { ruleId: rule.id, applied } });

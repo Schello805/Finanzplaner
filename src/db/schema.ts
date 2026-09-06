@@ -232,6 +232,7 @@ export const categorizationRules = pgTable("categorization_rules", {
   id: uuid("id").defaultRandom().primaryKey(),
   householdId: uuid("household_id").references(() => households.id, { onDelete: "cascade" }).notNull(),
   ownerMemberId: uuid("owner_member_id").references(() => householdMembers.id, { onDelete: "cascade" }),
+  accountId:uuid("account_id").references(()=>accounts.id,{onDelete:"cascade"}),
   categoryId: uuid("category_id").references(() => categories.id, { onDelete: "cascade" }).notNull(),
   field: text("field").notNull(),
   operator: text("operator").notNull(),

@@ -13,9 +13,11 @@ Ein Benutzer kann gleichzeitig Administrator und Haushaltsmitglied sein. Die Rec
 
 - persönliche Konten sind standardmäßig privat;
 - der Eigentümer kann sie per Checkbox für ein anderes erwachsenes Mitglied freigeben und die Freigabe widerrufen;
-- Gemeinschaftskonten sind für beide zugeordneten Erwachsenen sichtbar;
+- Gemeinschaftskonten sind ausschließlich für erwachsene Haushaltsmitglieder sichtbar;
 - vollständiges Löschen gemeinsamer Daten erfordert beide Bestätigungen;
-- Kinderkonten sehen nur ausgewählte Sorgeberechtigte;
+- Kinderkonten sehen nur das Kind selbst und ausgewählte Sorgeberechtigte; Kinder erhalten niemals Zugriff auf Gemeinschaftskonten oder fremde Privatkonten;
+- Händlerregeln gelten zunächst nur für ihr Ursprungskonto und werden ausschließlich nach ausdrücklicher Freigabe auf andere sichtbare Familienkonten angewendet;
+- die gemeinsame Kategorienstruktur gehört zum Haushalt; Umsätze und Auswertungen bleiben dennoch strikt an die jeweilige Kontoberechtigung gebunden;
 - die Adminrolle allein umgeht keine dieser Regeln.
 
 ## KI
