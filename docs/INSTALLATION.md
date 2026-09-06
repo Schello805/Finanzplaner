@@ -55,7 +55,8 @@ Bei einer Wiederholung bleiben das Datenbankkennwort sowie der Anmelde- und Vers
 
 ```bash
 cd /opt/finanzplaner
-git pull --ff-only
+git fetch --prune origin main
+git merge --ff-only origin/main
 ./scripts/install-ubuntu.sh
 ```
 

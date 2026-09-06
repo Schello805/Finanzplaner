@@ -4,6 +4,8 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Das Updateskript erkennt nach einer veröffentlichten Historienbereinigung auseinanderlaufende Commit-Verläufe. Bei einem unveränderten Installationsverzeichnis richtet es sich automatisch und sicher wieder an `origin/main` aus; lokale Änderungen führen weiterhin zum Abbruch.
+
 - Die Amazon-Abstimmung lässt sich danach filtern, ob eine passende Bankbuchung gefunden wurde oder noch fehlt.
 - Fehlende Kategorien können direkt in der Umsatz- und Amazon-Zuordnung angelegt werden. Die aktuelle Arbeitsposition bleibt erhalten und die neue Kategorie wird unmittelbar übernommen.
 

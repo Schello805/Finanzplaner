@@ -8,7 +8,23 @@ cd "${APP_DIR}"
 PREVIOUS_REVISION="$(git rev-parse --short=7 HEAD)"
 echo "Installierte Revision: ${PREVIOUS_REVISION}"
 echo "Aktueller Stand wird von GitHub abgerufen …"
-git pull --ff-only --prune origin main
+if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
+  echo "FEHLER: Im Installationsverzeichnis befinden sich lokale Änderungen." >&2
+  echo "Das Update wurde abgebrochen, damit keine Dateien überschrieben werden." >&2
+  git status --short >&2
+  exit 1
+fi
+git fetch --prune origin main
+if git merge-base --is-ancestor HEAD origin/main; then
+  git merge --ff-only origin/main
+elif git merge-base --is-ancestor origin/main HEAD; then
+  echo "FEHLER: Die Installation enthält lokale, noch nicht veröffentlichte Commits." >&2
+  echo "Das Update wurde ohne Änderungen abgebrochen." >&2
+  exit 1
+else
+  echo "Die Git-Historie wurde auf GitHub bereinigt. Die unveränderte Installation wird sicher auf den neuen Verlauf umgestellt …"
+  git reset --hard origin/main
+fi
 REVISION="$(git rev-parse --short=7 HEAD)"
 VERSION="v$(node -p "require('./package.json').version")"
 REMOTE_REVISION="$(git rev-parse --short=7 origin/main)"
