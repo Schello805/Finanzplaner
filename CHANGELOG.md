@@ -4,6 +4,10 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-09-06
+
+- Monatskennzahlen werden wieder aus allen Kategorien berechnet. Die Top-5-Begrenzung gilt nur für die Rangliste; der Ring fasst kleinere Kategorien transparent als „Weitere Kategorien“ zusammen.
+
 ## [0.3.0] - 2026-09-06
 
 - Gelernte Händlerregeln können korrigiert, pausiert, geteilt oder gelöscht und wahlweise nur künftig oder zusätzlich rückwirkend angewendet werden.

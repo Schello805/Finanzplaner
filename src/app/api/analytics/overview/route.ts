@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       lastMonth,
       asOfDate,
       historyMonths: Math.max(0, ...comparisons.map((item) => item.historyMonths)),
-      categories: comparisons.filter((item) => item.last > 0 || item.current > 0).slice(0, 5),
+      categories: comparisons.filter((item) => item.last > 0 || item.current > 0),
       months: months.slice(-6),
     });
   } catch (error) {

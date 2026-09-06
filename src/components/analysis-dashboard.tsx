@@ -24,6 +24,9 @@ export function AnalysisDashboard() {
   const delta = lastTotal - averageTotal;
   const totalDeltaPercent = averageTotal ? Math.abs(delta / averageTotal * 100) : 0;
   const usagePercent = averageTotal ? currentTotal / averageTotal * 100 : 0;
+  const topCategories = [...categories].sort((a,b) => b.last-a.last).slice(0,5);
+  const remainingTotal = Math.max(0,lastTotal-topCategories.reduce((sum,item)=>sum+item.last,0));
+  const distribution = remainingTotal>0?[...topCategories,{name:"Weitere Kategorien",current:0,last:remainingTotal,average:0,color:"#94a3b8"}]:topCategories;
 
   return <div className="space-y-7">
     <header className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
@@ -53,7 +56,7 @@ export function AnalysisDashboard() {
       <article className="card p-5 sm:p-6">
         <div className="mb-5 flex items-start justify-between"><div><h2 className="text-lg font-bold">Top 5 Kategorien</h2><p className="mt-1 text-sm muted">{formatMonth(lastMonth)||"Letzter Monat"} gegenüber dem Durchschnitt</p></div><Link href="/umsaetze" className="btn-secondary !min-h-9 !px-3 text-sm">Alle anzeigen <ArrowRight size={15}/></Link></div>
         <div className="space-y-1">
-          {[...categories].sort((a,b) => b.last-a.last).map((item) => { const pct = item.average ? (item.last-item.average)/item.average*100 : 0; return (
+          {topCategories.map((item) => { const pct = item.average ? (item.last-item.average)/item.average*100 : 0; return (
             <button key={item.name} className="grid w-full grid-cols-[1fr_auto] items-center gap-4 rounded-xl border-0 bg-transparent px-2 py-3 text-left hover:bg-[var(--surface-soft)] sm:grid-cols-[1fr_110px_150px_auto]">
               <span className="flex items-center gap-3 font-semibold"><span className="h-3 w-3 rounded-full" style={{background:item.color}} />{item.name}</span>
               <span className="font-bold">{eur.format(item.last)}</span><span className={`hidden text-right text-sm font-semibold sm:block ${pct > 0 ? "text-[var(--danger)]" : "text-[var(--primary)]"}`}>{pct > 0 ? "+" : ""}{eur.format(item.last-item.average)} · {pct > 0 ? "+" : ""}{pct.toFixed(0)} %</span><ChevronRight size={18} className="muted" />
@@ -61,7 +64,7 @@ export function AnalysisDashboard() {
           ); })}
         </div>
       </article>
-      <article className="card p-5 sm:p-6"><h2 className="text-lg font-bold">Verteilung</h2><p className="mt-1 text-sm muted">Top-Kategorien im {formatMonth(lastMonth)||"letzten Monat"}</p><div className="h-[230px] w-full"><ResponsiveContainer><PieChart><Pie data={categories} dataKey="last" nameKey="name" innerRadius={58} outerRadius={88} paddingAngle={2}>{categories.map(c=><Cell key={c.name} fill={c.color}/>)}</Pie><Tooltip formatter={(v)=>eur.format(Number(v))}/></PieChart></ResponsiveContainer></div><div className="space-y-2">{categories.map((item)=><div key={item.name} className="flex items-center justify-between gap-3 text-sm"><span className="flex min-w-0 items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-full" style={{background:item.color}}/><span className="truncate">{item.name}</span></span><strong>{eur.format(item.last)} · {lastTotal?`${(item.last/lastTotal*100).toFixed(0)} %`:"0 %"}</strong></div>)}</div></article>
+      <article className="card p-5 sm:p-6"><h2 className="text-lg font-bold">Verteilung</h2><p className="mt-1 text-sm muted">Top-Kategorien im {formatMonth(lastMonth)||"letzten Monat"}; kleinere Kategorien sind als Rest zusammengefasst.</p><div className="h-[230px] w-full"><ResponsiveContainer><PieChart><Pie data={distribution} dataKey="last" nameKey="name" innerRadius={58} outerRadius={88} paddingAngle={2}>{distribution.map(c=><Cell key={c.name} fill={c.color}/>)}</Pie><Tooltip formatter={(v)=>eur.format(Number(v))}/></PieChart></ResponsiveContainer></div><div className="space-y-2">{distribution.map((item)=><div key={item.name} className="flex items-center justify-between gap-3 text-sm"><span className="flex min-w-0 items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-full" style={{background:item.color}}/><span className="truncate">{item.name}</span></span><strong>{eur.format(item.last)} · {lastTotal?`${(item.last/lastTotal*100).toFixed(0)} %`:"0 %"}</strong></div>)}</div></article>
     </section>
 
     <section className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
