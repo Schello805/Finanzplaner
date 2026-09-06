@@ -29,12 +29,21 @@ type Category = { id: string; name: string; parentId: string | null; isIncome: b
 function isUnassigned(row: Row) {
   return !row.categoryId && row.splits.length === 0;
 }
+function confidenceBand(row:Row){
+  if(!row.categoryId)return "unassigned";
+  if(row.categorizedBy==="manual")return "manual";
+  const confidence=Number(row.categorizationConfidence??0);
+  if(confidence>=.9)return "very-safe";
+  if(confidence>=.7)return "likely";
+  return "check";
+}
 export default function TransactionsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [confidenceFilter,setConfidenceFilter]=useState("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [error, setError] = useState("");
   const [localBusy, setLocalBusy] = useState(false);
@@ -77,9 +86,10 @@ export default function TransactionsPage() {
           (categoryFilter === "none"
             ? isUnassigned(r)
             : r.categoryId === categoryFilter)) &&
-        (typeFilter === "all" || r.specialType === typeFilter),
+        (typeFilter === "all" || r.specialType === typeFilter) &&
+        (confidenceFilter === "all" || (confidenceFilter === "review" ? ["likely","check"].includes(confidenceBand(r)) : confidenceBand(r) === confidenceFilter)),
     );
-  }, [rows, query, categoryFilter, typeFilter]);
+  }, [rows, query, categoryFilter, typeFilter,confidenceFilter]);
   async function patch(body: Record<string, unknown>) {
     const response = await fetch("/api/transactions", {
       method: "PATCH",
@@ -99,6 +109,7 @@ export default function TransactionsPage() {
     setPendingCategory({row,categoryId});
   }
   async function confirmCategory(ruleMode:"none"|"future"|"all") { if(!pendingCategory)return;await patch({id:pendingCategory.row.id,categoryId:pendingCategory.categoryId,ruleMode});setPendingCategory(null); }
+  async function confirmSuggestion(row:Row){if(row.categoryId)await patch({id:row.id,categoryId:row.categoryId,ruleMode:"none"});}
   async function applyLocalRules() {
     setLocalBusy(true);
     setLocalMessage("");
@@ -193,11 +204,11 @@ export default function TransactionsPage() {
             aria-expanded={filtersOpen}
           >
             <Filter size={17} /> Filter
-            {categoryFilter !== "all" || typeFilter !== "all" ? " · aktiv" : ""}
+            {categoryFilter !== "all" || typeFilter !== "all" || confidenceFilter!=="all" ? " · aktiv" : ""}
           </button>
         </div>
         {filtersOpen && (
-          <div className="grid gap-3 border-b border-[var(--border)] bg-[var(--surface-soft)] p-4 sm:grid-cols-2">
+          <div className="grid gap-3 border-b border-[var(--border)] bg-[var(--surface-soft)] p-4 sm:grid-cols-3">
             <label className="text-sm font-semibold">
               Kategorie
               <select
@@ -221,6 +232,16 @@ export default function TransactionsPage() {
                 <option value="normal">Normale Buchungen</option>
                 <option value="refund">Erstattungen</option>
                 <option value="transfer">Umbuchungen</option>
+              </select>
+            </label>
+            <label className="text-sm font-semibold">Sicherheit
+              <select value={confidenceFilter} onChange={(event)=>setConfidenceFilter(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3">
+                <option value="all">Alle Sicherheitsstufen</option>
+                <option value="review">Noch prüfen (wahrscheinlich + unsicher)</option>
+                <option value="likely">Wahrscheinlich</option>
+                <option value="check">Bitte prüfen</option>
+                <option value="very-safe">Sehr sicher</option>
+                <option value="manual">Manuell bestätigt</option>
               </select>
             </label>
           </div>
@@ -284,7 +305,7 @@ export default function TransactionsPage() {
                         <CategorySelectOptions categories={categories} />
                       </select>
                     )}
-                    {row.categoryId&&<div className={`mt-1 text-xs font-semibold ${Number(row.categorizationConfidence??1)>=.9?"text-emerald-700":Number(row.categorizationConfidence??0)>=.7?"text-amber-700":"text-red-700"}`}>{row.categorizedBy==="manual"?"Manuell bestätigt":Number(row.categorizationConfidence??0)>=.9?"Sehr sicher":Number(row.categorizationConfidence??0)>=.7?"Wahrscheinlich":"Bitte prüfen"}</div>}
+                    {row.categoryId&&<div className="mt-1 flex items-center gap-2"><span className={`text-xs font-semibold ${Number(row.categorizationConfidence??1)>=.9?"text-emerald-700":Number(row.categorizationConfidence??0)>=.7?"text-amber-700":"text-red-700"}`}>{row.categorizedBy==="manual"?"Manuell bestätigt":Number(row.categorizationConfidence??0)>=.9?"Sehr sicher":Number(row.categorizationConfidence??0)>=.7?"Wahrscheinlich":"Bitte prüfen"}</span>{row.categorizedBy!=="manual"&&<button type="button" onClick={()=>confirmSuggestion(row)} className="text-xs font-semibold text-[var(--primary)] underline decoration-dotted underline-offset-2">Bestätigen</button>}</div>}
                   </td>
                   <td
                     className={`px-5 py-4 text-right font-bold ${Number(row.amount) > 0 ? "text-[var(--primary)]" : ""}`}

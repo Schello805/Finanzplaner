@@ -4,6 +4,11 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-09-06
+
+- Umsätze lassen sich nach Sicherheitsstufe filtern, einschließlich einer gemeinsamen Prüfliste für „Wahrscheinlich“ und „Bitte prüfen“.
+- Maschinell zugeordnete Umsätze können ohne Änderung am Dropdown direkt bestätigt werden und gelten danach nachvollziehbar als manuell geprüft.
+
 ## [0.3.3] - 2026-09-06
 
 - Das Verteilungsdiagramm beschriftet jedes Ringsegment direkt über eine Führungslinie mit Kategorie, Eurobetrag und Prozentanteil. Die separate Legende unter dem Diagramm entfällt.
