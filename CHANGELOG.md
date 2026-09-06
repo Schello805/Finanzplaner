@@ -4,6 +4,10 @@ Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-09-06
+
+- Das Verteilungsdiagramm beschriftet jedes Ringsegment direkt über eine Führungslinie mit Kategorie, Eurobetrag und Prozentanteil. Die separate Legende unter dem Diagramm entfällt.
+
 ## [0.3.2] - 2026-09-06
 
 - Sämtliche Analysepfade verwenden eine gemeinsame, centgenaue Umsatznormalisierung für Ausgaben, Erstattungen und Kategorieaufteilungen. Monatsverlauf, Kategorien und KI-Zusammenfassung stimmen dadurch rechnerisch überein.

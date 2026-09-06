@@ -4,13 +4,30 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays, ChevronRight } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import type { PieLabelRenderProps } from "recharts";
 import {AiInsightsCard} from "@/components/ai-insights-card";
 import {MonthlyWorkflow} from "@/components/monthly-workflow";
 
 type CategoryRow={name:string;current:number;last:number;average:number;color:string};
 type AccountRow={id:string;name:string};
 const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
+const compactEur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const formatMonth=(value:string)=>value?new Intl.DateTimeFormat("de-DE",{month:"long",year:"numeric"}).format(new Date(`${value}-01T12:00:00Z`)):"";
+
+const RADIAN=Math.PI/180;
+function RingLabel(props:PieLabelRenderProps){
+  const cx=Number(props.cx);const cy=Number(props.cy);const midAngle=Number(props.midAngle);const outerRadius=Number(props.outerRadius);const percent=Number(props.percent??0);
+  const item=props.payload as Partial<CategoryRow>|undefined;const name=String(item?.name??props.name??"");const last=Number(item?.last??props.value??0);
+  const cos=Math.cos(-midAngle*RADIAN);const sin=Math.sin(-midAngle*RADIAN);
+  const startX=cx+(outerRadius+3)*cos;const startY=cy+(outerRadius+3)*sin;
+  const elbowX=cx+(outerRadius+18)*cos;const elbowY=cy+(outerRadius+18)*sin;
+  const right=cos>=0;const endX=elbowX+(right?12:-12);const label= name.length>18?`${name.slice(0,17)}…`:name;
+  return <g aria-label={`${name}: ${eur.format(last)}, ${(percent*100).toFixed(0)} Prozent`}>
+    <path d={`M${startX},${startY}L${elbowX},${elbowY}L${endX},${elbowY}`} fill="none" stroke="var(--muted)" strokeWidth={1}/>
+    <text x={endX+(right?3:-3)} y={elbowY-3} textAnchor={right?"start":"end"} fill="var(--text)" fontSize={10} fontWeight={700}>{label}</text>
+    <text x={endX+(right?3:-3)} y={elbowY+10} textAnchor={right?"start":"end"} fill="var(--muted)" fontSize={9}>{compactEur.format(last)} · {(percent*100).toFixed(0)} %</text>
+  </g>;
+}
 
 export function AnalysisDashboard() {
   const [account, setAccount] = useState("all");
@@ -67,7 +84,7 @@ export function AnalysisDashboard() {
           ); })}
         </div>
       </article>
-      <article className="card p-5 sm:p-6"><h2 className="text-lg font-bold">Verteilung</h2><p className="mt-1 text-sm muted">Top-Kategorien im {formatMonth(lastMonth)||"letzten Monat"}; kleinere Kategorien sind als Rest zusammengefasst.</p><div className="h-[230px] w-full"><ResponsiveContainer><PieChart><Pie data={distribution} dataKey="last" nameKey="name" innerRadius={58} outerRadius={88} paddingAngle={2}>{distribution.map(c=><Cell key={c.name} fill={c.color}/>)}</Pie><Tooltip formatter={(v)=>eur.format(Number(v))}/></PieChart></ResponsiveContainer></div><div className="space-y-2">{distribution.map((item)=><div key={item.name} className="flex items-center justify-between gap-3 text-sm"><span className="flex min-w-0 items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-full" style={{background:item.color}}/><span className="truncate">{item.name}</span></span><strong>{eur.format(item.last)} · {positiveCategoryTotal?`${(item.last/positiveCategoryTotal*100).toFixed(0)} %`:"0 %"}</strong></div>)}</div>{refundOffset>0&&<p className="mt-3 rounded-lg bg-emerald-50 p-2 text-xs text-emerald-900">Erstattungen von {eur.format(refundOffset)} reduzieren den Monatsgesamtwert auf {eur.format(lastTotal)}.</p>}</article>
+      <article className="card p-5 sm:p-6"><h2 className="text-lg font-bold">Verteilung</h2><p className="mt-1 text-sm muted">Top-Kategorien im {formatMonth(lastMonth)||"letzten Monat"}; kleinere Kategorien sind als Rest zusammengefasst.</p><div className="h-[330px] w-full"><ResponsiveContainer><PieChart margin={{top:42,right:72,bottom:42,left:72}}><Pie data={distribution} dataKey="last" nameKey="name" innerRadius={52} outerRadius={76} paddingAngle={2} labelLine={false} label={RingLabel}>{distribution.map(c=><Cell key={c.name} fill={c.color}/>)}</Pie><Tooltip formatter={(v)=>eur.format(Number(v))}/></PieChart></ResponsiveContainer></div>{refundOffset>0&&<p className="mt-1 rounded-lg bg-emerald-50 p-2 text-xs text-emerald-900">Erstattungen von {eur.format(refundOffset)} reduzieren den Monatsgesamtwert auf {eur.format(lastTotal)}.</p>}</article>
     </section>
 
     <section className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
