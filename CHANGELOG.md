@@ -2,6 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.7.2] - 2026-09-07
+
+- Amazon-Bestellungen werden nur bei genau einem sehr sicheren Banktreffer automatisch vorausgewählt; mehrere mögliche Treffer erfordern eine bewusste Auswahl.
+- Der Trefferhinweis erklärt sichtbar Übereinstimmung, Abstand in Tagen und Sicherheit.
+- Ohne passende Bankbuchung bleibt die erkannte Artikelkategorie erhalten, der Geldfluss aber ausdrücklich als offen markiert.
+- Beim Verknüpfen prüft der Server erneut den Amazon-Bezug, den centgenauen Betrag, die Währung und das 21-Tage-Fenster.
+- Dieselbe Bankbuchung kann nicht mehr versehentlich mehreren Amazon-Bestellungen zugeordnet werden.
+
 ## [0.7.1] - 2026-09-07
 
 - Die Startseite zeigt zuerst genau den nächsten sinnvollen Arbeitsschritt; der vollständige Monatsablauf bleibt bei Bedarf aufklappbar.

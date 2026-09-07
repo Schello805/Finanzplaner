@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, notInArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { accounts, amazonOrderItems, categories, transactions, transactionSplits } from "@/db/schema";
@@ -45,16 +45,21 @@ export async function GET() {
       const key = `${item.orderIdFingerprint}|${Number(item.orderTotal).toFixed(2)}|${item.shipDate ?? item.orderDate}`;
       groups.set(key, [...(groups.get(key) ?? []), item]);
     }
+    const usedTransactionIds = new Set(
+      items.flatMap((item) => item.matchedTransactionId ? [item.matchedTransactionId] : []),
+    );
     return NextResponse.json([...groups.entries()].slice(0, 250).map(([key, rows]) => {
       const first = rows[0];
+      const currentTransactionId = rows.find((row) => row.matchedTransactionId)?.matchedTransactionId ?? null;
       const candidates = amazonTransactions.flatMap((transaction) => {
+        if (usedTransactionIds.has(transaction.id) && transaction.id !== currentTransactionId) return [];
         if (transaction.currency !== first.currency) return [];
         const match = amazonMatchScore(Number(first.orderTotal), first.shipDate ?? first.orderDate, Number(transaction.amount), transaction.bookedOn);
         return match ? [{ ...transaction, ...match }] : [];
       }).sort((a, b) => b.score - a.score);
       return {
         key, orderDate: first.orderDate, shipDate: first.shipDate, total: Number(first.orderTotal), currency: first.currency,
-        matchedTransactionId: rows.find((row) => row.matchedTransactionId)?.matchedTransactionId ?? null,
+        matchedTransactionId: currentTransactionId,
         items: rows.map((row) => {
           const productName = decryptSecret(row.productNameEncrypted);
           const suggestion = row.categoryId ? null : suggestAmazonCategory(productName, availableCategories);
@@ -92,7 +97,7 @@ export async function POST(request: Request) {
     const body = applySchema.parse(await request.json());
     const [items, transactionRows] = await Promise.all([
       db.select().from(amazonOrderItems).where(and(inArray(amazonOrderItems.id, body.itemIds), eq(amazonOrderItems.ownerMemberId, member.id))),
-      db.select({ id: transactions.id, amount: transactions.amount, accountId: transactions.accountId, counterparty: transactions.counterparty, purpose: transactions.purpose }).from(transactions).where(eq(transactions.id, body.transactionId)).limit(1),
+      db.select({ id: transactions.id, amount: transactions.amount, currency:transactions.currency, bookedOn:transactions.bookedOn, accountId: transactions.accountId, counterparty: transactions.counterparty, purpose: transactions.purpose }).from(transactions).where(eq(transactions.id, body.transactionId)).limit(1),
     ]);
     const transaction = transactionRows[0];
     if (items.length !== body.itemIds.length || !transaction || !accountIds.includes(transaction.accountId)) throw new Error("Bestellung oder Bankumsatz ist nicht zugänglich.");
@@ -100,6 +105,10 @@ export async function POST(request: Request) {
     const first = items[0];
     if (items.some((item) => item.orderIdFingerprint !== first.orderIdFingerprint || Number(item.orderTotal) !== Number(first.orderTotal) || (item.shipDate ?? item.orderDate) !== (first.shipDate ?? first.orderDate))) throw new Error("Die gewählten Artikel gehören nicht zur selben Amazon-Belastung.");
     if (cents(Math.abs(Number(transaction.amount))) !== cents(Number(first.orderTotal))) throw new Error("Amazon-Bestellsumme und Bankumsatz stimmen nicht centgenau überein.");
+    if (transaction.currency !== first.currency) throw new Error("Währungen von Amazon-Bestellung und Bankumsatz stimmen nicht überein.");
+    if (!amazonMatchScore(Number(first.orderTotal), first.shipDate ?? first.orderDate, Number(transaction.amount), transaction.bookedOn)) throw new Error("Die Bankbuchung liegt außerhalb des zulässigen Zeitraums von 21 Tagen.");
+    const alreadyUsed = await db.select({id:amazonOrderItems.id}).from(amazonOrderItems).where(and(eq(amazonOrderItems.matchedTransactionId,transaction.id),notInArray(amazonOrderItems.id,body.itemIds))).limit(1);
+    if(alreadyUsed.length)throw new Error("Diese Bankbuchung ist bereits mit einer anderen Amazon-Bestellung verbunden.");
     if (items.some((item) => !item.categoryId)) throw new Error("Bitte zuerst jedem Artikel eine Kategorie zuordnen.");
     const totalCents = cents(Math.abs(Number(transaction.amount)));
     const weights = items.map((item) => Math.max(0, (Number(item.unitPrice) + Number(item.unitTax)) * Number(item.quantity)));
