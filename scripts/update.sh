@@ -46,9 +46,23 @@ if [[ "${REVISION}" != "${REMOTE_REVISION}" ]]; then
   echo "FEHLER: Lokaler Stand ${REVISION} entspricht nicht GitHub ${REMOTE_REVISION}." >&2
   exit 1
 fi
+set -a; source /etc/finanzplaner.env; set +a
+run_migrations() {
+  local migration_start expected_migrations applied_migrations
+  migration_start="${SECONDS}"
+  sudo -u "${APP_USER}" --preserve-env=DATABASE_URL npm run db:migrate
+  expected_migrations="$(node -e 'const journal=require("./drizzle/meta/_journal.json");process.stdout.write(String(journal.entries.length))')"
+  applied_migrations="$(sudo -u "${APP_USER}" --preserve-env=DATABASE_URL psql "${DATABASE_URL}" -Atc 'select count(*) from drizzle.__drizzle_migrations')"
+  if [[ "${applied_migrations}" -lt "${expected_migrations}" ]]; then
+    echo "FEHLER: Nur ${applied_migrations} von ${expected_migrations} Datenbankmigrationen wurden ausgeführt." >&2
+    echo "Der Dienst wird nicht mit einem veralteten Datenbankschema gestartet." >&2
+    exit 1
+  fi
+  echo "Datenbankprüfung fertig nach $((SECONDS-migration_start)) Sekunden (${applied_migrations}/${expected_migrations} Migrationen)."
+}
 if [[ "${DEPLOYED_REVISION}" == "${FULL_REVISION}" ]]; then
   IP_ADDRESS="$(hostname -I | awk '{print $1}')"
-  set -a; source /etc/finanzplaner.env; set +a
+  run_migrations
   if ! systemctl is-active --quiet finanzplaner; then
     echo "Der Code ist aktuell, aber der Dienst läuft nicht – Dienst wird neu gestartet."
     systemctl restart finanzplaner
@@ -95,9 +109,7 @@ else
     chown "${APP_USER}:${APP_USER}" "${LOCK_STAMP}"
   fi
 fi
-MIGRATION_START="${SECONDS}"
-sudo -u "${APP_USER}" --preserve-env=DATABASE_URL npm run db:migrate
-echo "Datenbankprüfung fertig nach $((SECONDS-MIGRATION_START)) Sekunden."
+run_migrations
 BUILD_START="${SECONDS}"
 sudo -u "${APP_USER}" --preserve-env=APP_VERSION npm run build
 echo "Anwendung fertig gebaut nach $((SECONDS-BUILD_START)) Sekunden."

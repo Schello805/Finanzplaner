@@ -2,6 +2,12 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.7.4] - 2026-09-07
+
+- Korrigiert den fehlerhaften Zeitstempel der Amazon-Stapelverarbeitungsmigration, durch den PostgreSQL die neuen Vorschlagsspalten übersprungen hat.
+- Das Updateskript prüft die Datenbankmigrationen nun auch dann, wenn die installierte Git-Revision bereits aktuell erscheint.
+- Installation und Update vergleichen die erwartete mit der tatsächlich ausgeführten Anzahl an Migrationen und verhindern einen Start mit veraltetem Datenbankschema.
+
 ## [0.7.3] - 2026-09-07
 
 - Ein Klick analysiert nun alle noch offenen Amazon-Artikel automatisch in stabilen 25er-Paketen; manuelle Einzelrunden entfallen.

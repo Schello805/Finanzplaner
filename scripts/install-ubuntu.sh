@@ -116,6 +116,12 @@ install -d -o "${APP_USER}" -g "${APP_USER}" -m 0750 /var/lib/finanzplaner
 node -e 'const fs=require("node:fs"),crypto=require("node:crypto"),lock=JSON.parse(fs.readFileSync("package-lock.json","utf8"));delete lock.version;if(lock.packages?.[""])delete lock.packages[""].version;process.stdout.write(crypto.createHash("sha256").update(JSON.stringify(lock)).digest("hex")+"\n");' > /var/lib/finanzplaner/package-lock.sha256
 chown "${APP_USER}:${APP_USER}" /var/lib/finanzplaner/package-lock.sha256
 sudo -u "${APP_USER}" --preserve-env=DATABASE_URL npm run db:migrate
+EXPECTED_MIGRATIONS="$(node -e 'const journal=require("./drizzle/meta/_journal.json");process.stdout.write(String(journal.entries.length))')"
+APPLIED_MIGRATIONS="$(sudo -u "${APP_USER}" --preserve-env=DATABASE_URL psql "${DATABASE_URL}" -Atc 'select count(*) from drizzle.__drizzle_migrations')"
+if [[ "${APPLIED_MIGRATIONS}" -lt "${EXPECTED_MIGRATIONS}" ]]; then
+  echo "FEHLER: Nur ${APPLIED_MIGRATIONS} von ${EXPECTED_MIGRATIONS} Datenbankmigrationen wurden ausgeführt." >&2
+  exit 1
+fi
 ADMIN_RESULT="$(sudo -u "${APP_USER}" --preserve-env=DATABASE_URL,ADMIN_EMAIL,ADMIN_DISPLAY_NAME node scripts/init-admin.mjs)"
 sudo -u "${APP_USER}" --preserve-env=APP_VERSION npm run build
 
