@@ -2,6 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.6.2] - 2026-09-07
+
+- Die Schnellprüfung verwendet nun die letzte nachweislich erfolgreich gebaute und gestartete Revision statt nur des aktuellen Git-Stands.
+- Nach einem abgebrochenen Build wird derselbe Stand beim nächsten Aufruf zuverlässig erneut verarbeitet.
+- Ist die Revision aktuell, der Dienst aber gestoppt, startet das Updateskript ihn wieder und prüft den Status.
+- Eine veraltete Sonderprüfung für eine einzelne frühere Datenbankspalte wurde entfernt; maßgeblich ist vollständig und einheitlich der Erfolg aller Drizzle-Migrationen.
+- Erstinstallationen speichern ihren erfolgreich bereitgestellten Stand, sodass der erste spätere Updateaufruf ohne neue Version ebenfalls schnell endet.
+
 ## [0.6.1] - 2026-09-07
 
 - Das Updateskript beendet einen erneuten Aufruf ohne neue GitHub-Revision sofort, statt Migration und Produktionsbuild unnötig zu wiederholen.

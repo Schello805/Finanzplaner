@@ -122,6 +122,9 @@ sudo -u "${APP_USER}" --preserve-env=APP_VERSION npm run build
 install -m 0644 deploy/finanzplaner.service /etc/systemd/system/finanzplaner.service
 systemctl daemon-reload
 systemctl enable --now finanzplaner
+systemctl is-active --quiet finanzplaner
+git rev-parse HEAD > /var/lib/finanzplaner/deployed-revision
+chown "${APP_USER}:${APP_USER}" /var/lib/finanzplaner/deployed-revision
 
 ufw allow OpenSSH >/dev/null
 ufw allow from "${LOCAL_SUBNET}" to any port "${APP_PORT}" proto tcp
