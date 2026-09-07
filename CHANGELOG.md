@@ -2,6 +2,13 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.6.8] - 2026-09-07
+
+- KI-Vorschläge lassen sich wahlweise nur ab 90 Prozent Sicherheit oder vollständig gesammelt übernehmen.
+- Eine Zusammenfassung zeigt vor der Entscheidung die Anzahl sehr sicherer, wahrscheinlicher und prüfbedürftiger Vorschläge.
+- Jeder Vorschlag trägt eine deutlich sichtbare, farbige Sicherheitsstufe und weiterhin den exakten Prozentwert.
+- Die Beschriftung macht klar, dass „Alle Vorschläge“ auch weniger sichere Ergebnisse umfasst; neue Kategorien bleiben weiterhin von Sammelaktionen ausgeschlossen.
+
 ## [0.6.7] - 2026-09-07
 
 - Im Kategorie-Auswahlfeld eines KI-Vorschlags kann direkt eine neue Kategorie angelegt werden, ohne die laufende Prüfung zu verlassen.

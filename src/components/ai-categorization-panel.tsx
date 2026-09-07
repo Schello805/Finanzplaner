@@ -194,11 +194,12 @@ export function AiCategorizationPanel({
       setBusy(false);
     }
   }
-  async function acceptAll() {
+  async function acceptMany(ids: string[]) {
     setBusy(true);
     setMessage("");
     try {
-      for (const suggestion of suggestions) {
+      const selectedSuggestions=suggestions.filter(suggestion=>ids.includes(suggestion.id));
+      for (const suggestion of selectedSuggestions) {
         const response = await fetch("/api/transactions", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -206,9 +207,9 @@ export function AiCategorizationPanel({
         });
         if (!response.ok) throw new Error((await response.json()).error);
       }
-      const count = suggestions.length;
-      setSuggestions([]);
-      setMessage(`${count} bestehende Kategorien wurden gesammelt bestätigt. ${categoryProposals.length ? `${categoryProposals.length} Vorschläge für neue Kategorien warten weiterhin auf deine ausdrückliche Einzelentscheidung.` : ""}`);
+      const count = selectedSuggestions.length;
+      setSuggestions(current=>current.filter(suggestion=>!ids.includes(suggestion.id)));
+      setMessage(`${count} ${count===1?"KI-Zuordnung wurde":"KI-Zuordnungen wurden"} bestätigt. ${categoryProposals.length ? `${categoryProposals.length} Vorschläge für neue Kategorien warten weiterhin auf deine ausdrückliche Einzelentscheidung.` : ""}`);
       await requestPreview(mode, true);
       onApplied();
     } catch (error) {
@@ -392,11 +393,13 @@ export function AiCategorizationPanel({
           )}
         </div>
       )}
-      {suggestions.length > 1 && (
-        <div className="mt-4 flex justify-end border-t border-[var(--border)] pt-4">
-          <button type="button" disabled={busy} onClick={acceptAll} className="btn-primary">
-            Bestehende Kategorien gesammelt bestätigen
-          </button>
+      {suggestions.length > 0 && (
+        <div className="mt-4 border-t border-[var(--border)] pt-4">
+          <div className="mb-3 flex flex-wrap gap-2 text-sm"><span className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-900">{suggestions.filter(item=>item.confidence>=.9).length} sehr sicher</span><span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-900">{suggestions.filter(item=>item.confidence>=.7&&item.confidence<.9).length} wahrscheinlich</span><span className="rounded-full bg-red-100 px-3 py-1 font-semibold text-red-900">{suggestions.filter(item=>item.confidence<.7).length} bitte prüfen</span></div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button type="button" disabled={busy||!suggestions.some(item=>item.confidence>=.9)} onClick={()=>acceptMany(suggestions.filter(item=>item.confidence>=.9).map(item=>item.id))} className="btn-secondary"><ShieldCheck size={17}/>Nur sehr sichere übernehmen ({suggestions.filter(item=>item.confidence>=.9).length})</button>
+            <button type="button" disabled={busy} onClick={()=>acceptMany(suggestions.map(item=>item.id))} className="btn-primary">Alle Vorschläge übernehmen ({suggestions.length})</button>
+          </div>
         </div>
       )}
       {suggestions.length > 0 && (
@@ -420,10 +423,7 @@ export function AiCategorizationPanel({
                   <div className="font-semibold">
                     {transaction?.merchant ?? "Unbekannter Empfänger"}
                   </div>
-                  <div className="mt-1 text-sm">
-                    Vorschlag ·{" "}
-                    {(suggestion.confidence * 100).toFixed(0)} % Sicherheit
-                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-sm"><span className={`rounded-full px-2.5 py-1 font-semibold ${suggestion.confidence>=.9?"bg-emerald-100 text-emerald-900":suggestion.confidence>=.7?"bg-amber-100 text-amber-900":"bg-red-100 text-red-900"}`}>{suggestion.confidence>=.9?"Sehr sicher":suggestion.confidence>=.7?"Wahrscheinlich":"Bitte prüfen"}</span><span className="muted">{(suggestion.confidence * 100).toFixed(0)} % Sicherheit</span></div>
                   <select
                     aria-label={`Kategorie für ${transaction?.merchant ?? "Umsatz"}`}
                     value={suggestion.categoryId}
