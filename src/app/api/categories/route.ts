@@ -6,6 +6,7 @@ import { amazonOrderItems, categories, categorizationRules, transactions, transa
 import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { writeAudit } from "@/lib/audit";
+import { assertAllowedCategoryName, normalizeCategoryName } from "@/features/categories/policy";
 export async function GET() {
   try {
     const user = await requireUser();
@@ -86,6 +87,9 @@ export async function POST(request: Request) {
     const user = await requireUser();
     const { member } = await memberAndVisibleAccountIds(user.userId);
     const body = categorySchema.parse(await request.json());
+    assertAllowedCategoryName(body.name);
+    const existing = await db.select({ id: categories.id, name: categories.name }).from(categories).where(eq(categories.householdId, member.householdId));
+    if (existing.some((category) => normalizeCategoryName(category.name) === normalizeCategoryName(body.name))) throw new Error(`Die Kategorie „${body.name}“ ist bereits vorhanden.`);
     if (body.parentId) {
       const [parent] = await db
         .select()
@@ -139,6 +143,9 @@ export async function PUT(request: Request) {
     const user = await requireUser();
     const { member } = await memberAndVisibleAccountIds(user.userId);
     const body = updateSchema.parse(await request.json());
+    assertAllowedCategoryName(body.name);
+    const existing = await db.select({ id: categories.id, name: categories.name }).from(categories).where(eq(categories.householdId, member.householdId));
+    if (existing.some((category) => category.id !== body.id && normalizeCategoryName(category.name) === normalizeCategoryName(body.name))) throw new Error(`Die Kategorie „${body.name}“ ist bereits vorhanden.`);
     if (body.parentId === body.id)
       throw new Error(
         "Eine Kategorie kann nicht sich selbst untergeordnet werden.",

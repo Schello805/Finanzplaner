@@ -9,6 +9,7 @@ import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/current-user";
 import { decryptSecret } from "@/lib/security";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
+import { isForbiddenCategoryName, normalizeCategoryName } from "@/features/categories/policy";
 
 const BATCH_SIZE = 25;
 type ProviderConfig = { model: string; inputPricePerMillion?: number; outputPricePerMillion?: number };
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
     const ai = await aiSettings();
     const allowed = await db.select({ id: categories.id, name: categories.name }).from(categories).where(and(eq(categories.householdId, member.householdId), eq(categories.isIncome, false)));
     const result = await categorizeWithAi({ provider: ai.provider, apiKey: ai.apiKey, model: ai.config.model }, rows, allowed.map((category) => category.name));
-    const byName = new Map(allowed.map((category) => [category.name.toLocaleLowerCase("de-DE"), category.id]));
+    const byName = new Map(allowed.map((category) => [normalizeCategoryName(category.name), category.id]));
     const [preferences] = await db.select({ level: userPreferences.aiAutoAcceptLevel }).from(userPreferences).where(eq(userPreferences.userId, user.userId)).limit(1);
     const autoThreshold = threshold(preferences?.level as "none" | "very_safe" | "likely" | undefined);
     const suggestions: Array<{ id: string; categoryId: string; category: string; confidence: number; reason: string }> = [];
@@ -74,10 +75,10 @@ export async function POST(request: Request) {
     let applied = 0;
     for (const item of result.data.results) {
       if (!body.ids.includes(item.id)) continue;
-      const categoryId = item.category ? byName.get(item.category.toLocaleLowerCase("de-DE")) : undefined;
+      const categoryId = item.category ? byName.get(normalizeCategoryName(item.category)) : undefined;
       if (!categoryId) {
         const name = (item.proposedCategory ?? item.category)?.trim();
-        if (name && !/^(sonstiges?|andere?s?|diverses)$/i.test(name)) categoryProposals.push({ id: item.id, name, confidence: item.confidence, reason: item.reason });
+        if (name && !isForbiddenCategoryName(name) && !/^(andere?s?|diverses)$/i.test(name)) categoryProposals.push({ id: item.id, name, confidence: item.confidence, reason: item.reason });
       } else if (item.confidence >= autoThreshold) {
         const updated = await db.update(amazonOrderItems).set({ categoryId, updatedAt: new Date() }).where(and(eq(amazonOrderItems.id, item.id), eq(amazonOrderItems.ownerMemberId, member.id), isNull(amazonOrderItems.categoryId))).returning({ id: amazonOrderItems.id });
         applied += updated.length;

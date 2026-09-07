@@ -2,6 +2,16 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.5.3] - 2026-09-07
+
+- Der neue Adminbereich „Hilfe & Ablauf“ zeigt den vollständigen Verarbeitungsweg grafisch vom Bankimport bis zur fertigen Analyse.
+- Die Hilfe erklärt, warum eine Amazon-Bankbuchung noch nicht die enthaltenen Artikel und möglichen Kategorieaufteilungen beschreibt.
+- Eine Analyse gilt erst als vollständig, wenn neben Bankumsätzen und KI-Prüfungen auch alle Amazon-Artikel abgestimmt wurden.
+- KI-Vorschläge dürfen neue Kategorien ausschließlich nach ausdrücklicher Einzelbestätigung anlegen; die Sammelbestätigung übernimmt nur vorhandene Kategorien.
+- Die Kategorie-API verhindert haushaltsweit doppelte Namen – unabhängig davon, ob die Anlage aus der Oberfläche oder einem KI-Ablauf stammt.
+- „Sonstiges“, „Einkäufe“, „Shopping“ und daraus gebildete unspezifische Sammelkategorien werden zentral blockiert und von KI-Vorschlägen verworfen.
+- Eine einmalige Migration führt vorhandene gleichnamige Dubletten samt Zuordnungen zusammen. Frühere verbotene Sammelkategorien werden entfernt und ihre Buchungen zur sauberen Neuzuordnung geöffnet.
+
 ## [0.5.2] - 2026-09-07
 
 - Nicht kategorisierte Amazon-Artikel können nun mit derselben konfigurierten KI wie Bankumsätze analysiert werden.

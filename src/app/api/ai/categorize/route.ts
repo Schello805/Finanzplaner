@@ -11,6 +11,7 @@ import { requireUser } from "@/lib/current-user";
 import { decryptSecret } from "@/lib/security";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { learnMerchantRule, normalizeMerchant } from "@/features/categorization/merchant-rules";
+import { isForbiddenCategoryName, normalizeCategoryName } from "@/features/categories/policy";
 type ProviderConfig = {
   model: string;
   inputPricePerMillion?: number;
@@ -194,7 +195,7 @@ export async function POST(request: Request) {
     if (!result.data.results.length)
       throw new Error("Die KI hat keine Zuordnung geliefert. Bitte starte die Analyse erneut.");
     const byName = new Map(
-      allowed.map((c) => [c.name.toLocaleLowerCase("de-DE"), c.id]),
+      allowed.map((c) => [normalizeCategoryName(c.name), c.id]),
     );
     const [preferences] = await db.select({ automaticCategorization: userPreferences.automaticCategorization,aiAutoAcceptLevel:userPreferences.aiAutoAcceptLevel }).from(userPreferences).where(eq(userPreferences.userId, user.userId)).limit(1);
     const trustedAutomaticMode = preferences?.automaticCategorization ?? false;
@@ -206,12 +207,12 @@ export async function POST(request: Request) {
     for (const item of result.data.results) {
       if (!body.ids.includes(item.id)) continue;
       const categoryId = item.category
-        ? byName.get(item.category.toLocaleLowerCase("de-DE"))
+        ? byName.get(normalizeCategoryName(item.category))
         : undefined;
       if (!categoryId) {
         const proposedName = (item.proposedCategory ?? item.category)?.trim();
         const source = rows.find((row) => row.id === item.id);
-        if (proposedName && source && !/^(sonstiges?|andere?s?|diverses)$/i.test(proposedName)) {
+        if (proposedName && source && !isForbiddenCategoryName(proposedName) && !/^(andere?s?|diverses)$/i.test(proposedName)) {
           const key = `${source.amount >= 0 ? "income" : "expense"}:${proposedName.toLocaleLowerCase("de-DE")}`;
           const existing = categoryProposalMap.get(key);
           if (existing) {

@@ -204,27 +204,9 @@ export function AiCategorizationPanel({
         });
         if (!response.ok) throw new Error((await response.json()).error);
       }
-      for (const proposal of categoryProposals) {
-        const categoryResponse = await fetch("/api/categories", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: proposal.name, color: proposal.isIncome ? "#2f855a" : "#7c898c", icon: "Tag", isIncome: proposal.isIncome, parentId: null }),
-        });
-        const category = await categoryResponse.json();
-        if (!categoryResponse.ok) throw new Error(category.error);
-        for (const id of proposal.transactionIds) {
-          const response = await fetch("/api/transactions", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id, categoryId: category.id, ruleMode: "future", matchingKeyword: proposal.matchingKeywords[id] }),
-          });
-          if (!response.ok) throw new Error((await response.json()).error);
-        }
-      }
-      const count = suggestions.length + categoryProposals.reduce((sum, proposal) => sum + proposal.transactionIds.length, 0);
+      const count = suggestions.length;
       setSuggestions([]);
-      setCategoryProposals([]);
-      setMessage(`${count} KI-Vorschläge wurden gesammelt bestätigt.`);
+      setMessage(`${count} bestehende Kategorien wurden gesammelt bestätigt. ${categoryProposals.length ? `${categoryProposals.length} Vorschläge für neue Kategorien warten weiterhin auf deine ausdrückliche Einzelentscheidung.` : ""}`);
       await requestPreview(mode, true);
       onApplied();
     } catch (error) {
@@ -408,10 +390,10 @@ export function AiCategorizationPanel({
           )}
         </div>
       )}
-      {suggestions.length + categoryProposals.length > 1 && (
+      {suggestions.length > 1 && (
         <div className="mt-4 flex justify-end border-t border-[var(--border)] pt-4">
           <button type="button" disabled={busy} onClick={acceptAll} className="btn-primary">
-            Alle Vorschläge bestätigen
+            Bestehende Kategorien gesammelt bestätigen
           </button>
         </div>
       )}
