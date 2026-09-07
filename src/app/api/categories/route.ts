@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { writeAudit } from "@/lib/audit";
 import { assertAllowedCategoryName, normalizeCategoryName } from "@/features/categories/policy";
+import {assertValidCategoryParent} from "@/features/categories/parent-validation";
 export async function GET() {
   try {
     const user = await requireUser();
@@ -88,21 +89,9 @@ export async function POST(request: Request) {
     const { member } = await memberAndVisibleAccountIds(user.userId);
     const body = categorySchema.parse(await request.json());
     assertAllowedCategoryName(body.name);
-    const existing = await db.select({ id: categories.id, name: categories.name }).from(categories).where(eq(categories.householdId, member.householdId));
+    const existing = await db.select({ id: categories.id, name: categories.name, parentId:categories.parentId, isIncome:categories.isIncome }).from(categories).where(eq(categories.householdId, member.householdId));
     if (existing.some((category) => normalizeCategoryName(category.name) === normalizeCategoryName(body.name))) throw new Error(`Die Kategorie „${body.name}“ ist bereits vorhanden.`);
-    if (body.parentId) {
-      const [parent] = await db
-        .select()
-        .from(categories)
-        .where(
-          and(
-            eq(categories.id, body.parentId),
-            eq(categories.householdId, member.householdId),
-          ),
-        )
-        .limit(1);
-      if (!parent) throw new Error("Übergeordnete Kategorie nicht gefunden.");
-    }
+    assertValidCategoryParent(existing,{parentId:body.parentId,isIncome:body.isIncome});
     const slug = `${body.name
       .toLocaleLowerCase("de-DE")
       .normalize("NFKD")
@@ -144,12 +133,10 @@ export async function PUT(request: Request) {
     const { member } = await memberAndVisibleAccountIds(user.userId);
     const body = updateSchema.parse(await request.json());
     assertAllowedCategoryName(body.name);
-    const existing = await db.select({ id: categories.id, name: categories.name }).from(categories).where(eq(categories.householdId, member.householdId));
+    const existing = await db.select({ id: categories.id, name: categories.name, parentId:categories.parentId, isIncome:categories.isIncome }).from(categories).where(eq(categories.householdId, member.householdId));
     if (existing.some((category) => category.id !== body.id && normalizeCategoryName(category.name) === normalizeCategoryName(body.name))) throw new Error(`Die Kategorie „${body.name}“ ist bereits vorhanden.`);
-    if (body.parentId === body.id)
-      throw new Error(
-        "Eine Kategorie kann nicht sich selbst untergeordnet werden.",
-      );
+    assertValidCategoryParent(existing,{categoryId:body.id,parentId:body.parentId,isIncome:body.isIncome});
+    if(existing.some(category=>category.parentId===body.id&&category.isIncome!==body.isIncome))throw new Error("Eine Hauptkategorie mit Unterkategorien kann nicht zwischen Einnahmen und Ausgaben verschoben werden.");
     const [row] = await db
       .update(categories)
       .set({
@@ -211,8 +198,9 @@ export async function DELETE(request: Request) {
     let replacementId: string | null = null;
     if (body.resolution === "move") {
       if (!body.replacementCategoryId || body.replacementCategoryId === target.id) throw new Error("Bitte eine andere Zielkategorie auswählen.");
-      const [replacement] = await db.select({ id: categories.id }).from(categories).where(and(eq(categories.id, body.replacementCategoryId), eq(categories.householdId, member.householdId))).limit(1);
+      const [replacement] = await db.select({ id: categories.id,isIncome:categories.isIncome }).from(categories).where(and(eq(categories.id, body.replacementCategoryId), eq(categories.householdId, member.householdId))).limit(1);
       if (!replacement) throw new Error("Zielkategorie nicht gefunden.");
+      if(replacement.isIncome!==target.isIncome)throw new Error("Beim Verschieben müssen Quell- und Zielkategorie beide Einnahmen oder beide Ausgaben sein.");
       replacementId = replacement.id;
     }
     await db.transaction(async (tx) => {

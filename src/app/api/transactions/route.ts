@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
         bookedOn: transactions.bookedOn,
         amount: transactions.amount,
         currency: transactions.currency,
+        direction: transactions.direction,
         counterparty: transactions.counterparty,
         bookingType: transactions.bookingType,
         purpose: transactions.purpose,
@@ -131,6 +132,7 @@ export async function PATCH(request: Request) {
         accountId: transactions.accountId,
         amount: transactions.amount,
         currency:transactions.currency,
+        direction:transactions.direction,
         counterparty: transactions.counterparty,
         purpose: transactions.purpose,
         categoryId: transactions.categoryId,
@@ -152,7 +154,7 @@ export async function PATCH(request: Request) {
     let selectedCategorySlug: string | undefined;
     if (categoryIds.length) {
       const valid = await db
-        .select({ id: categories.id, slug: categories.slug })
+        .select({ id: categories.id, slug: categories.slug,isIncome:categories.isIncome })
         .from(categories)
         .where(
           and(
@@ -163,6 +165,10 @@ export async function PATCH(request: Request) {
       if (valid.length !== new Set(categoryIds).size)
         throw new Error("Mindestens eine Kategorie wurde nicht gefunden.");
       selectedCategorySlug = body.categoryId ? valid.find((item) => item.id === body.categoryId)?.slug : undefined;
+      const marksTransfer=selectedCategorySlug==="umbuchung";
+      const intendedType=body.specialType??row.specialType;
+      const expectsIncome=row.direction==="income"&&intendedType!=="refund";
+      if(!marksTransfer&&valid.some(category=>category.isIncome!==expectsIncome))throw new Error(expectsIncome?"Einnahmen können nur einer Einnahmekategorie zugeordnet werden.":"Ausgaben und Erstattungen können nur einer Ausgabenkategorie zugeordnet werden.");
     }
     const categoryMarksTransfer = selectedCategorySlug === "umbuchung";
     const leavesTransferCategory = body.categoryId !== undefined && row.categorySlug === "umbuchung" && !categoryMarksTransfer;

@@ -13,6 +13,7 @@ type Row = {
   bookedOn: string;
   amount: string;
   currency: string;
+  direction:"income"|"expense";
   counterparty: string | null;
   purpose: string | null;
   categoryId: string | null;
@@ -327,7 +328,7 @@ export default function TransactionsPage() {
                         className={`min-h-9 rounded-lg border px-2 ${isUnassigned(row) ? "attention-control font-semibold" : "border-[var(--border)] bg-[var(--surface)]"}`}
                       >
                         <option value="">Nicht zugeordnet</option>
-                        <CategorySelectOptions categories={categories} />
+                        <CategorySelectOptions categories={categories.filter(category=>category.slug==="umbuchung"||category.isIncome===(row.direction==="income"&&row.specialType!=="refund"))} />
                         <option value="__create__">＋ Neue Kategorie anlegen …</option>
                       </select>
                     )}
@@ -375,7 +376,7 @@ export default function TransactionsPage() {
         />
       )}{" "}
       {pendingCategory&&<div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-3 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="rule-choice-title"><section className="card w-full max-w-lg p-6"><h2 id="rule-choice-title" className="text-xl font-bold">Zuordnung speichern</h2><p className="mt-2 text-sm leading-6 muted">Wie soll die Zuordnung für „{pendingCategory.row.counterparty??"diesen Umsatz"}“ verwendet werden? Neue Regeln gelten zunächst nur für {pendingCategory.row.accountName}.</p><div className="mt-5 grid gap-3"><button onClick={()=>confirmCategory("none")} className="btn-secondary justify-start">Nur diesen Umsatz ändern</button><button onClick={()=>confirmCategory("future")} className="btn-secondary justify-start">Diesen Umsatz ändern und Kontoregel speichern</button><button onClick={()=>confirmCategory("all")} className="btn-primary justify-start">Alle passenden Umsätze dieses Kontos ändern</button></div><button onClick={()=>setPendingCategory(null)} className="btn-secondary mt-4 w-full">Abbrechen</button></section></div>}
-      {creatingCategoryFor&&<InlineCategoryCreate categories={categories} defaultIsIncome={Number(creatingCategoryFor.amount)>0} onClose={()=>setCreatingCategoryFor(null)} onCreated={async(category)=>{setCategories(current=>[...current,category]);setCreatingCategoryFor(null);setPendingCategory({row:creatingCategoryFor,categoryId:category.id});}}/>}
+      {creatingCategoryFor&&<InlineCategoryCreate categories={categories} defaultIsIncome={creatingCategoryFor.direction==="income"&&creatingCategoryFor.specialType!=="refund"} onClose={()=>setCreatingCategoryFor(null)} onCreated={async(category)=>{setCategories(current=>[...current,category]);setCreatingCategoryFor(null);setPendingCategory({row:creatingCategoryFor,categoryId:category.id});}}/>}
     </div>
   );
 }

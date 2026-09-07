@@ -2,6 +2,17 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.6.3] - 2026-09-07
+
+- Der Monatsablauf erkennt eine eingerichtete Sparkassen-Verbindung und führt dann direkt zum Bankabruf statt weiterhin pauschal zum CSV-Import.
+- Die Sparkassen-Seite trennt den täglichen Umsatzabruf klar von der selten benötigten Neueinrichtung der Zugangsdaten.
+- Die KI übernimmt Vorschläge nur noch automatisch, wenn der Benutzer die automatische Übernahme tatsächlich aktiviert hat; die gewählte Vertrauensgrenze wird korrekt berücksichtigt.
+- KI- und manuelle Zuordnungen verhindern eine fachliche Vermischung von Einnahmen- und Ausgabenkategorien.
+- Kategoriehierarchien können keine Kreisläufe mehr bilden und nicht unter eigene Unterkategorien verschoben werden.
+- Hauptkategorien mit Unterkategorien lassen sich nicht versehentlich zwischen Einnahmen und Ausgaben umwandeln; auch beim Löschen bleiben beide Bereiche getrennt.
+- Bei leeren oder fehlerhaften Analysedaten werden keine irreführenden Null-Kennzahlen und leeren Diagramme mehr angezeigt.
+- Die Testsuite umfasst nun 102 Prüfungen einschließlich der neuen Hierarchie-Sicherungen.
+
 ## [0.6.2] - 2026-09-07
 
 - Die Schnellprüfung verwendet nun die letzte nachweislich erfolgreich gebaute und gestartete Revision statt nur des aktuellen Git-Stands.

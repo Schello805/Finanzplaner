@@ -92,6 +92,7 @@ async function pending(userId: string, ids?: string[], requestedAccountId?: stri
       date: transactions.bookedOn,
       amount: transactions.amount,
       currency: transactions.currency,
+      specialType:transactions.specialType,
       bookingType: transactions.bookingType,
       merchant: transactions.counterparty,
       purpose: transactions.purpose,
@@ -111,10 +112,11 @@ async function pending(userId: string, ids?: string[], requestedAccountId?: stri
           date: r.date,
           amount: Number(r.amount),
           currency: r.currency,
+          specialType:r.specialType,
           bookingType: r.bookingType ?? undefined,
           merchant: r.merchant ?? undefined,
           purpose: r.purpose ?? undefined,
-        }) satisfies AiTransactionInput&{accountId:string},
+        }) satisfies AiTransactionInput&{accountId:string;specialType:string},
     ),
   };
 }
@@ -184,7 +186,7 @@ export async function POST(request: Request) {
     const ai = await settings();
     const preview = buildTransferPreview(rows, body.privacyMode);
     const allowed = await db
-      .select({ id: categories.id, name: categories.name })
+      .select({ id: categories.id, name: categories.name,isIncome:categories.isIncome })
       .from(categories)
       .where(eq(categories.householdId, member.householdId));
     const result = await categorizeWithAi(
@@ -195,25 +197,27 @@ export async function POST(request: Request) {
     if (!result.data.results.length)
       throw new Error("Die KI hat keine Zuordnung geliefert. Bitte starte die Analyse erneut.");
     const byName = new Map(
-      allowed.map((c) => [normalizeCategoryName(c.name), c.id]),
+      allowed.map((c) => [normalizeCategoryName(c.name), c]),
     );
     const [preferences] = await db.select({ automaticCategorization: userPreferences.automaticCategorization,aiAutoAcceptLevel:userPreferences.aiAutoAcceptLevel }).from(userPreferences).where(eq(userPreferences.userId, user.userId)).limit(1);
     const trustedAutomaticMode = preferences?.automaticCategorization ?? false;
-    const threshold=autoAcceptThreshold(preferences?.aiAutoAcceptLevel as "none"|"very_safe"|"likely"|undefined);
+    const threshold=trustedAutomaticMode?autoAcceptThreshold(preferences?.aiAutoAcceptLevel as "none"|"very_safe"|"likely"|undefined):1.01;
     let applied = 0;
     const suggestions = [];
     const categoryProposalMap = new Map<string, { name: string; isIncome: boolean; transactionIds: string[]; matchingKeywords: Record<string,string>; confidence: number; reason: string }>();
     const visibleAccountIds = (await memberAndVisibleAccountIds(user.userId)).accountIds;
     for (const item of result.data.results) {
       if (!body.ids.includes(item.id)) continue;
-      const categoryId = item.category
+      const matchedCategory = item.category
         ? byName.get(normalizeCategoryName(item.category))
         : undefined;
+      const source = rows.find((row) => row.id === item.id);
+      const expectsIncome=Boolean(source&&source.amount>=0&&source.specialType!=="refund");
+      const categoryId=matchedCategory&&source&&matchedCategory.isIncome===expectsIncome?matchedCategory.id:undefined;
       if (!categoryId) {
-        const proposedName = (item.proposedCategory ?? item.category)?.trim();
-        const source = rows.find((row) => row.id === item.id);
+        const proposedName = matchedCategory ? undefined : (item.proposedCategory ?? item.category)?.trim();
         if (proposedName && source && !isForbiddenCategoryName(proposedName) && !/^(andere?s?|diverses)$/i.test(proposedName)) {
-          const key = `${source.amount >= 0 ? "income" : "expense"}:${proposedName.toLocaleLowerCase("de-DE")}`;
+          const key = `${expectsIncome ? "income" : "expense"}:${proposedName.toLocaleLowerCase("de-DE")}`;
           const existing = categoryProposalMap.get(key);
           if (existing) {
             existing.transactionIds.push(item.id);
@@ -222,7 +226,7 @@ export async function POST(request: Request) {
           } else {
             categoryProposalMap.set(key, {
               name: proposedName,
-              isIncome: source.amount >= 0,
+              isIncome: expectsIncome,
               transactionIds: [item.id],
               matchingKeywords: item.matchingKeyword ? { [item.id]:item.matchingKeyword } : {},
               confidence: item.confidence,
@@ -233,7 +237,6 @@ export async function POST(request: Request) {
         continue;
       }
       if (item.confidence >= threshold) {
-        const source = rows.find((row) => row.id === item.id);
         await db
           .update(transactions)
           .set({
