@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Activity, Bot, ChevronRight, FileUp, Lock, PackageSearch, Repeat2, Tags, UserRound, WandSparkles } from "lucide-react";
+import { Activity, Bot, Building2, ChevronRight, FileUp, Lock, PackageSearch, Repeat2, Tags, UserRound, WandSparkles } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 
 const settings = [
   { icon:FileUp, title:"Datenimporte", detail:"CSV hochladen und Importverlauf anzeigen", href:"/einstellungen/import" },
+  { icon:Building2, title:"Sparkasse verbinden", detail:"Konten und Umsätze ausschließlich lesend über FinTS abrufen", href:"/einstellungen/sparkasse" },
   { icon:PackageSearch, title:"Amazon-Bestellungen", detail:"Order History importieren und Sammelbestellungen aufteilen", href:"/einstellungen/amazon" },
   { icon:Bot, title:"KI & Datenschutz", detail:"Einwilligungen, Übertragungsmodus und Kostennutzung", href:"/einstellungen/ki" },
   { icon:Tags, title:"Kategorien", detail:"Ausgaben, Einnahmen und Unterkategorien verwalten", href:"/einstellungen/kategorien" },

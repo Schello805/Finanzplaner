@@ -2,6 +2,16 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.6.0] - 2026-09-07
+
+- Ein geführter Assistent verbindet zunächst Sparkassenkonten direkt und ausschließlich lesend über FinTS 3.0.
+- Hilfetexte erklären Produkt-ID, BLZ, FinTS-Adresse, Anmeldename, PIN und TAN-Verfahren unmittelbar am jeweiligen Eingabefeld.
+- PIN und Bankparameter werden verschlüsselt in der lokalen Installation gespeichert und niemals an einen KI-Anbieter übertragen.
+- pushTAN-/App-Freigaben sowie klassische TAN-Verfahren werden sowohl bei der Einrichtung als auch beim Umsatzabruf unterstützt.
+- Ein manueller Abruf importiert die letzten 90 Tage, überspringt vorhandene Buchungen und Nullbuchungen und wendet anschließend sichere lokale Regeln an.
+- Der Abruf zeigt verständlich, wie viele Umsätze neu, bereits vorhanden und lokal kategorisiert wurden.
+- Die Integration unterstützt ausschließlich Kontoinformationen und Umsätze; Überweisungen oder andere Zahlungsfunktionen sind nicht implementiert.
+
 ## [0.5.4] - 2026-09-07
 
 - Administratoren können unter „Systemstatus“ den gesamten finanziellen Arbeitsbestand eines Haushalts kontrolliert zurücksetzen.

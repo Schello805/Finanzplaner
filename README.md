@@ -104,6 +104,12 @@ Die Original-CSV wird nur temporär verarbeitet und nicht als Datei gespeichert.
 
 Details stehen in [docs/PRIVACY.md](docs/PRIVACY.md) und [SECURITY.md](SECURITY.md).
 
+## Sparkasse direkt verbinden
+
+Unter **Einstellungen → Sparkasse verbinden** führt ein Assistent durch die lesende FinTS-Einrichtung. Benötigt werden eine einmalig für den Finanzplaner registrierte FinTS-Produkt-ID, die BLZ und FinTS-URL der Sparkasse sowie die üblichen Online-Banking-Zugangsdaten. Alle Felder enthalten Hilfetexte zur Beschaffung der Angaben. Nach der Kontozuordnung können die letzten 90 Tage direkt abgerufen werden; Dubletten werden nicht erneut angelegt und sichere lokale Regeln sofort angewendet.
+
+Der Finanzplaner implementiert keine Überweisungen. Zugangsdaten werden lokal verschlüsselt gespeichert und nur direkt an den konfigurierten HTTPS-Endpunkt der Sparkasse übertragen. Je nach Sparkasse kann für Einrichtung oder Abruf eine TAN beziehungsweise eine Freigabe in der pushTAN-App erforderlich sein.
+
 ## Dokumentation
 
 - [Architektur](docs/ARCHITECTURE.md)
@@ -114,6 +120,7 @@ Details stehen in [docs/PRIVACY.md](docs/PRIVACY.md) und [SECURITY.md](SECURITY.
 - [Datenschutz](docs/PRIVACY.md)
 - [Beitragen](CONTRIBUTING.md)
 - [Änderungen](CHANGELOG.md)
+- [Hinweise zu Drittanbieter-Software](THIRD_PARTY_NOTICES.md)
 
 ## Lizenz
 

@@ -1,6 +1,6 @@
 {
   "name": "finanzplaner",
-  "version": "0.5.4",
+  "version": "0.6.0",
   "private": true,
   "license": "PolyForm-Noncommercial-1.0.0",
   "engines": {
@@ -29,6 +29,7 @@
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.2",
     "jose": "^6.1.0",
+    "lib-fints": "^1.5.0",
     "lucide-react": "^0.542.0",
     "next": "16.3.4",
     "nodemailer": "^9.1.0",
