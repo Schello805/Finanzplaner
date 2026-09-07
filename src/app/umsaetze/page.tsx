@@ -206,7 +206,7 @@ export default function TransactionsPage() {
           <button
             type="button"
             onClick={() => setCategoryFilter((current) => current === "none" ? "all" : "none")}
-            className={categoryFilter === "none" ? "btn-secondary border-red-200 bg-red-50 text-red-800" : "btn-secondary"}
+            className={categoryFilter === "none" ? "btn-secondary attention-control" : "btn-secondary"}
             aria-pressed={categoryFilter === "none"}
           >
             <CircleAlert size={17} /> {unassignedCount} nicht zugeordnet
@@ -289,7 +289,7 @@ export default function TransactionsPage() {
               {visible.map((row) => (
                 <tr
                   key={row.id}
-                  className={`border-t border-[var(--border)] ${isUnassigned(row) ? "bg-red-50/60 hover:bg-red-50" : "hover:bg-[var(--surface-soft)]"} ${row.excluded ? "opacity-60" : ""}`}
+                  className={`border-t border-[var(--border)] ${isUnassigned(row) ? "attention-row" : "hover:bg-[var(--surface-soft)]"} ${row.excluded ? "opacity-60" : ""}`}
                 >
                   <td className="px-5 py-4">
                     {new Intl.DateTimeFormat("de-DE").format(
@@ -322,7 +322,7 @@ export default function TransactionsPage() {
                       <select
                         value={row.categoryId ?? ""}
                         onChange={(e) => setCategory(row, e.target.value)}
-                        className={`min-h-9 rounded-lg border px-2 ${isUnassigned(row) ? "border-red-200 bg-red-50 font-semibold text-red-800" : "border-[var(--border)] bg-[var(--surface)]"}`}
+                        className={`min-h-9 rounded-lg border px-2 ${isUnassigned(row) ? "attention-control font-semibold" : "border-[var(--border)] bg-[var(--surface)]"}`}
                       >
                         <option value="">Nicht zugeordnet</option>
                         <CategorySelectOptions categories={categories} />

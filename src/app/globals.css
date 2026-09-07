@@ -11,6 +11,10 @@
   --primary-dark: #075f68;
   --accent: #31c994;
   --danger: #bd3c4b;
+  --danger-soft: #fff1f2;
+  --danger-soft-hover: #ffe4e6;
+  --danger-border: #f3a8b1;
+  --danger-text: #9f2635;
   --warning: #a96305;
   --shadow: 0 12px 30px rgba(15, 58, 66, 0.07);
 }
@@ -26,6 +30,11 @@
     --primary: #42c7bd;
     --primary-dark: #7be0d0;
     --accent: #40d69e;
+    --danger: #ff7f8f;
+    --danger-soft: #2d1c21;
+    --danger-soft-hover: #3a2229;
+    --danger-border: #7c3c48;
+    --danger-text: #ffb3bd;
     --shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
   }
 }
@@ -52,6 +61,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   box-shadow: var(--shadow);
 }
 .muted { color: var(--muted); }
+.attention-row { background: var(--danger-soft); color: var(--text); }
+.attention-row:hover { background: var(--danger-soft-hover); }
+.attention-control {
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+  color: var(--danger-text);
+}
 .app-shell { min-height: 100vh; }
 .app-main { margin-left: 250px; padding: 34px 38px 90px; max-width: 1600px; }
 .page-heading { font-size: clamp(1.7rem, 3vw, 2.35rem); font-weight: 750; letter-spacing: -0.035em; }

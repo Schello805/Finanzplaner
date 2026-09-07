@@ -2,6 +2,11 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.4.15] - 2026-09-07
+
+- Die Markierung nicht zugeordneter Umsätze verwendet jetzt eigene kontrastreiche Farben für Hell- und Dunkelmodus. Zeilentext, Zusatztext und Betrag bleiben auf der Hervorhebung lesbar.
+- Auch der aktive Offen-Filter und das Kategorieauswahlfeld nutzen dieselben barriereärmeren semantischen Farben.
+
 ## [0.4.14] - 2026-09-07
 
 - Gängige eindeutig benannte Abodienste wie Spotify, Netflix, Disney+, iCloud, Microsoft 365, Amazon Prime, DAZN und weitere werden lokal ohne KI-Kosten erkannt.
