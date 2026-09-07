@@ -113,7 +113,7 @@ cd "${APP_DIR}"
 set -a; source "${ENV_FILE}"; set +a
 sudo -u "${APP_USER}" npm ci --prefer-offline --no-audit --no-fund
 install -d -o "${APP_USER}" -g "${APP_USER}" -m 0750 /var/lib/finanzplaner
-sha256sum package-lock.json | awk '{print $1}' > /var/lib/finanzplaner/package-lock.sha256
+node -e 'const fs=require("node:fs"),crypto=require("node:crypto"),lock=JSON.parse(fs.readFileSync("package-lock.json","utf8"));delete lock.version;if(lock.packages?.[""])delete lock.packages[""].version;process.stdout.write(crypto.createHash("sha256").update(JSON.stringify(lock)).digest("hex")+"\n");' > /var/lib/finanzplaner/package-lock.sha256
 chown "${APP_USER}:${APP_USER}" /var/lib/finanzplaner/package-lock.sha256
 sudo -u "${APP_USER}" --preserve-env=DATABASE_URL npm run db:migrate
 ADMIN_RESULT="$(sudo -u "${APP_USER}" --preserve-env=DATABASE_URL,ADMIN_EMAIL,ADMIN_DISPLAY_NAME node scripts/init-admin.mjs)"

@@ -10,6 +10,7 @@ DEPLOYMENT_STAMP="${STATE_DIR}/deployed-revision"
 install -d -o "${APP_USER}" -g "${APP_USER}" -m 0750 "${STATE_DIR}"
 git config --global --get-all safe.directory 2>/dev/null | grep -Fxq "${APP_DIR}" || git config --global --add safe.directory "${APP_DIR}"
 cd "${APP_DIR}"
+SCRIPT_HASH_BEFORE="$(sha256sum "${APP_DIR}/scripts/update.sh" | awk '{print $1}')"
 PREVIOUS_REVISION="$(git rev-parse --short=7 HEAD)"
 DEPLOYED_REVISION="$(cat "${DEPLOYMENT_STAMP}" 2>/dev/null || true)"
 echo "Lokaler Quellcode vor dem Abruf: ${PREVIOUS_REVISION}"
@@ -31,6 +32,11 @@ elif git merge-base --is-ancestor origin/main HEAD; then
 else
   echo "Die Git-Historie wurde auf GitHub bereinigt. Die unveränderte Installation wird sicher auf den neuen Verlauf umgestellt …"
   git reset --hard origin/main
+fi
+SCRIPT_HASH_AFTER="$(sha256sum "${APP_DIR}/scripts/update.sh" | awk '{print $1}')"
+if [[ "${SCRIPT_HASH_BEFORE}" != "${SCRIPT_HASH_AFTER}" ]]; then
+  echo "Das Updateskript wurde selbst aktualisiert und startet einmal mit der neuen Logik neu …"
+  exec "${APP_DIR}/scripts/update.sh"
 fi
 REVISION="$(git rev-parse --short=7 HEAD)"
 FULL_REVISION="$(git rev-parse HEAD)"
@@ -60,31 +66,34 @@ fi
 echo "Zu installierende Version: ${VERSION} (Revision ${REVISION})"
 sed -i "s/^APP_VERSION=.*/APP_VERSION=${VERSION}/" /etc/finanzplaner.env
 set -a; source /etc/finanzplaner.env; set +a
-CURRENT_LOCK_HASH="$(sha256sum package-lock.json | awk '{print $1}')"
+normalized_lock_hash() {
+  node -e 'const fs=require("node:fs");const source=process.argv[1]?fs.readFileSync(process.argv[1],"utf8"):fs.readFileSync(0,"utf8");const lock=JSON.parse(source);delete lock.version;if(lock.packages?.[""])delete lock.packages[""].version;process.stdout.write(JSON.stringify(lock));' "${1:-}" | sha256sum | awk '{print $1}'
+}
+CURRENT_LOCK_HASH="$(normalized_lock_hash package-lock.json)"
 SAVED_LOCK_HASH="$(cat "${LOCK_STAMP}" 2>/dev/null || true)"
+# Ältere Versionen speicherten den Hash der gesamten Sperrdatei. Ermittle
+# einmalig die damalige Git-Version und vergleiche sie ohne die reine
+# Anwendungsversionsnummer. So verursacht ein SemVer-Bump keine Neuinstallation.
+if [[ -n "${SAVED_LOCK_HASH}" && "${SAVED_LOCK_HASH}" != "${CURRENT_LOCK_HASH}" ]]; then
+  while read -r lock_revision; do
+    [[ "$(git show "${lock_revision}:package-lock.json" | sha256sum | awk '{print $1}')" == "${SAVED_LOCK_HASH}" ]] || continue
+    SAVED_LOCK_HASH="$(git show "${lock_revision}:package-lock.json" | normalized_lock_hash)"
+    break
+  done < <(git rev-list --max-count=50 HEAD -- package-lock.json)
+fi
 if [[ ! -d node_modules || "${CURRENT_LOCK_HASH}" != "${SAVED_LOCK_HASH}" ]]; then
-  echo "Abhängigkeiten haben sich geändert – nur Änderungen werden installiert."
+  echo "Abhängigkeiten haben sich tatsächlich geändert – Pakete werden reproduzierbar installiert."
   DEPENDENCY_START="${SECONDS}"
-  if [[ -d node_modules ]]; then
-    # Anders als `npm ci` löscht `npm install` nicht vorab alle vorhandenen
-    # Pakete. Die Sperrdatei bleibt maßgeblich, während unveränderte Pakete
-    # aus node_modules wiederverwendet werden.
-    sudo -u "${APP_USER}" npm install --prefer-offline --no-audit --no-fund --include=dev
-  else
-    sudo -u "${APP_USER}" npm ci --prefer-offline --no-audit --no-fund
-  fi
-  if ! git diff --quiet -- package-lock.json package.json; then
-    echo "FEHLER: npm wollte die festgeschriebenen Abhängigkeiten verändern." >&2
-    echo "Die beiden von npm veränderten Manifestdateien werden auf den geprüften Git-Stand zurückgesetzt." >&2
-    git restore --source=HEAD -- package-lock.json package.json
-    echo "Das Update wird vor Migration und Neustart abgebrochen und kann anschließend erneut aufgerufen werden." >&2
-    exit 1
-  fi
+  sudo -u "${APP_USER}" npm ci --prefer-offline --no-audit --no-fund
   printf '%s\n' "${CURRENT_LOCK_HASH}" > "${LOCK_STAMP}"
   chown "${APP_USER}:${APP_USER}" "${LOCK_STAMP}"
   echo "Pakete fertig nach $((SECONDS-DEPENDENCY_START)) Sekunden."
 else
   echo "Abhängigkeiten unverändert – Paketinstallation wird übersprungen."
+  if [[ "$(cat "${LOCK_STAMP}" 2>/dev/null || true)" != "${CURRENT_LOCK_HASH}" ]]; then
+    printf '%s\n' "${CURRENT_LOCK_HASH}" > "${LOCK_STAMP}"
+    chown "${APP_USER}:${APP_USER}" "${LOCK_STAMP}"
+  fi
 fi
 MIGRATION_START="${SECONDS}"
 sudo -u "${APP_USER}" --preserve-env=DATABASE_URL npm run db:migrate

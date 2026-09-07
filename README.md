@@ -71,7 +71,7 @@ Ein Proxmox-Snapshot oder vollständiges LXC-Backup vor dem Update wird empfohle
 sudo /opt/finanzplaner/scripts/update.sh
 ```
 
-Das Updateskript beendet sich sofort, wenn bereits die aktuelle Revision installiert ist. Node-Abhängigkeiten werden nur bei einer geänderten Sperrdatei und bei bestehenden Installationen inkrementell aktualisiert. Bei einem echten Code-Update bleiben Datenbankmigration, Produktionsbuild, Neustart und Dienstprüfung verpflichtend. Das Skript zeigt die Dauer der größeren Schritte an, damit Engpässe auf dem LXC erkennbar sind.
+Das Updateskript beendet sich sofort, wenn bereits die aktuelle Revision installiert ist. Node-Abhängigkeiten werden nur bei einer tatsächlichen Änderung des festgeschriebenen Paketbaums mit `npm ci` installiert; eine reine Änderung der Finanzplaner-Versionsnummer löst keine Paketinstallation aus. Bei einem echten Code-Update bleiben Datenbankmigration, Produktionsbuild, Neustart und Dienstprüfung verpflichtend. Das Skript zeigt die Dauer der größeren Schritte an, damit Engpässe auf dem LXC erkennbar sind.
 
 Das Skript lädt den aktuellen `main`-Stand, installiert exakt die festgeschriebenen Abhängigkeiten, führt Datenbankmigrationen aus, baut die App neu und startet den Dienst. Nach erfolgreichem Abschluss zeigt es die SemVer-Version, technische Git-Revision, Dienststatus sowie IP-Adresse und Port an. Der Footer verwendet die echte Release-Version. Updates werden niemals automatisch installiert.
 

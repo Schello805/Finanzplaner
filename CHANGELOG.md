@@ -2,6 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.6.4] - 2026-09-07
+
+- Der beim Update auf 0.6.3 sichtbare `EACCES`-Fehler ist behoben: Das Updateskript lässt npm keine von `root` verwalteten Manifestdateien mehr verändern.
+- Abhängigkeiten werden anhand des tatsächlichen Paketbaums statt anhand der gesamten `package-lock.json` verglichen; reine Versionsänderungen lösen keine Neuinstallation von über 500 Paketen mehr aus.
+- Bei echten Abhängigkeitsänderungen bleibt das reproduzierbare und schreibgeschützte `npm ci` erhalten.
+- Vorhandene alte Paket-Hashmarken werden automatisch über die Git-Historie erkannt und einmalig auf das neue Format migriert.
+- Ändert ein Release das Updateskript selbst, startet es nach dem Git-Abruf einmal automatisch neu und arbeitet garantiert mit der neuen Logik weiter.
+
 ## [0.6.3] - 2026-09-07
 
 - Der Monatsablauf erkennt eine eingerichtete Sparkassen-Verbindung und führt dann direkt zum Bankabruf statt weiterhin pauschal zum CSV-Import.
