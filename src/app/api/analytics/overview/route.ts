@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         eq(transactions.excludedFromAnalysis, false),
         sql`${transactions.specialType} <> 'transfer'`,
         or(eq(transactions.direction, "expense"), eq(transactions.specialType, "refund")),
-        sql`not (${transactions.categorizedBy} like 'ai:%' and coalesce(${transactions.categorizationConfidence}, 0) < ${VERY_SAFE_CONFIDENCE})`,
+        sql`not (coalesce(${transactions.categorizedBy}, '') like 'ai:%' and coalesce(${transactions.categorizationConfidence}, 0) < ${VERY_SAFE_CONFIDENCE})`,
         gte(transactions.bookedOn, from),
       ));
     const splits = rows.length

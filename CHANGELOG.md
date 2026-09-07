@@ -2,6 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.7.1] - 2026-09-07
+
+- Die Startseite zeigt zuerst genau den nächsten sinnvollen Arbeitsschritt; der vollständige Monatsablauf bleibt bei Bedarf aufklappbar.
+- Die Trefferzahl einer gelernten Regel öffnet nun die referenzierenden Buchungen mit Datum, Betrag, Buchungstext, Konto, Kategorie und Zuordnungsherkunft.
+- Der Vollständigkeits- und Löschabgleich eines Imports verwendet nur noch frühere Importe derselben Datenquelle. Ein PayPal-Export kann damit keine Sparkassen-Umsätze mehr fälschlich als fehlend melden.
+- Importvorschau und Hinweise nennen die erkannte Datenquelle und erklären, wenn noch keine passende Vergleichsbasis existiert.
+- Manuelle und ältere Buchungen ohne Zuordnungsherkunft bleiben zuverlässig in den Auswertungen enthalten.
+
 ## [0.7.0] - 2026-09-07
 
 - Die Sicherheitsgrenzen sind zentral vereinheitlicht: „sehr sicher“ beginnt erst bei 95 Prozent, „wahrscheinlich“ bei 75 Prozent.

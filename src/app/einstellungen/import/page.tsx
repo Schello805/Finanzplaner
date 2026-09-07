@@ -35,6 +35,7 @@ export default function ImportPage() {
     storedZero: number;
     statementPeriod: { from: string; to: string } | null;
     reconciliationSkippedReason: string | null;
+    importSource: string;
     missingStored: Array<{
       id: string;
       date: string;
@@ -164,8 +165,8 @@ export default function ImportPage() {
     <div className="space-y-7">
       <PageHeader
         eyebrow="Einstellungen · Daten"
-        title="Kontoauszug importieren"
-        description="Die Originaldatei wird nach dem erfolgreichen Import automatisch gelöscht."
+        title="Finanzdatei importieren"
+        description="Bank, Kreditkarte und PayPal werden als getrennte Datenquellen behandelt. Die Originaldatei wird nach dem Import nicht gespeichert."
       />
       <nav aria-label="Importablauf" className="card p-4">
         <ol className="grid gap-2 sm:grid-cols-4">
@@ -207,7 +208,7 @@ export default function ImportPage() {
             </select>
           </label>
           <label className="mt-4 block text-sm font-semibold">
-            Bankformat
+            Datenquelle und Format
             <select
               value={templateId}
               onChange={(e) => setTemplateId(e.target.value)}
@@ -304,7 +305,7 @@ export default function ImportPage() {
       </section>
       {preview && (
         <section className="card p-5">
-          <h2 className="font-bold">Importvorschau</h2>
+          <h2 className="font-bold">Importvorschau · {preview.importSource}</h2>
           <div className={`mt-4 rounded-xl p-4 text-sm leading-6 ${preview.accountValidation.status==="verified"?"bg-emerald-50 text-emerald-900":"bg-amber-50 text-amber-900"}`}><strong>{preview.accountValidation.status==="verified"?"Zielkonto bestätigt.":"Zielkonto nicht automatisch prüfbar."}</strong>{" "}{preview.accountValidation.message}</div>
           {preview.alreadyImported && (
             <div className="mt-4 rounded-xl bg-sky-50 p-4 text-sm leading-6 text-sky-900">
@@ -408,7 +409,7 @@ export default function ImportPage() {
           )}
           {preview.reconciliationSkippedReason && (
             <div className="mt-4 rounded-xl bg-sky-50 p-4 text-sm leading-6 text-sky-900">
-              <strong>Kein Löschabgleich für diesen Teilauszug.</strong>{" "}
+              <strong>Kein Löschabgleich mit anderen Datenquellen.</strong>{" "}
               {preview.reconciliationSkippedReason} Vorhandene Umsätze bleiben unverändert; neue Umsätze und Dubletten werden trotzdem normal geprüft.
             </div>
           )}

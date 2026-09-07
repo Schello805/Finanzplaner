@@ -136,6 +136,22 @@ export async function POST(request: Request) {
       .select()
       .from(transactions)
       .where(eq(transactions.accountId, account.id));
+    // A completeness/deletion check is only meaningful within the same import
+    // source. A PayPal export must never make Sparkasse rows look "missing".
+    const sameSourceImports = await db
+      .select({ id: imports.id })
+      .from(imports)
+      .where(
+        and(
+          eq(imports.accountId, account.id),
+          eq(imports.templateId, storedTemplateId),
+          eq(imports.status, "completed"),
+        ),
+      );
+    const sameSourceImportIds = new Set(sameSourceImports.map((row) => row.id));
+    const sameSourceExistingRows = existingRows.filter(
+      (row) => row.importId && sameSourceImportIds.has(row.importId),
+    );
     const existing: ParsedTransaction[] = existingRows.map((row) => ({
       accountReference: "",
       bookedOn: row.bookedOn,
@@ -154,11 +170,16 @@ export async function POST(request: Request) {
     const storedZero = existing.filter((transaction) => Math.abs(transaction.amount) < 0.005).length;
     const dates = importableTransactions.map((item) => item.bookedOn).sort();
     const coverage = statementCoverage(importableTransactions);
+    const reconciliationSkippedReason = !sameSourceExistingRows.length
+      ? `Für die Quelle „${template.bankName} · ${template.name}“ gibt es auf diesem Konto noch keinen früheren Import als Vergleichsbasis.`
+      : coverage.comparable
+        ? null
+        : coverage.reason;
     const firstDate = dates[0];
     const lastDate = dates.at(-1);
-    const missingStored = firstDate && lastDate
+    const missingStored = firstDate && lastDate && !reconciliationSkippedReason
       ? findMissingStoredTransactions(
-          existingRows.filter((row) => !isPendingTransaction(row) && Math.abs(Number(row.amount)) >= 0.005),
+          sameSourceExistingRows.filter((row) => !isPendingTransaction(row) && Math.abs(Number(row.amount)) >= 0.005),
           importableTransactions,
         )
           .map((row) => ({
@@ -181,7 +202,8 @@ export async function POST(request: Request) {
         storedPending,
         storedZero,
         statementPeriod: firstDate && lastDate ? { from: firstDate, to: lastDate } : null,
-        reconciliationSkippedReason: coverage.comparable ? null : coverage.reason,
+        reconciliationSkippedReason,
+        importSource: `${template.bankName} · ${template.name}`,
         missingStored,
         ready: duplicateCheck.accepted.length,
         exactDuplicates: duplicateCheck.exact.length,
