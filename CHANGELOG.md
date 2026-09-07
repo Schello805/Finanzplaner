@@ -2,6 +2,13 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.6.9] - 2026-09-07
+
+- Die Kategorienverwaltung verwendet auf Smartphones echte Kartenzeilen statt zusammengedrückter Desktop-Zeilen.
+- Kategoriename und Beschreibung erhalten die volle Breite; Anzahl, Bearbeiten und Löschen stehen übersichtlich in einer eigenen Aktionszeile.
+- Unterkategorien bleiben klar eingerückt, ohne dass Namen oder Beschreibung buchstabenweise umbrechen.
+- Bearbeiten- und Löschen-Schaltflächen besitzen mobil ausreichend große Touch-Flächen.
+
 ## [0.6.8] - 2026-09-07
 
 - KI-Vorschläge lassen sich wahlweise nur ab 90 Prozent Sicherheit oder vollständig gesammelt übernehmen.

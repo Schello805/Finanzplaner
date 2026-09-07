@@ -158,20 +158,20 @@ export default function CategoriesPage() {
           </header>
           <div className="divide-y divide-[var(--border)]">
           {section.items.map(({ category: row, depth }) => (
-            <div key={row.id} className="flex items-center gap-4 p-4">
-            <div className="flex-1" style={{ paddingLeft: `${depth * 24}px` }}>
+            <div key={row.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:gap-4">
+            <div className="col-span-3 min-w-0 sm:col-span-1" style={{ paddingLeft: `${depth * 20}px` }}>
               <div className="flex items-start gap-3">
-                {depth > 0 && <span className="muted" aria-hidden="true">↳</span>}
+                {depth > 0 && <span className="mt-0.5 shrink-0 muted" aria-hidden="true">↳</span>}
                 <span
                   className="mt-1 h-4 w-4 shrink-0 rounded-full"
                   style={{ background: row.color }}
                 />
-                <div>
-                  <div className="font-semibold">{row.name}</div>
-                  <div className="text-xs muted">
+                <div className="min-w-0">
+                  <div className="break-words text-base font-semibold leading-6">{row.name}</div>
+                  <div className="mt-0.5 text-xs leading-5 muted">
                     {row.isIncome ? "Einnahme" : "Ausgabe"}
                     {row.parentId
-                      ? ` · Unterkategorie von ${rows.find((parent) => parent.id === row.parentId)?.name ?? "Unbekannt"}`
+                      ? ` · Unterkategorie · ${rows.find((parent) => parent.id === row.parentId)?.name ?? "Unbekannt"}`
                       : ""}
                   </div>
                   {row.slug === "umbuchung" && <div className="mt-1 max-w-2xl text-xs font-medium text-[var(--primary)]">Nur für Geldbewegungen zwischen eigenen Konten. Buchungen dieser Kategorie zählen weder als Ausgabe noch als Einkommen.</div>}
@@ -179,21 +179,21 @@ export default function CategoriesPage() {
               </div>
             </div>
             <span
-              className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs font-semibold whitespace-nowrap"
+              className="justify-self-start rounded-full bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold whitespace-nowrap sm:justify-self-auto"
               aria-label={`${row.transactionCount} zugeordnete Umsätze`}
             >
               {row.transactionCount} {row.transactionCount === 1 ? "Umsatz" : "Umsätze"}
             </span>
             <button
               onClick={() => setEditing(row)}
-              className="btn-secondary min-h-9 px-3"
+              className="btn-secondary min-h-11 min-w-11 px-3"
               aria-label={`${row.name} bearbeiten`}
             >
               <Pencil size={15} />
             </button>
             <button
               onClick={() => remove(row)}
-              className="btn-secondary min-h-9 px-3 text-[var(--danger)]"
+              className="btn-secondary min-h-11 min-w-11 px-3 text-[var(--danger)]"
               aria-label={`${row.name} löschen`}
             >
               <Trash2 size={15} />
