@@ -2,6 +2,21 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.5.0] - 2026-09-07
+
+- Der Monatsablauf führt nun sichtbar durch Import, sichere lokale Zuordnung, KI-Restanalyse, persönliche Prüfung, ergänzende Sammelzahlungsimporte und die fertige Analyse.
+- KI-Restmengen werden in transparenten 25er-Runden verarbeitet. Runde, Gesamtfortschritt und bearbeitete Umsätze bleiben sichtbar; die automatische Analyse arbeitet alle Runden nacheinander ab.
+- Ein blockierender Ladebildschirm zeigt während jedes KI-Aufrufs eindeutig, dass die Verarbeitung läuft und die Seite geöffnet bleiben soll.
+- Jeder Benutzer legt selbst fest, ob alle KI-Vorschläge bestätigt werden müssen oder Treffer ab 90 beziehungsweise 70 Prozent automatisch übernommen werden dürfen.
+- Prüfpflichtige Vorschläge blockieren nicht mehr die Analyse der nächsten 25 Umsätze und werden bis zur gemeinsamen oder einzelnen Entscheidung gesammelt.
+- Offene Amazon-, PayPal- und Kreditkarten-Sammelzahlungen werden getrennt ausgewiesen und führen direkt zum passenden Zusatzimport.
+- Die Analyseseite zeigt den vollständigen Arbeitsstand in sechs logisch aufeinanderfolgenden Schritten.
+- Bestätigte KI-Vorschläge werden nun als lokale Regeln gelernt und bei späteren Importen ohne erneuten API-Aufruf angewendet.
+- Für eindeutige Händler bleibt die bewährte Händlerregel bestehen. Bei Sammelabrechnern wie Amazon, PayPal, Klarna, Apple oder Google lernt die App ausschließlich die sichere Kombination aus Händler und einem aussagekräftigen Begriff im Buchungstext, etwa „Amazon + Filament“.
+- Allgemeine Wörter, reine Nummern und Zahlungsreferenzen werden nicht als Lernbegriffe akzeptiert. Fehlt ein sicherer Begriff, wird bewusst keine zu breite Regel angelegt.
+- Kombinierte Regeln erscheinen verständlich in „Gelernte Regeln“ und lassen sich dort pausieren, löschen, einer anderen Kategorie zuordnen oder kontrolliert rückwirkend anwenden.
+- Auch beim gemeinsamen Bestätigen eines KI-Stapels und beim Anlegen einer von der KI vorgeschlagenen Kategorie wird die passende lokale Regel gespeichert.
+
 ## [0.4.15] - 2026-09-07
 
 - Die Markierung nicht zugeordneter Umsätze verwendet jetzt eigene kontrastreiche Farben für Hell- und Dunkelmodus. Zeilentext, Zusatztext und Betrag bleiben auf der Hervorhebung lesbar.

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, count, eq, inArray, isNotNull, isNull, notExists, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, isNull, notExists, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { aiUsage, categories, systemSettings, transactions, transactionSplits, userPreferences } from "@/db/schema";
@@ -16,8 +16,8 @@ type ProviderConfig = {
   inputPricePerMillion?: number;
   outputPricePerMillion?: number;
 };
-const AUTO_APPLY_CONFIDENCE = 0.75;
 const AI_BATCH_SIZE = 25;
+function autoAcceptThreshold(level:"none"|"very_safe"|"likely"|null|undefined){return level==="likely"?.7:level==="very_safe"?.9:1.01}
 class AiConfigurationError extends Error {}
 async function settings() {
   const rows = await db.select().from(systemSettings);
@@ -45,7 +45,7 @@ async function settings() {
     );
   }
 }
-async function pending(userId: string, ids?: string[], requestedAccountId?: string | null) {
+async function pending(userId: string, ids?: string[], requestedAccountId?: string | null, excludedIds:string[]=[] ) {
   const { member, accountIds } = await memberAndVisibleAccountIds(userId);
   if (!accountIds.length) return { member, rows: [], total: 0, deferred: 0 };
   if (requestedAccountId && !accountIds.includes(requestedAccountId))
@@ -83,6 +83,7 @@ async function pending(userId: string, ids?: string[], requestedAccountId?: stri
     ));
   const filters = [...baseFilters];
   if (ids) filters.push(inArray(transactions.id, ids));
+  else if(excludedIds.length)filters.push(notInArray(transactions.id,excludedIds));
   const rows = await db
     .select({
       id: transactions.id,
@@ -123,7 +124,8 @@ export async function GET(request: NextRequest) {
       request.nextUrl.searchParams.get("privacyMode") === "full_text"
         ? "full_text"
         : "minimal";
-    const { rows, total, deferred } = await pending(user.userId, undefined, request.nextUrl.searchParams.get("accountId"));
+    const excludedIds=(request.nextUrl.searchParams.get("exclude")??"").split(",").filter(value=>z.string().uuid().safeParse(value).success).slice(0,500);
+    const { rows, total, deferred } = await pending(user.userId, undefined, request.nextUrl.searchParams.get("accountId"),excludedIds);
     if (!rows.length) return NextResponse.json({ count: 0, deferredCount: deferred, transactions: [] });
     let ai: Awaited<ReturnType<typeof settings>>;
     try {
@@ -146,6 +148,8 @@ export async function GET(request: NextRequest) {
       count: total,
       deferredCount: deferred,
       batchSize: rows.length,
+      totalRounds: Math.ceil(total / AI_BATCH_SIZE),
+      remainingAfterBatch: Math.max(0,total-excludedIds.length-rows.length),
       provider: ai.provider,
       model: ai.config.model,
       privacyMode: mode,
@@ -192,11 +196,12 @@ export async function POST(request: Request) {
     const byName = new Map(
       allowed.map((c) => [c.name.toLocaleLowerCase("de-DE"), c.id]),
     );
-    const [preferences] = await db.select({ automaticCategorization: userPreferences.automaticCategorization }).from(userPreferences).where(eq(userPreferences.userId, user.userId)).limit(1);
+    const [preferences] = await db.select({ automaticCategorization: userPreferences.automaticCategorization,aiAutoAcceptLevel:userPreferences.aiAutoAcceptLevel }).from(userPreferences).where(eq(userPreferences.userId, user.userId)).limit(1);
     const trustedAutomaticMode = preferences?.automaticCategorization ?? false;
+    const threshold=autoAcceptThreshold(preferences?.aiAutoAcceptLevel as "none"|"very_safe"|"likely"|undefined);
     let applied = 0;
     const suggestions = [];
-    const categoryProposalMap = new Map<string, { name: string; isIncome: boolean; transactionIds: string[]; confidence: number; reason: string }>();
+    const categoryProposalMap = new Map<string, { name: string; isIncome: boolean; transactionIds: string[]; matchingKeywords: Record<string,string>; confidence: number; reason: string }>();
     const visibleAccountIds = (await memberAndVisibleAccountIds(user.userId)).accountIds;
     for (const item of result.data.results) {
       if (!body.ids.includes(item.id)) continue;
@@ -211,12 +216,14 @@ export async function POST(request: Request) {
           const existing = categoryProposalMap.get(key);
           if (existing) {
             existing.transactionIds.push(item.id);
+            if(item.matchingKeyword)existing.matchingKeywords[item.id]=item.matchingKeyword;
             existing.confidence = Math.max(existing.confidence, item.confidence);
           } else {
             categoryProposalMap.set(key, {
               name: proposedName,
               isIncome: source.amount >= 0,
               transactionIds: [item.id],
+              matchingKeywords: item.matchingKeyword ? { [item.id]:item.matchingKeyword } : {},
               confidence: item.confidence,
               reason: item.reason,
             });
@@ -224,7 +231,7 @@ export async function POST(request: Request) {
         }
         continue;
       }
-      if (trustedAutomaticMode && item.confidence >= AUTO_APPLY_CONFIDENCE) {
+      if (item.confidence >= threshold) {
         const source = rows.find((row) => row.id === item.id);
         await db
           .update(transactions)
@@ -242,7 +249,7 @@ export async function POST(request: Request) {
               inArray(transactions.accountId, visibleAccountIds),
             ),
           );
-        if(source)await learnMerchantRule({ householdId: member.householdId, ownerMemberId: member.id, visibleAccountIds,sourceAccountId:source.accountId, merchant: source.merchant, categoryId });
+        if(source)await learnMerchantRule({ householdId: member.householdId, ownerMemberId: member.id, visibleAccountIds,sourceAccountId:source.accountId, merchant: source.merchant, purpose:source.purpose, matchingKeyword:item.matchingKeyword, categoryId });
         applied++;
       } else suggestions.push({ ...item, categoryId });
     }
@@ -280,6 +287,7 @@ export async function POST(request: Request) {
       suggestions,
       categoryProposals: [...categoryProposalMap.values()],
       automaticMode: trustedAutomaticMode,
+      autoAcceptLevel:preferences?.aiAutoAcceptLevel??"none",
       usage: result.usage,
       estimatedCostEur: totalCost,
       pricingAvailable: Boolean(price),

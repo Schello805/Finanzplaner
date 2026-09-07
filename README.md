@@ -38,10 +38,11 @@ HTTP verschlüsselt Passwörter und Finanzdaten nicht. Der vorgesehene Betrieb s
 
 1. Auf der Analyseseite „Neuen Kontoauszug auswerten“ wählen und die aktuelle Bank-CSV importieren.
 2. Die Vorschau prüft Dubletten, Vormerkungen und im neuen Export fehlende Buchungen. Löschungen erfolgen ausschließlich nach Auswahl und Rückfrage.
-3. Bereits bestätigte Händler sowie eindeutige Begriffe werden lokal und ohne API-Kosten zugeordnet. Nur der verbleibende Rest wird optional an die KI übergeben.
-4. KI-Vorschläge einzeln oder gesammelt prüfen. Die vorgeschlagene Kategorie kann vor der Bestätigung geändert oder mit „Später prüfen“ dauerhaft zurückgestellt werden; erst eine persönliche Vertrauenseinstellung erlaubt die automatische Übernahme sicherer Treffer.
-5. Optional Amazons `Order History.csv` importieren. Lokale Artikelvorschläge bestätigen und Sammelbestellungen anschließend mit der passenden Bankbuchung abstimmen.
-6. Zur Analyseseite zurückkehren. Sie vergleicht den letzten vollständigen Monat mit bis zu zwölf Vormonaten und zeigt den aktuellen Monat als Anteil des üblichen Monatswerts. Eine spekulative Hochrechnung wird bewusst nicht angezeigt.
+3. Bereits bestätigte Händler, gelernte Kombinationen aus Händler und Buchungstext sowie eindeutige Abos werden lokal und ohne API-Kosten zugeordnet. Nur der verbleibende Rest wird an die KI übergeben.
+4. Die KI arbeitet transparent in Stapeln zu je 25 Umsätzen. Runde und Gesamtfortschritt sind sichtbar; mit aktivierter Automatik laufen alle Stapel nacheinander durch.
+5. In den persönlichen KI-Einstellungen festlegen, ob alle Vorschläge bestätigt werden oder Treffer ab 90 beziehungsweise 70 Prozent automatisch übernommen werden dürfen. Andere Vorschläge einzeln, gesammelt oder später prüfen.
+6. Weist die App danach offene Amazon-, PayPal- oder Kreditkarten-Sammelzahlungen aus, den passenden Zusatzexport hochladen oder die Buchung manuell zuordnen. Amazon verwendet dafür `Order History.csv`.
+7. Zur Analyseseite zurückkehren. Sie vergleicht den letzten vollständigen Monat mit bis zu zwölf Vormonaten und zeigt den aktuellen Monat als Anteil des üblichen Monatswerts. Eine spekulative Hochrechnung wird bewusst nicht angezeigt.
 
 Amazon und PayPal gelten als Sammelzahlungsanbieter und erhalten bewusst keine pauschale lokale Händlerregel. Amazon-Artikel werden stattdessen einzeln über den Bestellimport zugeordnet.
 

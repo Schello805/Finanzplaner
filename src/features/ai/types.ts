@@ -7,6 +7,7 @@ export const categorizationResponseSchema = z.object({
     proposedCategory: z.string().min(2).max(60).nullable(),
     subcategory: z.string().nullable().optional(),
     normalizedMerchant: z.string().nullable().optional(),
+    matchingKeyword: z.string().min(2).max(80).nullable().optional(),
     confidence: z.number().min(0).max(1),
     reason: z.string().max(240),
   })),

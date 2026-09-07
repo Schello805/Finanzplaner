@@ -282,6 +282,7 @@ export const userPreferences = pgTable("user_preferences", {
   userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
   automaticCategorization: boolean("automatic_categorization").default(false).notNull(),
   automaticInsights: boolean("automatic_insights").default(false).notNull(),
+  aiAutoAcceptLevel: text("ai_auto_accept_level").default("none").notNull(),
   aiPrivacyMode: text("ai_privacy_mode").default("minimal").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

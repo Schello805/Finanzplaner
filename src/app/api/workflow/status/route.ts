@@ -11,7 +11,7 @@ export async function GET() {
     const { member, accountIds } = await memberAndVisibleAccountIds(user.userId);
     if (!accountIds.length) return NextResponse.json({ accountCount: 0, transactionCount: 0, uncategorizedCount: 0, amazonOpenCount: 0, lastImportAt: null, aiConfigured: false });
     const [transactionRows, splitRows, lastImportRows, amazonRows, aiDefaultRows] = await Promise.all([
-      db.select({ id: transactions.id, categoryId: transactions.categoryId }).from(transactions).where(and(inArray(transactions.accountId, accountIds),eq(transactions.excludedFromAnalysis,false),sql`${transactions.specialType} <> 'transfer'`, sql`${transactions.amount} <> 0`, sql`not (${transactions.counterparty} is null and ${transactions.bookingType} ilike 'SONSTIGER EINZUG' and ${transactions.purpose} ilike 'MO %')`)),
+      db.select({ id: transactions.id, categoryId: transactions.categoryId,counterparty:transactions.counterparty,purpose:transactions.purpose,bookingType:transactions.bookingType,confidence:transactions.categorizationConfidence,categorizedBy:transactions.categorizedBy,aiReviewDeferredAt:transactions.aiReviewDeferredAt }).from(transactions).where(and(inArray(transactions.accountId, accountIds),eq(transactions.excludedFromAnalysis,false),sql`${transactions.specialType} <> 'transfer'`, sql`${transactions.amount} <> 0`, sql`not (${transactions.counterparty} is null and ${transactions.bookingType} ilike 'SONSTIGER EINZUG' and ${transactions.purpose} ilike 'MO %')`)),
       db.select({ transactionId: transactionSplits.transactionId }).from(transactionSplits).innerJoin(transactions,eq(transactionSplits.transactionId,transactions.id)).where(inArray(transactions.accountId,accountIds)),
       db.select({ completedAt: imports.completedAt }).from(imports).innerJoin(accounts, eq(imports.accountId, accounts.id)).where(and(inArray(accounts.id, accountIds), eq(imports.status, "completed"))).orderBy(desc(imports.completedAt)).limit(1),
       db.select({ id: amazonOrderItems.id }).from(amazonOrderItems).where(and(eq(amazonOrderItems.ownerMemberId, member.id), isNull(amazonOrderItems.matchedTransactionId))),
@@ -19,9 +19,13 @@ export async function GET() {
     ]);
     const splitIds = new Set(splitRows.map((row) => row.transactionId));
     const uncategorizedCount = transactionRows.filter((row) => !row.categoryId && !splitIds.has(row.id)).length;
+    const openRows=transactionRows.filter(row=>!row.categoryId&&!splitIds.has(row.id));
+    const unresolvedSources={amazon:openRows.filter(row=>/amazon/i.test(`${row.counterparty} ${row.purpose}`)).length,paypal:openRows.filter(row=>/paypal/i.test(`${row.counterparty} ${row.purpose}`)).length,card:openRows.filter(row=>/kreditkarte|credit card|kartenabrechnung/i.test(`${row.counterparty} ${row.purpose} ${row.bookingType}`)).length};
+    const reviewCount=transactionRows.filter(row=>row.categoryId&&row.categorizedBy?.startsWith("ai:")&&Number(row.confidence??0)<.9).length;
+    const deferredCount=openRows.filter(row=>row.aiReviewDeferredAt).length;
     const provider = (aiDefaultRows[0]?.valueJson as { provider?: "openai" | "gemini" } | null)?.provider ?? "openai";
     const [providerRow] = await db.select({ secret: systemSettings.valueEncrypted }).from(systemSettings).where(eq(systemSettings.key, `ai.${provider}`)).limit(1);
-    return NextResponse.json({ accountCount: accountIds.length, transactionCount: transactionRows.length, uncategorizedCount, amazonOpenCount: amazonRows.length, lastImportAt: lastImportRows[0]?.completedAt ?? null, aiConfigured: Boolean(providerRow?.secret) });
+    return NextResponse.json({ accountCount: accountIds.length, transactionCount: transactionRows.length, uncategorizedCount, reviewCount,deferredCount,unresolvedSources,amazonOpenCount: amazonRows.length, lastImportAt: lastImportRows[0]?.completedAt ?? null, aiConfigured: Boolean(providerRow?.secret) });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Workflow-Status konnte nicht geladen werden." }, { status: 400 });
   }

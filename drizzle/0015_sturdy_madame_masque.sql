@@ -1,0 +1,1 @@
+ALTER TABLE "user_preferences" ADD COLUMN "ai_auto_accept_level" text DEFAULT 'none' NOT NULL;

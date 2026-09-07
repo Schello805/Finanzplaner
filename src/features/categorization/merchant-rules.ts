@@ -5,6 +5,7 @@ import { canLearnMerchant, normalizeMerchant } from "./normalize";
 import { keywordCategory } from "./keyword-rules";
 import {resolveRuleAssignments} from "./rule-resolution";
 import { isKnownSubscription } from "./subscription-providers";
+import { COMPOUND_RULE_FIELD, COMPOUND_RULE_OPERATOR, isAggregatorMerchant, isSafeRuleKeyword, matchesCompoundRule, normalizeRuleKeyword, parseCompoundRule, serializeCompoundRule } from "./compound-rules";
 export { normalizeMerchant } from "./normalize";
 
 export async function merchantRuleMap(householdId: string, ownerMemberId: string, accountId:string) {
@@ -29,20 +30,27 @@ export async function learnMerchantRule(input: {
   visibleAccountIds: string[];
   sourceAccountId:string;
   merchant?: string | null;
+  purpose?: string | null;
+  matchingKeyword?: string | null;
   categoryId: string | null;
   applyExisting?: "none" | "unassigned" | "all";
 }) {
   const value = normalizeMerchant(input.merchant);
-  if (!canLearnMerchant(value)) return { learned: false, applied: 0 };
+  const keyword = normalizeRuleKeyword(input.matchingKeyword);
+  const compound = isAggregatorMerchant(value) && isSafeRuleKeyword(keyword) && normalizeRuleKeyword(input.purpose).includes(keyword);
+  if (!compound && (isAggregatorMerchant(value) || !canLearnMerchant(value))) return { learned: false, applied: 0 };
+  const field = compound ? COMPOUND_RULE_FIELD : "counterparty";
+  const operator = compound ? COMPOUND_RULE_OPERATOR : "equals";
+  const ruleValue = compound ? serializeCompoundRule(value, keyword) : value;
   await db.transaction(async (tx) => {
     await tx.delete(categorizationRules).where(
       and(
         eq(categorizationRules.householdId, input.householdId),
         eq(categorizationRules.ownerMemberId, input.ownerMemberId),
         eq(categorizationRules.accountId,input.sourceAccountId),
-        eq(categorizationRules.field, "counterparty"),
-        eq(categorizationRules.operator, "equals"),
-        eq(categorizationRules.value, value),
+        eq(categorizationRules.field, field),
+        eq(categorizationRules.operator, operator),
+        eq(categorizationRules.value, ruleValue),
       ),
     );
     if (input.categoryId) {
@@ -51,30 +59,23 @@ export async function learnMerchantRule(input: {
         ownerMemberId: input.ownerMemberId,
         accountId:input.sourceAccountId,
         categoryId: input.categoryId,
-        field: "counterparty",
-        operator: "equals",
-        value,
+        field,
+        operator,
+        value: ruleValue,
         shared: false,
         priority: 100,
       });
     }
   });
   if (!input.categoryId || !input.visibleAccountIds.length || input.applyExisting === "none") return { learned: true, applied: 0 };
-  const applied = await db
-    .update(transactions)
-    .set({ categoryId: input.categoryId, categorizedBy: "local-rule", categorizationConfidence: "1.000", updatedAt: new Date() })
-    .where(
-      and(
-        eq(transactions.accountId,input.sourceAccountId),
-        eq(transactions.excludedFromAnalysis,false),
-        isNull(transactions.aiReviewDeferredAt),
-        ...(input.applyExisting === "all" ? [] : [isNull(transactions.categoryId)]),
-        notExists(db.select({ id: transactionSplits.transactionId }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))),
-        eq(transactions.counterpartyNormalized, value),
-      ),
-    )
-    .returning({ id: transactions.id });
-  return { learned: true, applied: applied.length };
+  if (!compound) {
+    const applied = await db.update(transactions).set({ categoryId: input.categoryId, categorizedBy: "local-rule", categorizationConfidence: "1.000", updatedAt: new Date() }).where(and(eq(transactions.accountId,input.sourceAccountId),eq(transactions.excludedFromAnalysis,false),isNull(transactions.aiReviewDeferredAt),...(input.applyExisting === "all" ? [] : [isNull(transactions.categoryId)]),notExists(db.select({ id: transactionSplits.transactionId }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))),eq(transactions.counterpartyNormalized, value))).returning({ id: transactions.id });
+    return { learned: true, applied: applied.length };
+  }
+  const candidates = await db.select({id:transactions.id,merchant:transactions.counterparty,purpose:transactions.purpose,categoryId:transactions.categoryId}).from(transactions).where(and(eq(transactions.accountId,input.sourceAccountId),eq(transactions.excludedFromAnalysis,false),isNull(transactions.aiReviewDeferredAt),notExists(db.select({ id: transactionSplits.transactionId }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id)))));
+  const ids = candidates.filter(row => (input.applyExisting === "all" || !row.categoryId) && matchesCompoundRule({merchant:value,keyword},row)).map(row=>row.id);
+  if (ids.length) await db.update(transactions).set({categoryId:input.categoryId,categorizedBy:"local-rule",categorizationConfidence:"1.000",updatedAt:new Date()}).where(inArray(transactions.id,ids));
+  return { learned: true, applied: ids.length };
 }
 
 export async function applyMerchantRules(input: {
@@ -84,6 +85,7 @@ export async function applyMerchantRules(input: {
 }) {
   if (!input.visibleAccountIds.length) return { applied: 0, rules: 0 };
   const ruleMaps=new Map<string,Map<string,string>>();for(const accountId of input.visibleAccountIds)ruleMaps.set(accountId,await merchantRuleMap(input.householdId,input.ownerMemberId,accountId));
+  const compoundRows = await db.select({value:categorizationRules.value,categoryId:categorizationRules.categoryId,accountId:categorizationRules.accountId,shared:categorizationRules.shared}).from(categorizationRules).where(and(eq(categorizationRules.householdId,input.householdId),eq(categorizationRules.field,COMPOUND_RULE_FIELD),eq(categorizationRules.operator,COMPOUND_RULE_OPERATOR),eq(categorizationRules.enabled,true),or(eq(categorizationRules.shared,true),and(eq(categorizationRules.ownerMemberId,input.ownerMemberId),inArray(categorizationRules.accountId,input.visibleAccountIds)))));
   const assigned = await db
     .select({
       merchant: transactions.counterparty,
@@ -146,6 +148,15 @@ export async function applyMerchantRules(input: {
       .returning({ id: transactions.id });
     applied += rows.length;
   }
+  const compoundCandidates = await db.select({id:transactions.id,accountId:transactions.accountId,merchant:transactions.counterparty,purpose:transactions.purpose}).from(transactions).where(and(inArray(transactions.accountId,input.visibleAccountIds),eq(transactions.excludedFromAnalysis,false),isNull(transactions.aiReviewDeferredAt),isNull(transactions.categoryId),notExists(db.select({id:transactionSplits.transactionId}).from(transactionSplits).where(eq(transactionSplits.transactionId,transactions.id)))));
+  let compoundApplied = 0;
+  for (const transaction of compoundCandidates) {
+    const matches = compoundRows.filter(row => (row.shared || row.accountId === transaction.accountId) && parseCompoundRule(row.value) && matchesCompoundRule(parseCompoundRule(row.value)!,transaction));
+    const categoryIds = new Set(matches.map(row=>row.categoryId));
+    if (categoryIds.size !== 1) continue;
+    await db.update(transactions).set({categoryId:[...categoryIds][0],categorizedBy:"local-rule",categorizationConfidence:"1.000",updatedAt:new Date()}).where(eq(transactions.id,transaction.id));
+    compoundApplied++;
+  }
   const [availableCategories, remaining] = await Promise.all([
     db.select({ id: categories.id, name: categories.name, isIncome: categories.isIncome }).from(categories).where(eq(categories.householdId, input.householdId)),
     db.select({ id: transactions.id, accountId: transactions.accountId, merchant: transactions.counterparty, purpose: transactions.purpose, amount: transactions.amount }).from(transactions).where(and(inArray(transactions.accountId, input.visibleAccountIds),eq(transactions.excludedFromAnalysis,false), isNull(transactions.aiReviewDeferredAt), isNull(transactions.categoryId), notExists(db.select({ id: transactionSplits.transactionId }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))))),
@@ -162,5 +173,5 @@ export async function applyMerchantRules(input: {
       if (learnedSubscription.learned) subscriptionRulesLearned++;
     }
   }
-  return { applied: applied + keywordApplied, rules: [...ruleMaps.values()].reduce((sum,map)=>sum+map.size,0) + subscriptionRulesLearned, learned: learned.size + subscriptionRulesLearned, keywordApplied, subscriptionRulesLearned };
+  return { applied: applied + compoundApplied + keywordApplied, rules: [...ruleMaps.values()].reduce((sum,map)=>sum+map.size,0) + compoundRows.length + subscriptionRulesLearned, learned: learned.size + subscriptionRulesLearned, keywordApplied, compoundApplied, subscriptionRulesLearned };
 }

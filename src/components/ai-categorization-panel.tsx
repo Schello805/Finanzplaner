@@ -10,6 +10,8 @@ type Preview = {
   count: number;
   deferredCount: number;
   batchSize: number;
+  totalRounds: number;
+  remainingAfterBatch:number;
   provider: "openai" | "gemini";
   model: string;
   privacyMode: Mode;
@@ -29,11 +31,13 @@ type Suggestion = {
   categoryId: string;
   confidence: number;
   reason: string;
+  matchingKeyword?: string | null;
 };
 type CategoryProposal = {
   name: string;
   isIncome: boolean;
   transactionIds: string[];
+  matchingKeywords: Record<string,string>;
   confidence: number;
   reason: string;
 };
@@ -53,9 +57,12 @@ export function AiCategorizationPanel({
   const [categories, setCategories] = useState<SelectCategory[]>([]);
   const [mode, setMode] = useState<Mode>("minimal");
   const [analyzedTransactions, setAnalyzedTransactions] = useState<Preview["transactions"]>([]);
-  async function requestPreview(nextMode: Mode, preserveMessage = false) {
+  const [processedIds,setProcessedIds]=useState<string[]>([]);
+  const [initialTotal,setInitialTotal]=useState(0);
+  async function requestPreview(nextMode: Mode, preserveMessage = false, excludedIds:string[]=processedIds) {
     const params = new URLSearchParams({ privacyMode: nextMode });
     if (accountId) params.set("accountId", accountId);
+    if(excludedIds.length)params.set("exclude",excludedIds.join(","));
     const response = await fetch(`/api/ai/categorize?${params}`);
     const body = await response.json();
     if (response.ok && body.available === false) {
@@ -75,6 +82,7 @@ export function AiCategorizationPanel({
     current: Preview,
     currentMode: Mode,
     automatic = false,
+    alreadyProcessed:string[]=processedIds,
   ) {
     setBusy(true);
     setMessage("");
@@ -95,11 +103,14 @@ export function AiCategorizationPanel({
       setMessage(
         `${automatic ? "Automatische Analyse abgeschlossen: " : ""}${body.applied} sichere Zuordnungen übernommen. ${body.suggestions.length} Zuordnungen und ${body.categoryProposals.length} neue Kategorien müssen geprüft werden. ${body.pricingAvailable ? `Geschätzte Kosten: ${Number(body.estimatedCostEur) > 0 && Number(body.estimatedCostEur) < 0.0001 ? "< 0,0001 €" : `${Number(body.estimatedCostEur).toLocaleString("de-DE", { minimumFractionDigits: 4, maximumFractionDigits: 6 })} €`}.` : "Preisangaben fehlen im Adminbereich."}`,
       );
-      setSuggestions(body.suggestions);
-      setCategoryProposals(body.categoryProposals);
-      setAnalyzedTransactions(current.transactions);
-      await requestPreview(currentMode, true);
+      setSuggestions(existing=>[...existing,...body.suggestions]);
+      setCategoryProposals(existing=>[...existing,...body.categoryProposals]);
+      setAnalyzedTransactions(existing=>[...existing,...current.transactions]);
+      const nextProcessed=[...new Set([...alreadyProcessed,...current.transactions.map(item=>item.id)])];
+      setProcessedIds(nextProcessed);
+      const next=await requestPreview(currentMode, true,nextProcessed);
       onApplied();
+      if(automatic&&next?.transactions.length)await analyze(next,currentMode,true,nextProcessed);
     } catch {
       setMessage("Die Verbindung zur KI-Analyse wurde unterbrochen. Bitte warte kurz und lade die Seite neu, um den aktuellen Stand zu prüfen, bevor du den Stapel erneut startest.");
     } finally {
@@ -111,7 +122,7 @@ export function AiCategorizationPanel({
     const response = await fetch("/api/transactions", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: suggestion.id, categoryId: suggestion.categoryId }),
+      body: JSON.stringify({ id: suggestion.id, categoryId: suggestion.categoryId, ruleMode: "future", matchingKeyword: suggestion.matchingKeyword }),
     });
     const body = await response.json();
     setBusy(false);
@@ -144,7 +155,7 @@ export function AiCategorizationPanel({
         const response = await fetch("/api/transactions", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, categoryId: category.id }),
+          body: JSON.stringify({ id, categoryId: category.id, ruleMode: "future", matchingKeyword: proposal.matchingKeywords[id] }),
         });
         if (!response.ok) throw new Error((await response.json()).error);
       }
@@ -189,7 +200,7 @@ export function AiCategorizationPanel({
         const response = await fetch("/api/transactions", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: suggestion.id, categoryId: suggestion.categoryId }),
+          body: JSON.stringify({ id: suggestion.id, categoryId: suggestion.categoryId, ruleMode: "future", matchingKeyword: suggestion.matchingKeyword }),
         });
         if (!response.ok) throw new Error((await response.json()).error);
       }
@@ -205,7 +216,7 @@ export function AiCategorizationPanel({
           const response = await fetch("/api/transactions", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id, categoryId: category.id }),
+            body: JSON.stringify({ id, categoryId: category.id, ruleMode: "future", matchingKeyword: proposal.matchingKeywords[id] }),
           });
           if (!response.ok) throw new Error((await response.json()).error);
         }
@@ -239,13 +250,14 @@ export function AiCategorizationPanel({
             : initial
           : await requestPreview(selectedMode);
       if (selectedMode === "minimal" && initial.available !== false) setPreview(initial);
+      if(initial?.count)setInitialTotal(initial.count);
       if (selectedMode === "minimal" && initial.available === false) setPreview(null);
       if (selectedMode === "minimal" && initial.error) setMessage(initial.error);
       if (preferences.automaticCategorization && current?.count) {
         const key = `finanzplaner-auto-ai:${current.transactions.map((item: { id: string }) => item.id).join(",")}`;
         if (!sessionStorage.getItem(key)) {
           sessionStorage.setItem(key, "started");
-          await analyze(current, selectedMode, true);
+          await analyze(current, selectedMode, true,[]);
         }
       }
     });
@@ -257,6 +269,7 @@ export function AiCategorizationPanel({
   if (!preview && !message) return null;
   return (
     <section className="card border-[color-mix(in_srgb,var(--primary)_35%,var(--border))] p-5">
+      {busy&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-5" role="status" aria-live="polite"><div className="card w-full max-w-md p-7 text-center shadow-2xl"><Sparkles className="mx-auto animate-pulse text-[var(--primary)]" size={38}/><h2 className="mt-4 text-xl font-bold">KI-Analyse läuft</h2><p className="mt-2 text-sm muted">Die Umsätze werden geprüft und passenden Kategorien zugeordnet. Bitte lasse diese Seite geöffnet.</p><div className="mt-5 h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]"><div className="h-full w-2/3 animate-pulse rounded-full bg-[var(--primary)]"/></div><p className="mt-3 text-xs muted">Runde {Math.floor(processedIds.length/25)+1} von {Math.max(1,Math.ceil((initialTotal||preview?.count||1)/25))}</p></div></div>}
       {preview?.count ? (
         <>
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -270,22 +283,20 @@ export function AiCategorizationPanel({
                 </h2>
                 <p className="mt-1 text-sm muted">
                   Mit {preview.provider === "openai" ? "OpenAI" : "Gemini"} ·{" "}
-                  {preview.model} analysieren · nächster Stapel: {preview.batchSize}
+                  {preview.model} · Runde {Math.floor(processedIds.length/25)+1} von {Math.max(1,Math.ceil((initialTotal||preview.count)/25))} · nächster Stapel: {preview.batchSize}
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
-                disabled={busy || suggestions.length > 0 || categoryProposals.length > 0}
+                disabled={busy}
                 onClick={() => analyze(preview, mode)}
                 className="btn-primary"
               >
                 <Sparkles size={16} />
                 {busy
                   ? "KI analysiert …"
-                  : suggestions.length > 0 || categoryProposals.length > 0
-                    ? "Vorschläge zuerst prüfen"
-                    : `${preview.batchSize} jetzt mit KI zuordnen`}
+                  : `${preview.batchSize} jetzt mit KI zuordnen`}
               </button>
               <button
                 onClick={() => setOpen((v) => !v)}
@@ -364,7 +375,10 @@ export function AiCategorizationPanel({
               </p> : <p className="mt-4 text-sm text-amber-800">Für dieses Modell fehlen Preisangaben im Adminbereich.</p>}
             </div>
           )}
+          <div className="mt-4"><div className="mb-1 flex justify-between text-xs font-semibold"><span>{Math.min(processedIds.length,initialTotal||preview.count)} von {initialTotal||preview.count} in dieser Analyse bearbeitet</span><span>{Math.round(Math.min(1,processedIds.length/Math.max(1,initialTotal||preview.count))*100)} %</span></div><div className="h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]"><div className="h-full bg-[var(--primary)] transition-all" style={{width:`${Math.min(100,processedIds.length/Math.max(1,initialTotal||preview.count)*100)}%`}}/></div></div>
         </>
+      ) : suggestions.length||categoryProposals.length ? (
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><h2 className="font-bold">Alle KI-Runden sind abgeschlossen</h2><p className="mt-1 text-sm muted">{suggestions.length+categoryProposals.reduce((sum,item)=>sum+item.transactionIds.length,0)} Vorschläge warten unten auf deine Entscheidung.</p></div><span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-900">Prüfung offen</span></div>
       ) : preview?.deferredCount ? (
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div><h2 className="font-bold">{preview.deferredCount} {preview.deferredCount === 1 ? "Umsatz wartet" : "Umsätze warten"} auf deine spätere Prüfung</h2><p className="mt-1 text-sm muted">Zurückgestellte Umsätze werden nicht erneut an die KI gesendet.</p></div>
@@ -436,6 +450,7 @@ export function AiCategorizationPanel({
                   </select>
                   {transaction && <div className="mt-2 text-xs muted">{transaction.date} · {transaction.amount.toLocaleString("de-DE", { style: "currency", currency: transaction.currency })} · {transaction.purpose}</div>}
                   <div className="mt-1 text-xs muted">{suggestion.reason}</div>
+                  {suggestion.matchingKeyword&&<div className="mt-1 text-xs font-semibold text-[var(--primary)]">Wird gelernt: Händler + „{suggestion.matchingKeyword}“ im Buchungstext</div>}
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
                   <button type="button" disabled={busy} onClick={() => deferTransactions([suggestion.id])} className="btn-secondary"><Clock3 size={16}/> Später prüfen</button>

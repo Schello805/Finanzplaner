@@ -6,6 +6,7 @@ import { accounts, categorizationRules, categories, transactions, transactionSpl
 import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { writeAudit } from "@/lib/audit";
+import { COMPOUND_RULE_FIELD, compoundRuleLabel, matchesCompoundRule, parseCompoundRule } from "@/features/categorization/compound-rules";
 
 const updateSchema = z.object({ id: z.string().uuid(), categoryId: z.string().uuid().optional(), enabled: z.boolean().optional(), shared: z.boolean().optional(), applyToExisting: z.boolean().default(false) });
 const deleteSchema = z.object({ id: z.string().uuid() });
@@ -14,12 +15,12 @@ export async function GET() {
   try {
     const user = await requireUser();
     const { member, accountIds } = await memberAndVisibleAccountIds(user.userId);
-    const rows = await db.select({ id: categorizationRules.id, value: categorizationRules.value, accountId:categorizationRules.accountId,accountName:accounts.name,categoryId: categorizationRules.categoryId, categoryName: categories.name, enabled: categorizationRules.enabled, shared: categorizationRules.shared, ownerMemberId: categorizationRules.ownerMemberId, updatedAt: categorizationRules.updatedAt })
+    const rows = await db.select({ id: categorizationRules.id, field:categorizationRules.field, operator:categorizationRules.operator, value: categorizationRules.value, accountId:categorizationRules.accountId,accountName:accounts.name,categoryId: categorizationRules.categoryId, categoryName: categories.name, enabled: categorizationRules.enabled, shared: categorizationRules.shared, ownerMemberId: categorizationRules.ownerMemberId, updatedAt: categorizationRules.updatedAt })
       .from(categorizationRules).innerJoin(categories, eq(categorizationRules.categoryId, categories.id)).leftJoin(accounts,eq(categorizationRules.accountId,accounts.id))
       .where(and(eq(categorizationRules.householdId, member.householdId), or(eq(categorizationRules.shared,true),and(eq(categorizationRules.ownerMemberId,member.id),accountIds.length?inArray(categorizationRules.accountId,accountIds):sql`false`))));
-    const counts = accountIds.length ? await db.select({ accountId:transactions.accountId,value: transactions.counterpartyNormalized, count: sql<number>`count(*)::int` }).from(transactions).where(inArray(transactions.accountId, accountIds)).groupBy(transactions.accountId,transactions.counterpartyNormalized) : [];
+    const transactionRows = accountIds.length ? await db.select({accountId:transactions.accountId,merchant:transactions.counterparty,counterpartyNormalized:transactions.counterpartyNormalized,purpose:transactions.purpose}).from(transactions).where(inArray(transactions.accountId,accountIds)) : [];
     const conflicts=new Set(rows.filter(row=>rows.some(other=>other.id!==row.id&&other.value===row.value&&other.categoryId!==row.categoryId&&(row.shared||other.shared))).map(row=>row.value));
-    return NextResponse.json(rows.map((row) => ({ ...row,accountName:row.shared?null:row.accountName,conflict:conflicts.has(row.value), matchedTransactions: counts.filter(count=>count.value===row.value&&(row.shared||count.accountId===row.accountId)).reduce((sum,count)=>sum+count.count,0), editable: row.ownerMemberId === member.id })));
+    return NextResponse.json(rows.map((row) => { const compound=row.field===COMPOUND_RULE_FIELD?parseCompoundRule(row.value):null; const matchedTransactions=transactionRows.filter(transaction=>(row.shared||transaction.accountId===row.accountId)&&(compound?matchesCompoundRule(compound,transaction):transaction.counterpartyNormalized===row.value)).length; return { ...row,displayValue:row.field===COMPOUND_RULE_FIELD?compoundRuleLabel(row.value):row.value,ruleKind:row.field===COMPOUND_RULE_FIELD?"Händler + Buchungstext":"Händler",accountName:row.shared?null:row.accountName,conflict:conflicts.has(row.value),matchedTransactions,editable:row.ownerMemberId===member.id }; }));
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Regeln konnten nicht geladen werden." }, { status: 400 }); }
 }
 
@@ -39,8 +40,16 @@ export async function PATCH(request: Request) {
     const categoryId = body.categoryId ?? rule.categoryId;
     if (body.applyToExisting && accountIds.length) {
       const targetIds=body.shared?accountIds:rule.accountId&&accountIds.includes(rule.accountId)?[rule.accountId]:[];
-      const changed = targetIds.length?await db.update(transactions).set({ categoryId, categorizedBy: "local-rule", categorizationConfidence: "1.000", updatedAt: new Date() }).where(and(inArray(transactions.accountId, targetIds), eq(transactions.counterpartyNormalized, rule.value), notExists(db.select({ id: transactionSplits.id }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))))).returning({ id: transactions.id }):[];
-      applied = changed.length;
+      if (targetIds.length && rule.field===COMPOUND_RULE_FIELD) {
+        const compound=parseCompoundRule(rule.value);
+        const candidates=compound?await db.select({id:transactions.id,merchant:transactions.counterparty,purpose:transactions.purpose}).from(transactions).where(and(inArray(transactions.accountId,targetIds),notExists(db.select({id:transactionSplits.id}).from(transactionSplits).where(eq(transactionSplits.transactionId,transactions.id))))):[];
+        const ids=compound?candidates.filter(row=>matchesCompoundRule(compound,row)).map(row=>row.id):[];
+        if(ids.length)await db.update(transactions).set({categoryId,categorizedBy:"local-rule",categorizationConfidence:"1.000",updatedAt:new Date()}).where(inArray(transactions.id,ids));
+        applied=ids.length;
+      } else {
+        const changed = targetIds.length?await db.update(transactions).set({ categoryId, categorizedBy: "local-rule", categorizationConfidence: "1.000", updatedAt: new Date() }).where(and(inArray(transactions.accountId, targetIds), eq(transactions.counterpartyNormalized, rule.value), notExists(db.select({ id: transactionSplits.id }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))))).returning({ id: transactions.id }):[];
+        applied = changed.length;
+      }
     }
     await writeAudit("configuration", "Eine Zuordnungsregel wurde geändert.", { userId: user.userId, metadata: { ruleId: rule.id, applied } });
     return NextResponse.json({ ok: true, applied });

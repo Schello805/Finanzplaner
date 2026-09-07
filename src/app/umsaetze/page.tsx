@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CircleAlert, Filter, Pencil, RefreshCw, Search, SlidersHorizontal, WandSparkles } from "lucide-react";
+import { CircleAlert, FileUp, Filter, Pencil, RefreshCw, Search, SlidersHorizontal, WandSparkles } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { AiCategorizationPanel } from "@/components/ai-categorization-panel";
 import { CategorySelectOptions } from "@/components/category-select-options";
@@ -82,6 +82,7 @@ export default function TransactionsPage() {
     () => accountRows.filter(isUnassigned).length,
     [accountRows],
   );
+  const unresolvedSources=useMemo(()=>{const open=accountRows.filter(isUnassigned);return{amazon:open.filter(row=>/amazon/i.test(`${row.counterparty} ${row.purpose}`)).length,paypal:open.filter(row=>/paypal/i.test(`${row.counterparty} ${row.purpose}`)).length,card:open.filter(row=>/kreditkarte|credit card|kartenabrechnung/i.test(`${row.counterparty} ${row.purpose}`)).length}},[accountRows]);
   const sampleIds=useMemo(()=>{const safe=accountRows.filter(row=>confidenceBand(row)==="very-safe");const sampled=safe.filter(row=>{let hash=0;for(const char of row.id)hash=(hash*31+char.charCodeAt(0))|0;return Math.abs(hash)%20===0}).slice(0,10);if(!sampled.length&&safe.length)sampled.push(safe[0]);return new Set(sampled.map(row=>row.id))},[accountRows]);
   const visible = useMemo(() => {
     const q = query.toLocaleLowerCase("de-DE");
@@ -190,6 +191,7 @@ export default function TransactionsPage() {
           {localMessage}
         </div>
       )}
+      {(unresolvedSources.amazon>0||unresolvedSources.paypal>0||unresolvedSources.card>0)&&<section className="card border-amber-300 p-5"><div className="flex flex-col justify-between gap-4 md:flex-row md:items-center"><div><h2 className="font-bold">Zusätzliche Zahlungsdetails können noch fehlen</h2><p className="mt-1 text-sm muted">Sammelzahlungen enthalten oft nicht genug Informationen für eine sichere Kategorie.</p><div className="mt-3 flex flex-wrap gap-2 text-sm font-semibold">{unresolvedSources.amazon>0&&<span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900">{unresolvedSources.amazon} Amazon</span>}{unresolvedSources.paypal>0&&<span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900">{unresolvedSources.paypal} PayPal</span>}{unresolvedSources.card>0&&<span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900">{unresolvedSources.card} Kreditkarte</span>}</div></div><div className="flex flex-wrap gap-2">{unresolvedSources.amazon>0&&<Link href="/einstellungen/amazon" className="btn-primary"><FileUp size={16}/>Amazon-Export ergänzen</Link>}<Link href="/einstellungen/import" className="btn-secondary"><FileUp size={16}/>PayPal/Karte importieren</Link></div></div></section>}
       <AiCategorizationPanel onApplied={refreshTransactions} accountId={accountFilter === "all" ? undefined : accountFilter} />
       <section className="card overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-[var(--border)] p-4 sm:flex-row">

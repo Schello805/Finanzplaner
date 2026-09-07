@@ -116,6 +116,7 @@ const patchSchema = z.object({
   linkedTransactionId: z.string().uuid().nullable().optional(),
   splits: z.array(splitSchema).min(2).max(20).optional(),
   ruleMode: z.enum(["none", "future", "all"]).optional(),
+  matchingKeyword: z.string().trim().max(80).nullable().optional(),
   deferAiReview: z.boolean().optional(),
 });
 export async function PATCH(request: Request) {
@@ -131,6 +132,7 @@ export async function PATCH(request: Request) {
         amount: transactions.amount,
         currency:transactions.currency,
         counterparty: transactions.counterparty,
+        purpose: transactions.purpose,
         categoryId: transactions.categoryId,
         categorySlug: categories.slug,
         specialType: transactions.specialType,
@@ -252,6 +254,8 @@ export async function PATCH(request: Request) {
           visibleAccountIds: accountIds,
           sourceAccountId:row.accountId,
           merchant: row.counterparty,
+          purpose: row.purpose,
+          matchingKeyword: body.matchingKeyword,
           categoryId: body.categoryId ?? null,
           applyExisting: body.ruleMode === "all" ? "all" : "none",
         })
