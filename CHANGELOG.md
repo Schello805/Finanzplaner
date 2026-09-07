@@ -2,6 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.5.1] - 2026-09-07
+
+- Die Migration der persönlichen KI-Bestätigungsgrenze besitzt nun garantiert eine neuere Reihenfolge als alle vorherigen Migrationen. Bestehende Installationen erhalten die zuvor übersprungene Spalte beim Update zuverlässig.
+- Das Updateskript prüft die erforderliche Datenbankspalte unmittelbar nach der Migration und verhindert einen Neustart mit unvollständigem Schema.
+- Umsatz- und Systemprotokolltabellen werden auf Smartphones als lesbare Karten statt als überbreite Desktoptabellen dargestellt.
+- Seitenaktionen, Filter, lange Buchungstexte, Auswahlfelder und Dialoge passen sich kleinen Displays an; Dialoge bleiben scrollbar und ihre Hauptaktionen vollständig erreichbar.
+- Abstände, Kartenradien und die untere Sicherheitszone wurden für schmale Smartphones optimiert.
+
 ## [0.5.0] - 2026-09-07
 
 - Der Monatsablauf führt nun sichtbar durch Import, sichere lokale Zuordnung, KI-Restanalyse, persönliche Prüfung, ergänzende Sammelzahlungsimporte und die fertige Analyse.

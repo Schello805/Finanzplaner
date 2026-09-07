@@ -271,8 +271,8 @@ export default function TransactionsPage() {
             </label>
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[840px] border-collapse text-sm">
+        <div className="responsive-table-wrap overflow-x-auto">
+          <table className="transaction-table w-full min-w-[840px] border-collapse text-sm">
             <thead className="bg-[var(--surface-soft)] text-left muted">
               <tr>
                 {["Datum", "Empfänger", "Konto", "Kategorie", "Betrag", ""].map(
@@ -293,12 +293,12 @@ export default function TransactionsPage() {
                   key={row.id}
                   className={`border-t border-[var(--border)] ${isUnassigned(row) ? "attention-row" : "hover:bg-[var(--surface-soft)]"} ${row.excluded ? "opacity-60" : ""}`}
                 >
-                  <td className="px-5 py-4">
+                  <td data-label="Datum" className="px-5 py-4">
                     {new Intl.DateTimeFormat("de-DE").format(
                       new Date(`${row.bookedOn}T00:00:00`),
                     )}
                   </td>
-                  <td className="max-w-[260px] px-5 py-4">
+                  <td data-label="Empfänger" className="max-w-[260px] px-5 py-4">
                     <div className="truncate font-semibold" title={row.counterparty ?? undefined}>
                       {row.counterparty ?? "Unbekannt"}
                     </div>
@@ -314,8 +314,8 @@ export default function TransactionsPage() {
                       </div>
                     )}
                   </td>
-                  <td className="px-5 py-4 muted">{row.accountName}</td>
-                  <td className="px-5 py-4">
+                  <td data-label="Konto" className="px-5 py-4 muted">{row.accountName}</td>
+                  <td data-label="Kategorie" className="px-5 py-4">
                     {row.splits.length > 0 ? (
                       <span className="inline-flex min-h-9 items-center rounded-lg bg-[var(--surface-soft)] px-3 text-xs font-semibold">
                         Aufgeteilt ({row.splits.length})
@@ -335,7 +335,7 @@ export default function TransactionsPage() {
                     {row.specialType==="transfer"&&<div className="mt-1 text-xs font-semibold text-[var(--primary)]">↔ Zählt weder als Ausgabe noch als Einkommen</div>}
                     {row.aiReviewDeferredAt&&<div className="mt-1 flex items-center gap-2"><span className="text-xs font-semibold text-amber-700">Später prüfen</span><button type="button" onClick={()=>patch({id:row.id,deferAiReview:false})} className="text-xs font-semibold text-[var(--primary)] underline decoration-dotted underline-offset-2">Wieder für KI freigeben</button></div>}
                   </td>
-                  <td
+                  <td data-label="Betrag"
                     className={`px-5 py-4 text-right font-bold ${Number(row.amount) > 0 ? "text-[var(--primary)]" : ""}`}
                   >
                     {Number(row.amount).toLocaleString("de-DE", {
@@ -343,7 +343,7 @@ export default function TransactionsPage() {
                       currency: row.currency,
                     })}
                   </td>
-                  <td className="px-5 py-4">
+                  <td data-label="Aktionen" className="px-5 py-4">
                     <button
                       onClick={() => setSelected(row)}
                       className="btn-secondary min-h-9 px-3"

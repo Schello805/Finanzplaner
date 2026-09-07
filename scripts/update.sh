@@ -49,6 +49,11 @@ else
   echo "Abhängigkeiten unverändert – Paketinstallation wird übersprungen."
 fi
 sudo -u "${APP_USER}" --preserve-env=DATABASE_URL npm run db:migrate
+if ! sudo -u "${APP_USER}" --preserve-env=DATABASE_URL psql "${DATABASE_URL}" -Atqc "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='user_preferences' AND column_name='ai_auto_accept_level'" | grep -qx 1; then
+  echo "FEHLER: Die Datenbankmigration für die KI-Bestätigungsgrenze wurde nicht angewendet." >&2
+  echo "Der Dienst wird zum Schutz vor einer fehlerhaften Aktualisierung nicht neu gestartet." >&2
+  exit 1
+fi
 sudo -u "${APP_USER}" --preserve-env=APP_VERSION npm run build
 systemctl restart finanzplaner
 sleep 2
