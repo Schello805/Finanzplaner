@@ -2,6 +2,12 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.6.7] - 2026-09-07
+
+- Im Kategorie-Auswahlfeld eines KI-Vorschlags kann direkt eine neue Kategorie angelegt werden, ohne die laufende Prüfung zu verlassen.
+- Die direkte Anlage unterstützt Haupt- und Unterkategorien sowie die korrekte Trennung von Einnahmen und Ausgaben.
+- Nach dem Anlegen bleibt die neue Kategorie im Vorschlag ausgewählt und wird erst mit „Übernehmen“ endgültig dem Umsatz zugeordnet.
+
 ## [0.6.6] - 2026-09-07
 
 - Der Dialog zur manuellen Kategoriezuordnung erklärt eindeutig den Unterschied zwischen einmaliger, zukünftiger und rückwirkender Zuordnung.

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Clock3, ShieldCheck, Sparkles } from "lucide-react";
 import { CategorySelectOptions, type SelectCategory } from "@/components/category-select-options";
+import { InlineCategoryCreate } from "@/components/inline-category-create";
 type Mode = "minimal" | "full_text";
 type Preview = {
   count: number;
@@ -55,6 +56,7 @@ export function AiCategorizationPanel({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [categoryProposals, setCategoryProposals] = useState<CategoryProposal[]>([]);
   const [categories, setCategories] = useState<SelectCategory[]>([]);
+  const [creatingCategoryForSuggestion,setCreatingCategoryForSuggestion]=useState<Suggestion|null>(null);
   const [mode, setMode] = useState<Mode>("minimal");
   const [analyzedTransactions, setAnalyzedTransactions] = useState<Preview["transactions"]>([]);
   const [processedIds,setProcessedIds]=useState<string[]>([]);
@@ -425,10 +427,17 @@ export function AiCategorizationPanel({
                   <select
                     aria-label={`Kategorie für ${transaction?.merchant ?? "Umsatz"}`}
                     value={suggestion.categoryId}
-                    onChange={(event) => setSuggestions((current) => current.map((item) => item.id === suggestion.id ? { ...item, categoryId: event.target.value, category: categories.find((category) => category.id === event.target.value)?.name ?? item.category } : item))}
+                    onChange={(event) => {
+                      if(event.target.value==="__create__"){
+                        setCreatingCategoryForSuggestion(suggestion);
+                        return;
+                      }
+                      setSuggestions((current) => current.map((item) => item.id === suggestion.id ? { ...item, categoryId: event.target.value, category: categories.find((category) => category.id === event.target.value)?.name ?? item.category } : item));
+                    }}
                     className="mt-2 min-h-10 w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--background)] px-3"
                   >
                     <CategorySelectOptions categories={categories} />
+                    <option value="__create__">＋ Neue Kategorie direkt anlegen …</option>
                   </select>
                   {transaction && <div className="mt-2 text-xs muted">{transaction.date} · {transaction.amount.toLocaleString("de-DE", { style: "currency", currency: transaction.currency })} · {transaction.purpose}</div>}
                   <div className="mt-1 text-xs muted">{suggestion.reason}</div>
@@ -464,6 +473,17 @@ export function AiCategorizationPanel({
           ))}
         </div>
       )}
+      {creatingCategoryForSuggestion&&<InlineCategoryCreate
+        categories={categories}
+        defaultIsIncome={(analyzedTransactions.find(item=>item.id===creatingCategoryForSuggestion.id)?.amount??-1)>0}
+        onClose={()=>setCreatingCategoryForSuggestion(null)}
+        onCreated={category=>{
+          setCategories(current=>[...current,category]);
+          setSuggestions(current=>current.map(item=>item.id===creatingCategoryForSuggestion.id?{...item,categoryId:category.id,category:category.name}:item));
+          setCreatingCategoryForSuggestion(null);
+          setMessage(`Kategorie „${category.name}“ wurde angelegt und ist für diesen KI-Vorschlag ausgewählt. Prüfe die Auswahl und klicke anschließend auf „Übernehmen“.`);
+        }}
+      />}
     </section>
   );
 }
