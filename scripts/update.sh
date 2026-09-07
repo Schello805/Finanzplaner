@@ -32,6 +32,17 @@ if [[ "${REVISION}" != "${REMOTE_REVISION}" ]]; then
   echo "FEHLER: Lokaler Stand ${REVISION} entspricht nicht GitHub ${REMOTE_REVISION}." >&2
   exit 1
 fi
+if [[ "${PREVIOUS_REVISION}" == "${REVISION}" ]]; then
+  IP_ADDRESS="$(hostname -I | awk '{print $1}')"
+  set -a; source /etc/finanzplaner.env; set +a
+  echo
+  echo "Bereits aktuell – Installation, Migration und Build werden übersprungen."
+  echo "Revision: ${REVISION}"
+  echo "Version: ${VERSION}"
+  echo "Dienststatus: $(systemctl is-active finanzplaner)"
+  echo "Adresse: http://${IP_ADDRESS}:${PORT:-8080}"
+  exit 0
+fi
 echo "Zu installierende Version: ${VERSION} (Revision ${REVISION})"
 sed -i "s/^APP_VERSION=.*/APP_VERSION=${VERSION}/" /etc/finanzplaner.env
 set -a; source /etc/finanzplaner.env; set +a
@@ -41,20 +52,38 @@ install -d -o "${APP_USER}" -g "${APP_USER}" -m 0750 "${STATE_DIR}"
 CURRENT_LOCK_HASH="$(sha256sum package-lock.json | awk '{print $1}')"
 SAVED_LOCK_HASH="$(cat "${LOCK_STAMP}" 2>/dev/null || true)"
 if [[ ! -d node_modules || "${CURRENT_LOCK_HASH}" != "${SAVED_LOCK_HASH}" ]]; then
-  echo "Abhängigkeiten haben sich geändert – Pakete werden installiert."
-  sudo -u "${APP_USER}" npm ci --prefer-offline --no-audit --no-fund
+  echo "Abhängigkeiten haben sich geändert – nur Änderungen werden installiert."
+  DEPENDENCY_START="${SECONDS}"
+  if [[ -d node_modules ]]; then
+    # Anders als `npm ci` löscht `npm install` nicht vorab alle vorhandenen
+    # Pakete. Die Sperrdatei bleibt maßgeblich, während unveränderte Pakete
+    # aus node_modules wiederverwendet werden.
+    sudo -u "${APP_USER}" npm install --prefer-offline --no-audit --no-fund --include=dev
+  else
+    sudo -u "${APP_USER}" npm ci --prefer-offline --no-audit --no-fund
+  fi
+  if ! git diff --quiet -- package-lock.json package.json; then
+    echo "FEHLER: npm wollte die festgeschriebenen Abhängigkeiten verändern." >&2
+    echo "Das Update wird vor Migration und Neustart abgebrochen." >&2
+    exit 1
+  fi
   printf '%s\n' "${CURRENT_LOCK_HASH}" > "${LOCK_STAMP}"
   chown "${APP_USER}:${APP_USER}" "${LOCK_STAMP}"
+  echo "Pakete fertig nach $((SECONDS-DEPENDENCY_START)) Sekunden."
 else
   echo "Abhängigkeiten unverändert – Paketinstallation wird übersprungen."
 fi
+MIGRATION_START="${SECONDS}"
 sudo -u "${APP_USER}" --preserve-env=DATABASE_URL npm run db:migrate
+echo "Datenbankprüfung fertig nach $((SECONDS-MIGRATION_START)) Sekunden."
 if ! sudo -u "${APP_USER}" --preserve-env=DATABASE_URL psql "${DATABASE_URL}" -Atqc "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='user_preferences' AND column_name='ai_auto_accept_level'" | grep -qx 1; then
   echo "FEHLER: Die Datenbankmigration für die KI-Bestätigungsgrenze wurde nicht angewendet." >&2
   echo "Der Dienst wird zum Schutz vor einer fehlerhaften Aktualisierung nicht neu gestartet." >&2
   exit 1
 fi
+BUILD_START="${SECONDS}"
 sudo -u "${APP_USER}" --preserve-env=APP_VERSION npm run build
+echo "Anwendung fertig gebaut nach $((SECONDS-BUILD_START)) Sekunden."
 systemctl restart finanzplaner
 sleep 2
 systemctl is-active --quiet finanzplaner

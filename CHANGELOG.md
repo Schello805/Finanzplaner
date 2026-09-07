@@ -2,6 +2,12 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.6.1] - 2026-09-07
+
+- Das Updateskript beendet einen erneuten Aufruf ohne neue GitHub-Revision sofort, statt Migration und Produktionsbuild unnötig zu wiederholen.
+- Bei geänderten Abhängigkeiten aktualisiert npm eine bestehende Installation inkrementell; eine Erstinstallation bleibt mit `npm ci` vollständig reproduzierbar.
+- Zeitangaben für Paketinstallation, Migration und Build machen langsame Schritte auf dem LXC nachvollziehbar.
+
 ## [0.6.0] - 2026-09-07
 
 - Ein geführter Assistent verbindet zunächst Sparkassenkonten direkt und ausschließlich lesend über FinTS 3.0.
