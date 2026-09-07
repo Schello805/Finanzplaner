@@ -25,7 +25,7 @@ async function aiSettings() {
 
 async function pending(userId: string, ids?: string[], excludedIds: string[] = []) {
   const { member } = await memberAndVisibleAccountIds(userId);
-  const base = [eq(amazonOrderItems.ownerMemberId, member.id), isNull(amazonOrderItems.categoryId)];
+  const base = [eq(amazonOrderItems.ownerMemberId, member.id), isNull(amazonOrderItems.categoryId),isNull(amazonOrderItems.aiAnalyzedAt)];
   const [{ value: total }] = await db.select({ value: count() }).from(amazonOrderItems).where(and(...base));
   const filters = [...base];
   if (ids) filters.push(inArray(amazonOrderItems.id, ids));
@@ -78,11 +78,19 @@ export async function POST(request: Request) {
       const categoryId = item.category ? byName.get(normalizeCategoryName(item.category)) : undefined;
       if (!categoryId) {
         const name = (item.proposedCategory ?? item.category)?.trim();
-        if (name && !isForbiddenCategoryName(name) && !/^(andere?s?|diverses)$/i.test(name)) categoryProposals.push({ id: item.id, name, confidence: item.confidence, reason: item.reason });
+        if (name && !isForbiddenCategoryName(name) && !/^(andere?s?|diverses)$/i.test(name)) {
+          categoryProposals.push({ id: item.id, name, confidence: item.confidence, reason: item.reason });
+          await db.update(amazonOrderItems).set({aiSuggestedCategoryId:null,aiSuggestedCategoryName:name,aiSuggestionConfidence:item.confidence.toFixed(4),aiSuggestionReason:item.reason,aiAnalyzedAt:new Date(),updatedAt:new Date()}).where(and(eq(amazonOrderItems.id,item.id),eq(amazonOrderItems.ownerMemberId,member.id),isNull(amazonOrderItems.categoryId)));
+        } else {
+          await db.update(amazonOrderItems).set({aiSuggestedCategoryId:null,aiSuggestedCategoryName:null,aiSuggestionConfidence:item.confidence.toFixed(4),aiSuggestionReason:item.reason,aiAnalyzedAt:new Date(),updatedAt:new Date()}).where(and(eq(amazonOrderItems.id,item.id),eq(amazonOrderItems.ownerMemberId,member.id),isNull(amazonOrderItems.categoryId)));
+        }
       } else if (item.confidence >= autoThreshold) {
-        const updated = await db.update(amazonOrderItems).set({ categoryId, updatedAt: new Date() }).where(and(eq(amazonOrderItems.id, item.id), eq(amazonOrderItems.ownerMemberId, member.id), isNull(amazonOrderItems.categoryId))).returning({ id: amazonOrderItems.id });
+        const updated = await db.update(amazonOrderItems).set({categoryId,aiSuggestedCategoryId:null,aiSuggestedCategoryName:null,aiSuggestionConfidence:null,aiSuggestionReason:null,aiAnalyzedAt:new Date(),updatedAt:new Date()}).where(and(eq(amazonOrderItems.id,item.id),eq(amazonOrderItems.ownerMemberId,member.id),isNull(amazonOrderItems.categoryId))).returning({id:amazonOrderItems.id});
         applied += updated.length;
-      } else suggestions.push({ id: item.id, categoryId, category: item.category!, confidence: item.confidence, reason: item.reason });
+      } else {
+        suggestions.push({id:item.id,categoryId,category:item.category!,confidence:item.confidence,reason:item.reason});
+        await db.update(amazonOrderItems).set({aiSuggestedCategoryId:categoryId,aiSuggestedCategoryName:item.category!,aiSuggestionConfidence:item.confidence.toFixed(4),aiSuggestionReason:item.reason,aiAnalyzedAt:new Date(),updatedAt:new Date()}).where(and(eq(amazonOrderItems.id,item.id),eq(amazonOrderItems.ownerMemberId,member.id),isNull(amazonOrderItems.categoryId)));
+      }
     }
     const price = resolveModelPrice(ai.provider, ai.config.model, ai.config);
     const estimatedCostEur = price ? result.usage.inputTokens * price.inputPerMillion / 1_000_000 + result.usage.outputTokens * price.outputPerMillion / 1_000_000 : null;

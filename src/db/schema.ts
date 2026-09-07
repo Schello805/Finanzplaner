@@ -225,6 +225,11 @@ export const amazonOrderItems = pgTable("amazon_order_items", {
   totalDiscounts: numeric("total_discounts", { precision: 14, scale: 2 }).default("0").notNull(),
   currency: text("currency").default("EUR").notNull(),
   categoryId: uuid("category_id").references(() => categories.id, { onDelete: "set null" }),
+  aiSuggestedCategoryId: uuid("ai_suggested_category_id").references(() => categories.id, { onDelete: "set null" }),
+  aiSuggestedCategoryName: text("ai_suggested_category_name"),
+  aiSuggestionConfidence: numeric("ai_suggestion_confidence", { precision: 5, scale: 4 }),
+  aiSuggestionReason: text("ai_suggestion_reason"),
+  aiAnalyzedAt: timestamp("ai_analyzed_at", { withTimezone: true }),
   matchedTransactionId: uuid("matched_transaction_id").references(() => transactions.id, { onDelete: "set null" }),
   ...timestamps,
 }, (t) => [uniqueIndex("amazon_item_household_source_unique").on(t.householdId, t.sourceFingerprint)]);

@@ -2,6 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.7.3] - 2026-09-07
+
+- Ein Klick analysiert nun alle noch offenen Amazon-Artikel automatisch in stabilen 25er-Paketen; manuelle Einzelrunden entfallen.
+- Ein Fortschrittsfenster zeigt verarbeitete Artikel, Gesamtzahl, Runden und automatisch übernommene sehr sichere Treffer.
+- Der Stapellauf kann nach der aktuellen Runde pausiert und später ohne Doppelanalyse fortgesetzt werden.
+- KI-Vorschläge, Sicherheitswerte, Begründungen und vorgeschlagene neue Kategorien werden dauerhaft gespeichert und überstehen einen Seitenwechsel.
+- Die Kostenschätzung bezieht sich sichtbar auf den gesamten Stapellauf statt nur auf die nächste Runde.
+
 ## [0.7.2] - 2026-09-07
 
 - Amazon-Bestellungen werden nur bei genau einem sehr sicheren Banktreffer automatisch vorausgewählt; mehrere mögliche Treffer erfordern eine bewusste Auswahl.

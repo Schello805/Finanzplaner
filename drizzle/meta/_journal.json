@@ -120,6 +120,13 @@
       "when": 1789056000000,
       "tag": "0016_consolidate_duplicate_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788808182594,
+      "tag": "0017_ordinary_monster_badoon",
+      "breakpoints": true
     }
   ]
 }

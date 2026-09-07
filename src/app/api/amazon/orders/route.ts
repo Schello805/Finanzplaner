@@ -27,6 +27,7 @@ export async function GET() {
         unitPrice: amazonOrderItems.unitPrice, unitTax: amazonOrderItems.unitTax,
         orderTotal: amazonOrderItems.orderTotal, currency: amazonOrderItems.currency,
         categoryId: amazonOrderItems.categoryId, matchedTransactionId: amazonOrderItems.matchedTransactionId,
+        aiSuggestedCategoryId:amazonOrderItems.aiSuggestedCategoryId,aiSuggestedCategoryName:amazonOrderItems.aiSuggestedCategoryName,aiSuggestionConfidence:amazonOrderItems.aiSuggestionConfidence,aiSuggestionReason:amazonOrderItems.aiSuggestionReason,
       })
       .from(amazonOrderItems)
       .where(eq(amazonOrderItems.ownerMemberId, member.id))
@@ -62,8 +63,10 @@ export async function GET() {
         matchedTransactionId: currentTransactionId,
         items: rows.map((row) => {
           const productName = decryptSecret(row.productNameEncrypted);
-          const suggestion = row.categoryId ? null : suggestAmazonCategory(productName, availableCategories);
-          return { id: row.id, productName, quantity: Number(row.quantity), gross: (Number(row.unitPrice) + Number(row.unitTax)) * Number(row.quantity), categoryId: row.categoryId, suggestion };
+          const persistedSuggestion=row.aiSuggestedCategoryId&&row.aiSuggestedCategoryName&&row.aiSuggestionConfidence?{categoryId:row.aiSuggestedCategoryId,categoryName:row.aiSuggestedCategoryName,reason:row.aiSuggestionReason??"KI-Vorschlag",confidence:Number(row.aiSuggestionConfidence)}:null;
+          const proposal=!row.aiSuggestedCategoryId&&row.aiSuggestedCategoryName&&row.aiSuggestionConfidence?{name:row.aiSuggestedCategoryName,reason:row.aiSuggestionReason??"KI-Vorschlag",confidence:Number(row.aiSuggestionConfidence)}:null;
+          const suggestion = row.categoryId ? null : persistedSuggestion??suggestAmazonCategory(productName, availableCategories);
+          return { id: row.id, productName, quantity: Number(row.quantity), gross: (Number(row.unitPrice) + Number(row.unitTax)) * Number(row.quantity), categoryId: row.categoryId, suggestion,proposal };
         }),
         candidates: candidates.map((transaction) => ({ ...transaction, amount: Number(transaction.amount) })),
       };
@@ -82,7 +85,7 @@ export async function PATCH(request: Request) {
       const [category] = await db.select({ id: categories.id }).from(categories).where(and(eq(categories.id, body.categoryId), eq(categories.householdId, member.householdId))).limit(1);
       if (!category) throw new Error("Kategorie nicht gefunden.");
     }
-    const [item] = await db.update(amazonOrderItems).set({ categoryId: body.categoryId, updatedAt: new Date() }).where(and(eq(amazonOrderItems.id, body.itemId), eq(amazonOrderItems.ownerMemberId, member.id))).returning({ id: amazonOrderItems.id });
+    const [item] = await db.update(amazonOrderItems).set({categoryId:body.categoryId,aiSuggestedCategoryId:null,aiSuggestedCategoryName:null,aiSuggestionConfidence:null,aiSuggestionReason:null,aiAnalyzedAt:body.categoryId?new Date():null,updatedAt:new Date()}).where(and(eq(amazonOrderItems.id,body.itemId),eq(amazonOrderItems.ownerMemberId,member.id))).returning({id:amazonOrderItems.id});
     if (!item) throw new Error("Amazon-Artikel nicht gefunden.");
     return NextResponse.json({ ok: true });
   } catch (error) {
