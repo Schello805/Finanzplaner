@@ -5,6 +5,8 @@ describe("Amazon-Kategorievorschläge", () => {
   const categories = [
     { id: "food", name: "Lebensmittel", isIncome: false },
     { id: "health", name: "Gesundheit", isIncome: false },
+    { id: "household", name: "Haushalt & Drogerie", isIncome: false },
+    { id: "printing", name: "3D-Druck", isIncome: false },
     { id: "other", name: "Sonstiges", isIncome: false },
   ];
 
@@ -15,5 +17,13 @@ describe("Amazon-Kategorievorschläge", () => {
 
   it("schlägt niemals Sonstiges vor", () => {
     expect(suggestAmazonCategory("Unbekanntes Produkt", categories)).toBeNull();
+  });
+
+  it("ordnet Filament sehr sicher dem 3D-Druck zu", () => {
+    expect(suggestAmazonCategory("PLA Filament für 3D Drucker", categories)).toMatchObject({ categoryId:"printing", confidence:.98 });
+  });
+
+  it("verwechselt Lebensmittelmotten nicht mit Lebensmitteln", () => {
+    expect(suggestAmazonCategory("Pheromonfalle gegen Lebensmittelmotten", categories)).toMatchObject({ categoryId:"household", confidence:.94 });
   });
 });

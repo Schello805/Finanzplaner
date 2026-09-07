@@ -2,6 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.6.10] - 2026-09-07
+
+- Amazon-Vorschläge besitzen dieselben sichtbaren Sicherheitsstufen wie Bankumsätze und lassen sich danach filtern.
+- Eine zentrale Aktionskarte oberhalb der Bestellungen übernimmt wahlweise nur sehr sichere oder alle sichtbaren Vorschläge; irreführende Schaltflächen in einzelnen Bestellungen entfallen.
+- Vorgeschlagene Kategorien sind im Auswahlfeld sichtbar vorausgewählt, werden aber erst nach Bestätigung gespeichert.
+- Amazon-Bestellungen mit sicheren Vorschlägen erscheinen zuerst.
+- Filament wird sehr sicher als 3D-Druck erkannt; Lebensmittelmotten werden nicht mehr fälschlich als Lebensmittel eingeordnet.
+
 ## [0.6.9] - 2026-09-07
 
 - Die Kategorienverwaltung verwendet auf Smartphones echte Kartenzeilen statt zusammengedrückter Desktop-Zeilen.
