@@ -1,73 +1,36 @@
 "use client";
+import {useCallback,useEffect,useState} from "react";
+import {Filter,Link2,LoaderCircle,RefreshCw,Sparkles} from "lucide-react";
+import {CategorySelectOptions} from "@/components/category-select-options";
+import {InlineCategoryCreate} from "@/components/inline-category-create";
+type Category={id:string;name:string;isIncome:boolean;parentId:string|null};
+type Item={id:string;productName:string;quantity:number;gross:number;categoryId:string|null;suggestion:{categoryId:string;categoryName:string;reason:string}|null};
+type Group={key:string;orderDate:string;total:number;currency:string;matchedTransactionId:string|null;items:Item[];candidates:Array<{id:string;bookedOn:string;amount:number;currency:string;accountName:string;score:number}>};
+type Preview={count:number;batchSize:number;totalRounds?:number;provider?:string;model?:string;items:Array<{id:string}>;cost?:{lowEur:number;highEur:number}|null};
+type AiSuggestion={id:string;categoryId:string;category:string;confidence:number;reason:string};
+const date=(value:string)=>new Intl.DateTimeFormat("de-DE").format(new Date(`${value}T12:00:00`));
+const money=(value:number,currency:string)=>value.toLocaleString("de-DE",{style:"currency",currency});
 
-import { useEffect, useState } from "react";
-import { Filter, Link2, RefreshCw } from "lucide-react";
-import { CategorySelectOptions } from "@/components/category-select-options";
-import { InlineCategoryCreate } from "@/components/inline-category-create";
-
-type Category = { id: string; name: string; isIncome: boolean; parentId: string | null };
-type Group = {
-  key: string; orderDate: string; shipDate: string | null; total: number; currency: string; matchedTransactionId: string | null;
-  items: Array<{ id: string; productName: string; quantity: number; gross: number; categoryId: string | null; suggestion: { categoryId: string; categoryName: string; reason: string } | null }>;
-  candidates: Array<{ id: string; bookedOn: string; amount: number; currency: string; accountName: string; score: number; reason: string }>;
-};
-
-export function AmazonReconciliation() {
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [transactions, setTransactions] = useState<Record<string, string>>({});
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [matchFilter, setMatchFilter] = useState<"all"|"found"|"missing">("all");
-  const [creatingForItem, setCreatingForItem] = useState<string | null>(null);
-  async function load() {
-    const [orderRows, categoryRows] = await Promise.all([
-      fetch("/api/amazon/orders").then((response) => response.json()),
-      fetch("/api/categories").then((response) => response.json()),
-    ]);
-    if (Array.isArray(orderRows)) {
-      setGroups(orderRows);
-      setTransactions(Object.fromEntries(orderRows.map((group: Group) => [group.key, group.matchedTransactionId ?? (group.candidates[0]?.score >= 0.9 ? group.candidates[0].id : "")])));
-    } else setMessage(orderRows.error);
-    if (Array.isArray(categoryRows)) setCategories(categoryRows);
-  }
-  useEffect(() => { Promise.all([fetch("/api/amazon/orders").then((response) => response.json()), fetch("/api/categories").then((response) => response.json())]).then(([orderRows, categoryRows]) => { if (Array.isArray(orderRows)) { setGroups(orderRows); setTransactions(Object.fromEntries(orderRows.map((group: Group) => [group.key, group.matchedTransactionId ?? (group.candidates[0]?.score >= 0.9 ? group.candidates[0].id : "")]))); } if (Array.isArray(categoryRows)) setCategories(categoryRows); }); }, []);
-  async function setCategory(itemId: string, categoryId: string) {
-    if(categoryId==="__create__"){setCreatingForItem(itemId);return}
-    const response = await fetch("/api/amazon/orders", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId, categoryId: categoryId || null }) });
-    const body = await response.json();
-    if (!response.ok) { setMessage(body.error); return; }
-    setGroups((current) => current.map((group) => ({ ...group, items: group.items.map((item) => item.id === itemId ? { ...item, categoryId: categoryId || null } : item) })));
-  }
-  async function apply(group: Group) {
-    const transactionId = transactions[group.key];
-    if (!transactionId) { setMessage("Bitte eine passende Bankbuchung auswählen."); return; }
-    setBusy(true); setMessage("");
-    const response = await fetch("/api/amazon/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemIds: group.items.map((item) => item.id), transactionId }) });
-    const body = await response.json(); setBusy(false);
-    if (!response.ok) { setMessage(body.error); return; }
-    setMessage(`Amazon-Zahlung wurde auf ${body.splitCount} Kategorien verteilt.`);
-    await load();
-  }
-  async function acceptSuggestions(group: Group) {
-    const proposed = group.items.filter((item) => !item.categoryId && item.suggestion);
-    if (!proposed.length) return;
-    setBusy(true); setMessage("");
-    for (const item of proposed) {
-      const response = await fetch("/api/amazon/orders", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId: item.id, categoryId: item.suggestion!.categoryId }) });
-      if (!response.ok) { setMessage((await response.json()).error); setBusy(false); return; }
-    }
-    setMessage(`${proposed.length} lokale Amazon-Vorschläge wurden bestätigt.`);
-    setBusy(false);
-    await load();
-  }
-  const unresolved = groups.filter((group) => !group.matchedTransactionId);
-  const visibleGroups=unresolved.filter(group=>matchFilter==="all"||(matchFilter==="found"?group.candidates.length>0:group.candidates.length===0));
-  const foundCount=unresolved.filter(group=>group.candidates.length>0).length;
-  return <section className="space-y-4">
-    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><h2 className="text-lg font-bold">Mit Bankumsätzen abstimmen</h2><p className="mt-1 text-sm muted">Artikel kategorisieren und anschließend mit einer betragsgleichen Amazon-Buchung verbinden.</p></div><div className="flex flex-wrap gap-2"><label className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold"><Filter size={16}/><span className="sr-only">Nach Bankbuchung filtern</span><select value={matchFilter} onChange={event=>setMatchFilter(event.target.value as typeof matchFilter)} className="bg-transparent outline-none"><option value="all">Alle offenen Bestellungen ({unresolved.length})</option><option value="found">Bankbuchung gefunden ({foundCount})</option><option value="missing">Keine Bankbuchung gefunden ({unresolved.length-foundCount})</option></select></label><button onClick={load} className="btn-secondary"><RefreshCw size={16}/> Aktualisieren</button></div></div>
-    {message&&<div role="status" className="rounded-xl bg-[var(--surface-soft)] p-4 text-sm">{message}</div>}
-    {visibleGroups.length===0?<article className="card p-5 text-sm muted">{unresolved.length===0?"Keine offenen Amazon-Zuordnungen vorhanden.":"Für diesen Filter wurden keine Bestellungen gefunden."}</article>:visibleGroups.map((group)=><article key={group.key} className="card p-5"><div className="flex flex-col justify-between gap-2 sm:flex-row"><div><h3 className="font-bold">Amazon-Bestellung vom {new Intl.DateTimeFormat("de-DE").format(new Date(`${group.orderDate}T12:00:00`))}</h3><p className="mt-1 text-sm muted">{group.items.length} Artikel · {group.total.toLocaleString("de-DE",{style:"currency",currency:group.currency})}</p></div><select value={transactions[group.key]??""} onChange={(event)=>setTransactions((current)=>({...current,[group.key]:event.target.value}))} className="min-h-11 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3"><option value="">Bankbuchung auswählen</option>{group.candidates.map((candidate)=><option key={candidate.id} value={candidate.id}>{new Intl.DateTimeFormat("de-DE").format(new Date(`${candidate.bookedOn}T12:00:00`))} · {candidate.accountName} · {Math.abs(candidate.amount).toLocaleString("de-DE",{style:"currency",currency:candidate.currency})}</option>)}</select></div>{group.items.some((item)=>!item.categoryId&&item.suggestion)&&<button disabled={busy} onClick={()=>acceptSuggestions(group)} className="btn-secondary mt-4">Alle passenden Vorschläge bestätigen</button>}<div className="mt-4 divide-y divide-[var(--border)] rounded-xl border border-[var(--border)]">{group.items.map((item)=><div key={item.id} className="grid gap-3 p-4 sm:grid-cols-[1fr_230px] sm:items-center"><div><div className="font-semibold">{item.productName}</div><div className="mt-1 text-xs muted">Menge {item.quantity} · Artikelwert {item.gross.toLocaleString("de-DE",{style:"currency",currency:group.currency})}</div>{!item.categoryId&&item.suggestion&&<div className="mt-2 text-xs font-semibold text-[var(--primary)]">Vorschlag: {item.suggestion.categoryName} · {item.suggestion.reason}</div>}</div><select value={item.categoryId??""} onChange={(event)=>setCategory(item.id,event.target.value)} className="min-h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3"><option value="">Kategorie auswählen</option><CategorySelectOptions categories={categories.filter(category=>!category.isIncome)}/><option value="__create__">＋ Neue Kategorie anlegen …</option></select></div>)}</div><button disabled={busy||!transactions[group.key]||group.items.some((item)=>!item.categoryId)} onClick={()=>apply(group)} className="btn-primary mt-4"><Link2 size={16}/>{busy?"Wird zugeordnet …":"Kategorien auf Bankbuchung anwenden"}</button>{group.candidates.length===0&&<p className="mt-3 text-sm text-amber-800">Keine betragsgleiche Amazon-Buchung im Zeitraum von 21 Tagen gefunden.</p>}</article>)}
-    {creatingForItem&&<InlineCategoryCreate categories={categories} onClose={()=>setCreatingForItem(null)} onCreated={async(category)=>{setCategories(current=>[...current,category]);const itemId=creatingForItem;setCreatingForItem(null);await setCategory(itemId,category.id)}}/>}
-  </section>;
+export function AmazonReconciliation(){
+ const[groups,setGroups]=useState<Group[]>([]),[categories,setCategories]=useState<Category[]>([]),[transactions,setTransactions]=useState<Record<string,string>>({}),[message,setMessage]=useState(""),[busy,setBusy]=useState(false),[matchFilter,setMatchFilter]=useState<"all"|"found"|"missing">("all"),[creatingForItem,setCreatingForItem]=useState<string|null>(null),[preview,setPreview]=useState<Preview|null>(null),[aiSuggestions,setAiSuggestions]=useState<Record<string,AiSuggestion>>({}),[analyzedIds,setAnalyzedIds]=useState<string[]>([]),[aiBusy,setAiBusy]=useState(false);
+ const load=useCallback(async()=>{const[o,c]=await Promise.all([fetch("/api/amazon/orders").then(r=>r.json()),fetch("/api/categories").then(r=>r.json())]);if(Array.isArray(o)){setGroups(o);setTransactions(Object.fromEntries(o.map((g:Group)=>[g.key,g.matchedTransactionId??(g.candidates[0]?.score>=.9?g.candidates[0].id:"")])))}else setMessage(o.error);if(Array.isArray(c))setCategories(c)},[]);
+ const loadPreview=useCallback(async(excluded:string[]=[])=>{const q=excluded.length?`?exclude=${encodeURIComponent(excluded.join(","))}`:"";const r=await fetch(`/api/ai/categorize-amazon${q}`),b=await r.json();if(!r.ok){setMessage(b.error);return}setPreview(b)},[]);
+ useEffect(()=>{void Promise.resolve().then(()=>Promise.all([load(),loadPreview()]))},[load,loadPreview]);
+ async function setCategory(itemId:string,categoryId:string){if(categoryId==="__create__"){setCreatingForItem(itemId);return}const r=await fetch("/api/amazon/orders",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({itemId,categoryId:categoryId||null})}),b=await r.json();if(!r.ok){setMessage(b.error);return}setGroups(all=>all.map(g=>({...g,items:g.items.map(i=>i.id===itemId?{...i,categoryId:categoryId||null}:i)})))}
+ async function acceptAi(id:string){const s=aiSuggestions[id];if(!s)return;await setCategory(id,s.categoryId);setAiSuggestions(all=>{const n={...all};delete n[id];return n})}
+ async function analyze(){if(!preview?.items.length)return;setAiBusy(true);setMessage("");const ids=preview.items.map(i=>i.id),r=await fetch("/api/ai/categorize-amazon",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids})}),b=await r.json();if(!r.ok){setMessage(b.error);setAiBusy(false);return}setAiSuggestions(all=>({...all,...Object.fromEntries(b.suggestions.map((s:AiSuggestion)=>[s.id,s]))}));const next=[...new Set([...analyzedIds,...ids])];setAnalyzedIds(next);setMessage(`${b.applied} sichere Artikel automatisch zugeordnet, ${b.suggestions.length} Vorschläge warten auf Bestätigung.${b.categoryProposals.length?` ${b.categoryProposals.length} Artikel benötigen eine neue Kategorie oder manuelle Zuordnung.`:""}${b.pricingAvailable?` Kosten: ${Number(b.estimatedCostEur).toLocaleString("de-DE",{minimumFractionDigits:4,maximumFractionDigits:6})} €.`:""}`);setAiBusy(false);await load();await loadPreview(next)}
+ async function apply(g:Group){const transactionId=transactions[g.key];if(!transactionId){setMessage("Bitte eine passende Bankbuchung auswählen.");return}setBusy(true);const r=await fetch("/api/amazon/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({itemIds:g.items.map(i=>i.id),transactionId})}),b=await r.json();setBusy(false);if(!r.ok){setMessage(b.error);return}setMessage(`Amazon-Zahlung wurde auf ${b.splitCount} Kategorien verteilt.`);await load()}
+ async function acceptAll(g:Group){for(const i of g.items){if(aiSuggestions[i.id])await acceptAi(i.id);else if(!i.categoryId&&i.suggestion)await setCategory(i.id,i.suggestion.categoryId)}}
+ const unresolved=groups.filter(g=>!g.matchedTransactionId),foundCount=unresolved.filter(g=>g.candidates.length).length,visible=unresolved.filter(g=>matchFilter==="all"||(matchFilter==="found"?g.candidates.length:!g.candidates.length));
+ return <section className="space-y-4">
+  {aiBusy&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-5" role="status"><div className="card max-w-md p-7 text-center"><LoaderCircle className="mx-auto animate-spin text-[var(--primary)]" size={38}/><h2 className="mt-4 text-xl font-bold">Amazon-Artikel werden analysiert</h2><p className="mt-2 text-sm muted">Bis zu 25 Artikel werden in dieser Runde eingeordnet. Bitte die Seite geöffnet lassen.</p></div></div>}
+  {preview&&preview.count>0&&<article className="card flex flex-col justify-between gap-4 p-5 lg:flex-row lg:items-center"><div><div className="flex items-center gap-2"><Sparkles size={20}/><h2 className="font-bold">{preview.count} Amazon-Artikel ohne Kategorie</h2></div><p className="mt-1 text-sm muted">Nächste Runde: {preview.batchSize} Artikel · etwa {preview.totalRounds??Math.ceil(preview.count/25)} Runden{preview.provider&&preview.model?` · ${preview.provider} · ${preview.model}`:""}</p>{preview.cost&&<p className="mt-1 text-xs muted">Geschätzt: {preview.cost.lowEur.toLocaleString("de-DE",{minimumFractionDigits:4,maximumFractionDigits:6})}–{preview.cost.highEur.toLocaleString("de-DE",{minimumFractionDigits:4,maximumFractionDigits:6})} €</p>}</div><button disabled={aiBusy||!preview.batchSize} onClick={analyze} className="btn-primary"><Sparkles size={17}/>{analyzedIds.length?"Nächste KI-Runde":"Jetzt mit KI zuordnen"}</button></article>}
+  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><h2 className="text-lg font-bold">Mit Bankumsätzen abstimmen</h2><p className="mt-1 text-sm muted">Artikel kategorisieren und anschließend mit einer betragsgleichen Amazon-Buchung verbinden.</p></div><div className="flex flex-wrap gap-2"><label className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold"><Filter size={16}/><select value={matchFilter} onChange={e=>setMatchFilter(e.target.value as typeof matchFilter)} className="bg-transparent outline-none"><option value="all">Alle offenen ({unresolved.length})</option><option value="found">Bankbuchung gefunden ({foundCount})</option><option value="missing">Keine Bankbuchung ({unresolved.length-foundCount})</option></select></label><button onClick={()=>void Promise.all([load(),loadPreview(analyzedIds)])} className="btn-secondary"><RefreshCw size={16}/>Aktualisieren</button></div></div>
+  {message&&<div role="status" className="rounded-xl bg-[var(--surface-soft)] p-4 text-sm">{message}</div>}
+  {!visible.length?<article className="card p-5 text-sm muted">{unresolved.length?"Für diesen Filter wurden keine Bestellungen gefunden.":"Keine offenen Amazon-Zuordnungen vorhanden."}</article>:visible.map(g=><article key={g.key} className="card p-5"><div className="flex flex-col justify-between gap-2 sm:flex-row"><div><h3 className="font-bold">Amazon-Bestellung vom {date(g.orderDate)}</h3><p className="mt-1 text-sm muted">{g.items.length} Artikel · {money(g.total,g.currency)}</p></div><select value={transactions[g.key]??""} onChange={e=>setTransactions(all=>({...all,[g.key]:e.target.value}))} className="min-h-11 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3"><option value="">Bankbuchung auswählen</option>{g.candidates.map(c=><option key={c.id} value={c.id}>{date(c.bookedOn)} · {c.accountName} · {money(Math.abs(c.amount),c.currency)}</option>)}</select></div>
+   {g.items.some(i=>!i.categoryId&&(i.suggestion||aiSuggestions[i.id]))&&<button disabled={busy} onClick={()=>acceptAll(g)} className="btn-secondary mt-4">Alle Vorschläge bestätigen</button>}
+   <div className="mt-4 divide-y divide-[var(--border)] rounded-xl border border-[var(--border)]">{g.items.map(i=>{const ai=aiSuggestions[i.id];return <div key={i.id} className="grid gap-3 p-4 sm:grid-cols-[1fr_230px] sm:items-center"><div><div className="font-semibold">{i.productName}</div><div className="mt-1 text-xs muted">Menge {i.quantity} · Artikelwert {money(i.gross,g.currency)}</div>{!i.categoryId&&ai?<div className="mt-2 rounded-lg bg-[var(--surface-soft)] p-3 text-xs"><strong>KI-Vorschlag: {ai.category}</strong> · {Math.round(ai.confidence*100)} %<br/>{ai.reason}<button className="ml-2 font-bold text-[var(--primary)] underline" onClick={()=>acceptAi(i.id)}>Bestätigen</button></div>:!i.categoryId&&i.suggestion&&<div className="mt-2 text-xs font-semibold text-[var(--primary)]">Vorschlag: {i.suggestion.categoryName} · {i.suggestion.reason}</div>}</div><select value={i.categoryId??""} onChange={e=>setCategory(i.id,e.target.value)} className="min-h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3"><option value="">Kategorie auswählen</option><CategorySelectOptions categories={categories.filter(c=>!c.isIncome)}/><option value="__create__">＋ Neue Kategorie anlegen …</option></select></div>})}</div>
+   <button disabled={busy||!transactions[g.key]||g.items.some(i=>!i.categoryId)} onClick={()=>apply(g)} className="btn-primary mt-4"><Link2 size={16}/>{busy?"Wird zugeordnet …":"Kategorien auf Bankbuchung anwenden"}</button>{!g.candidates.length&&<p className="mt-3 text-sm text-amber-800">Keine betragsgleiche Amazon-Buchung im Zeitraum von 21 Tagen gefunden.</p>}</article>)}
+  {creatingForItem&&<InlineCategoryCreate categories={categories} onClose={()=>setCreatingForItem(null)} onCreated={async category=>{setCategories(all=>[...all,category]);const id=creatingForItem;setCreatingForItem(null);await setCategory(id,category.id)}}/>}
+ </section>
 }

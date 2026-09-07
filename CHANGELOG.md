@@ -2,6 +2,15 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.5.2] - 2026-09-07
+
+- Nicht kategorisierte Amazon-Artikel können nun mit derselben konfigurierten KI wie Bankumsätze analysiert werden.
+- Die Analyse verarbeitet überschaubare Stapel mit jeweils bis zu 25 Artikeln und zeigt Anbieter, Modell, Rundenzahl und geschätzte Kosten.
+- Während des API-Aufrufs zeigt die App einen eindeutigen Ladebildschirm; anschließend werden automatisch übernommene und noch zu bestätigende Vorschläge getrennt ausgewiesen.
+- Die persönliche KI-Vertrauensgrenze gilt auch für Amazon: Je nach Einstellung werden Treffer ab 90 oder 70 Prozent automatisch übernommen oder grundsätzlich zur Bestätigung vorgelegt.
+- KI-Vorschläge zeigen Kategorie, Sicherheit und Begründung direkt am jeweiligen Artikel und können einzeln oder je Bestellung gemeinsam bestätigt werden.
+- Unpassende Sammelkategorien wie „Sonstiges“ werden auch für Amazon niemals vorgeschlagen.
+
 ## [0.5.1] - 2026-09-07
 
 - Die Migration der persönlichen KI-Bestätigungsgrenze besitzt nun garantiert eine neuere Reihenfolge als alle vorherigen Migrationen. Bestehende Installationen erhalten die zuvor übersprungene Spalte beim Update zuverlässig.
