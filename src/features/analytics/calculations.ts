@@ -7,6 +7,7 @@ export function normalizeAnalysisTransactions(rows:AnalysisTransaction[],splits:
   const splitMap=new Map<string,AnalysisSplit[]>();
   for(const split of splits)splitMap.set(split.transactionId,[...(splitMap.get(split.transactionId)??[]),split]);
   return rows.flatMap(row=>{
+    if(row.specialType==="transfer")return [];
     const ownSplits=splitMap.get(row.id)??[];
     if(ownSplits.length){
       const splitCents=ownSplits.reduce((sum,split)=>sum+Math.round(Math.abs(Number(split.amount))*100),0);

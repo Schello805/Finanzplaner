@@ -13,6 +13,7 @@ Finanzplaner ist eine private, deutschsprachige Ausgabenanalyse für Familien. D
 - exakte Dubletten automatisch überspringen, Verdachtsfälle manuell entscheiden
 - persönliche, gemeinsame und verwaltete Kinderkonten
 - Kategorien, Unterkategorien, Tags, Aufteilungen, Rückerstattungen und Umbuchungen
+- interne Geldverschiebungen paarweise verknüpfen und konsequent aus Einnahmen, Ausgaben, KI-Analyse und wiederkehrenden Kosten ausschließen
 - bearbeitbare Händlerregeln mit wahlweise zukünftiger oder rückwirkender Anwendung
 - Erkennung wiederkehrender Kosten, Abos und auffälliger Preisänderungen
 - Datenqualitätsübersicht mit Importstand, Zeiträumen und offenen Zuordnungen je Konto
@@ -43,6 +44,8 @@ HTTP verschlüsselt Passwörter und Finanzdaten nicht. Der vorgesehene Betrieb s
 6. Zur Analyseseite zurückkehren. Sie vergleicht den letzten vollständigen Monat mit bis zu zwölf Vormonaten und zeigt den aktuellen Monat als Anteil des üblichen Monatswerts. Eine spekulative Hochrechnung wird bewusst nicht angezeigt.
 
 Amazon und PayPal gelten als Sammelzahlungsanbieter und erhalten bewusst keine pauschale lokale Händlerregel. Amazon-Artikel werden stattdessen einzeln über den Bestellimport zugeordnet.
+
+Überweisungen zwischen eigenen Konten – regelmäßige Haushaltsbeiträge ebenso wie einmalige Nachzahlungen – werden als „Interne Umbuchung (nicht auswerten)“ markiert. Sie bleiben in beiden Konten nachvollziehbar sichtbar, fließen aber nicht in die Analyse ein. Nur eine spätere Zahlung an einen externen Empfänger zählt als Ausgabe.
 
 ## Installation
 

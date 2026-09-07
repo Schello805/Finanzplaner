@@ -28,6 +28,7 @@ async function context(userId: string) {
       inArray(transactions.accountId, accountIds),
       or(eq(transactions.direction, "expense"),eq(transactions.specialType,"refund")),
       eq(transactions.excludedFromAnalysis, false),
+      sql`${transactions.specialType} <> 'transfer'`,
       sql`${transactions.amount} <> 0`,
       gte(transactions.bookedOn, from),
     ));

@@ -54,6 +54,7 @@ async function pending(userId: string, ids?: string[], requestedAccountId?: stri
   const baseFilters = [
     inArray(transactions.accountId, scopedAccountIds),
     eq(transactions.excludedFromAnalysis,false),
+    sql`${transactions.specialType} <> 'transfer'`,
     sql`${transactions.amount} <> 0`,
     sql`not (${transactions.counterparty} is null and ${transactions.bookingType} ilike 'SONSTIGER EINZUG' and ${transactions.purpose} ilike 'MO %')`,
     isNull(transactions.categoryId),
@@ -75,6 +76,7 @@ async function pending(userId: string, ids?: string[], requestedAccountId?: stri
     .where(and(
       inArray(transactions.accountId, scopedAccountIds),
       eq(transactions.excludedFromAnalysis, false),
+      sql`${transactions.specialType} <> 'transfer'`,
       sql`${transactions.amount} <> 0`,
       isNull(transactions.categoryId),
       isNotNull(transactions.aiReviewDeferredAt),

@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
         sql`${transactions.amount} <> 0`,
         sql`not (${transactions.counterparty} is null and ${transactions.bookingType} ilike 'SONSTIGER EINZUG' and ${transactions.purpose} ilike 'MO %')`,
         eq(transactions.excludedFromAnalysis, false),
+        sql`${transactions.specialType} <> 'transfer'`,
         or(eq(transactions.direction, "expense"), eq(transactions.specialType, "refund")),
         gte(transactions.bookedOn, from),
       ));

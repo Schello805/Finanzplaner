@@ -131,9 +131,14 @@ export async function PATCH(request: Request) {
         amount: transactions.amount,
         currency:transactions.currency,
         counterparty: transactions.counterparty,
+        categoryId: transactions.categoryId,
+        categorySlug: categories.slug,
+        specialType: transactions.specialType,
+        excludedFromAnalysis: transactions.excludedFromAnalysis,
         linkedTransactionId:transactions.linkedTransactionId,
       })
       .from(transactions)
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
       .where(eq(transactions.id, body.id))
       .limit(1);
     if (!row || !accountIds.includes(row.accountId))
@@ -142,9 +147,10 @@ export async function PATCH(request: Request) {
       ...(body.categoryId ? [body.categoryId] : []),
       ...(body.splits?.map((split) => split.categoryId) ?? []),
     ];
+    let selectedCategorySlug: string | undefined;
     if (categoryIds.length) {
       const valid = await db
-        .select({ id: categories.id })
+        .select({ id: categories.id, slug: categories.slug })
         .from(categories)
         .where(
           and(
@@ -154,7 +160,16 @@ export async function PATCH(request: Request) {
         );
       if (valid.length !== new Set(categoryIds).size)
         throw new Error("Mindestens eine Kategorie wurde nicht gefunden.");
+      selectedCategorySlug = body.categoryId ? valid.find((item) => item.id === body.categoryId)?.slug : undefined;
     }
+    const categoryMarksTransfer = selectedCategorySlug === "umbuchung";
+    const leavesTransferCategory = body.categoryId !== undefined && row.categorySlug === "umbuchung" && !categoryMarksTransfer;
+    const effectiveSpecialType = body.specialType ?? (categoryMarksTransfer ? "transfer" : leavesTransferCategory ? "normal" : undefined);
+    const effectiveLinkedTransactionId = body.linkedTransactionId !== undefined
+      ? body.linkedTransactionId
+      : effectiveSpecialType === "normal"
+        ? null
+        : row.linkedTransactionId;
     if (body.linkedTransactionId) {
       if (body.linkedTransactionId === body.id)
         throw new Error(
@@ -167,8 +182,13 @@ export async function PATCH(request: Request) {
         .limit(1);
       if (!linked || !accountIds.includes(linked.accountId))
         throw new Error("Die verknüpfte Buchung ist nicht sichtbar.");
-      if(body.specialType==="transfer"&&!isBalancedTransfer(row,linked))throw new Error("Eine Umbuchung muss aus centgleichen Gegenbuchungen verschiedener Konten in derselben Währung bestehen.");
-      if(body.specialType==="transfer"&&linked.linkedTransactionId&&linked.linkedTransactionId!==body.id)throw new Error("Die Gegenbuchung ist bereits mit einer anderen Umbuchung verknüpft.");
+      if(effectiveSpecialType==="transfer"&&!isBalancedTransfer(row,linked))throw new Error("Eine Umbuchung muss aus centgleichen Gegenbuchungen verschiedener Konten in derselben Währung bestehen.");
+      if(effectiveSpecialType==="transfer"&&linked.linkedTransactionId&&linked.linkedTransactionId!==body.id)throw new Error("Die Gegenbuchung ist bereits mit einer anderen Umbuchung verknüpft.");
+    }
+    let transferCategoryId: string | null = categoryMarksTransfer ? body.categoryId ?? null : null;
+    if (effectiveSpecialType === "transfer" && !transferCategoryId) {
+      const [transferCategory] = await db.select({id:categories.id}).from(categories).where(and(eq(categories.householdId,member.householdId),eq(categories.slug,"umbuchung"))).limit(1);
+      transferCategoryId = transferCategory?.id ?? null;
     }
     if (body.splits) {
       const splitTotalCents = body.splits.reduce((sum, split) => sum + Math.round(split.amount * 100), 0);
@@ -182,15 +202,15 @@ export async function PATCH(request: Request) {
       await tx
         .update(transactions)
         .set({
-          categoryId: body.splits ? null : body.categoryId,
+          categoryId: body.splits ? null : effectiveSpecialType === "transfer" ? transferCategoryId : effectiveSpecialType === "normal" && body.categoryId === undefined && row.categorySlug === "umbuchung" ? null : body.categoryId,
           note: body.note,
           tags: body.tags,
           excludedFromAnalysis:
-            body.specialType === "transfer" ? true : body.excluded,
-          specialType: body.specialType,
-          linkedTransactionId: body.linkedTransactionId,
-          isTransfer:body.specialType!==undefined?body.specialType==="transfer":undefined,
-          transferPeerId:body.specialType==="transfer"?body.linkedTransactionId:body.specialType!==undefined?null:undefined,
+            effectiveSpecialType === "transfer" ? true : effectiveSpecialType === "normal" ? false : body.excluded,
+          specialType: effectiveSpecialType,
+          linkedTransactionId: effectiveLinkedTransactionId,
+          isTransfer:effectiveSpecialType!==undefined?effectiveSpecialType==="transfer":undefined,
+          transferPeerId:effectiveSpecialType==="transfer"?effectiveLinkedTransactionId:effectiveSpecialType!==undefined?null:undefined,
           updatedAt: new Date(),
           categorizedBy:
             body.categoryId !== undefined || body.splits ? "manual" : undefined,
@@ -204,8 +224,8 @@ export async function PATCH(request: Request) {
                 : undefined,
         })
         .where(eq(transactions.id, body.id));
-      if(body.specialType==="transfer"&&body.linkedTransactionId)await tx.update(transactions).set({specialType:"transfer",excludedFromAnalysis:true,linkedTransactionId:body.id,isTransfer:true,transferPeerId:body.id,updatedAt:new Date()}).where(eq(transactions.id,body.linkedTransactionId));
-      if(row.linkedTransactionId&&(body.specialType!=="transfer"||row.linkedTransactionId!==body.linkedTransactionId))await tx.update(transactions).set({specialType:"normal",excludedFromAnalysis:false,linkedTransactionId:null,isTransfer:false,transferPeerId:null,updatedAt:new Date()}).where(and(eq(transactions.id,row.linkedTransactionId),eq(transactions.linkedTransactionId,body.id)));
+      if(effectiveSpecialType==="transfer"&&effectiveLinkedTransactionId)await tx.update(transactions).set({categoryId:transferCategoryId,specialType:"transfer",excludedFromAnalysis:true,linkedTransactionId:body.id,isTransfer:true,transferPeerId:body.id,updatedAt:new Date()}).where(eq(transactions.id,effectiveLinkedTransactionId));
+      if(row.linkedTransactionId&&(effectiveSpecialType!=="transfer"||row.linkedTransactionId!==effectiveLinkedTransactionId))await tx.update(transactions).set({categoryId:null,specialType:"normal",excludedFromAnalysis:false,linkedTransactionId:null,isTransfer:false,transferPeerId:null,updatedAt:new Date()}).where(and(eq(transactions.id,row.linkedTransactionId),eq(transactions.linkedTransactionId,body.id)));
       if (body.splits) {
         await tx
           .delete(transactionSplits)
@@ -225,7 +245,7 @@ export async function PATCH(request: Request) {
           .delete(transactionSplits)
           .where(eq(transactionSplits.transactionId, body.id));
     });
-    const learned = body.categoryId !== undefined && !body.splits && body.ruleMode !== "none"
+    const learned = effectiveSpecialType !== "transfer" && body.categoryId !== undefined && !body.splits && body.ruleMode !== "none"
       ? await learnMerchantRule({
           householdId: member.householdId,
           ownerMemberId: member.id,
@@ -236,7 +256,7 @@ export async function PATCH(request: Request) {
           applyExisting: body.ruleMode === "all" ? "all" : "none",
         })
       : { learned: false, applied: 0 };
-    await writeAudit("transaction-updated","Ein Umsatz wurde bearbeitet.",{userId:user.userId,metadata:{transactionId:body.id,accountId:row.accountId,categoryChanged:body.categoryId!==undefined,splitChanged:Boolean(body.splits),specialType:body.specialType,linkedTransactionId:body.linkedTransactionId,ruleMode:body.ruleMode,deferAiReview:body.deferAiReview}});
+    await writeAudit("transaction-updated","Ein Umsatz wurde bearbeitet.",{userId:user.userId,metadata:{transactionId:body.id,accountId:row.accountId,categoryChanged:body.categoryId!==undefined,splitChanged:Boolean(body.splits),specialType:effectiveSpecialType,linkedTransactionId:effectiveLinkedTransactionId,ruleMode:body.ruleMode,deferAiReview:body.deferAiReview}});
     return NextResponse.json({ ok: true, ruleLearned: learned.learned, additionallyApplied: learned.applied });
   } catch (error) {
     return NextResponse.json(

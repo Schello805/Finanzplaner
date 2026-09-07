@@ -10,6 +10,7 @@ Dieser Prüfplan ist vor und nach dem Hinzufügen weiterer echter Konten auszuf�
 - Händlerregeln gelten standardmäßig nur für das Ursprungskonto. Eine Anwendung auf freigegebene Familienkonten erfordert den sichtbaren Schalter „Auf freigegebene Familienkonten anwenden“.
 - Analysen, KI-Hinweise, wiederkehrende Kosten, Amazon-Abgleich und Datenqualität verwenden ausschließlich die serverseitig ermittelten sichtbaren Konten.
 - Interne Umbuchungen werden nur als Vorschlag erkannt, wenn Betrag, Gegenrichtung und Währung centgenau stimmen, beide Konten verschieden und die Buchungen höchstens drei Tage auseinanderliegen. Beide Seiten werden erst nach Bestätigung ausgeschlossen.
+- Auch eine zunächst nur auf einer Seite als „Interne Umbuchung (nicht auswerten)“ markierte Buchung bleibt aus der Analyse ausgeschlossen und wird nach einem späteren Import weiterhin zur Verknüpfung vorgeschlagen.
 
 ## Abnahme mit Testkonto
 

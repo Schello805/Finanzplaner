@@ -27,6 +27,15 @@ describe("Kategorievergleich",()=>{
     expect(result.map(row=>row.amount)).toEqual([-10,5,-4,-5]);
     expect(result.reduce((sum,row)=>sum+row.amount,0)).toBe(-14);
   });
+  it("schließt interne Umbuchungen selbst bei einem fehlerhaften Ausschlusskennzeichen aus",()=>{
+    const result=normalizeAnalysisTransactions([
+      {id:"out",bookedOn:"2026-08-01",amount:"-800.00",specialType:"transfer",categoryId:"transfer",categoryName:"Interne Umbuchung"},
+      {id:"in",bookedOn:"2026-08-02",amount:"800.00",specialType:"transfer",categoryId:"transfer",categoryName:"Interne Umbuchung"},
+      {id:"expense",bookedOn:"2026-08-03",amount:"-50.00",specialType:"normal",categoryId:"food",categoryName:"Lebensmittel"},
+    ],[]);
+    expect(result).toHaveLength(1);
+    expect(spendingTotal(result)).toBe(50);
+  });
   it("verweigert eine Analyse mit nicht centgenauer Aufteilung",()=>{
     expect(()=>normalizeAnalysisTransactions([{id:"split",bookedOn:"2026-08-03",amount:"-9.00",specialType:"normal",categoryId:null,categoryName:null}],[{transactionId:"split",categoryId:"a",categoryName:"A",amount:"4.00"},{transactionId:"split",categoryId:"b",categoryName:"B",amount:"4.99"}])).toThrow("stimmt nicht mit dem Buchungsbetrag überein");
   });

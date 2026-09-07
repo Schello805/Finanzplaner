@@ -6,7 +6,7 @@ Finanzkennzahlen werden ausschließlich deterministisch im Servercode berechnet.
 
 - Auswertungen unterstützen derzeit ausschließlich EUR. Fremdwährungen werden beim Import mit einer verständlichen Meldung abgelehnt.
 - Additionen, Vergleiche und Aufteilungen erfolgen intern in ganzen Cent. Erst für die Anzeige werden Werte wieder in Euro umgewandelt.
-- Ausgaben werden positiv dargestellt. Erstattungen mindern die Ausgaben; interne Umbuchungen und bewusst ausgeschlossene Umsätze zählen nicht.
+- Ausgaben werden positiv dargestellt. Erstattungen mindern die Ausgaben; interne Umbuchungen und bewusst ausgeschlossene Umsätze zählen nicht. Das gilt für regelmäßige Haushaltsbeiträge ebenso wie für einmalige Nachzahlungen zwischen eigenen Konten. Erst die spätere Zahlung an einen externen Empfänger ist eine Ausgabe.
 - Kategorieaufteilungen müssen den Umsatz centgenau ergeben. Andernfalls wird die Änderung abgelehnt.
 - Amazon-Aufteilungen verwenden das Größte-Reste-Verfahren. Die Summe aller Artikelanteile entspricht dadurch immer exakt dem Bankumsatz und kein Anteil wird negativ.
 

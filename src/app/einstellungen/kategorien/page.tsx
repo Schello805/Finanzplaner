@@ -10,6 +10,7 @@ type Category = {
   icon: string;
   isIncome: boolean;
   parentId: string | null;
+  slug: string;
   transactionCount: number;
 };
 export default function CategoriesPage() {
@@ -173,6 +174,7 @@ export default function CategoriesPage() {
                       ? ` · Unterkategorie von ${rows.find((parent) => parent.id === row.parentId)?.name ?? "Unbekannt"}`
                       : ""}
                   </div>
+                  {row.slug === "umbuchung" && <div className="mt-1 max-w-2xl text-xs font-medium text-[var(--primary)]">Nur für Geldbewegungen zwischen eigenen Konten. Buchungen dieser Kategorie zählen weder als Ausgabe noch als Einkommen.</div>}
                 </div>
               </div>
             </div>

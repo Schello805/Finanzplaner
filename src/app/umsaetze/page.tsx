@@ -28,7 +28,7 @@ type Row = {
   aiReviewDeferredAt: string | null;
   splits: Array<{ categoryId: string; amount: string; note?: string | null }>;
 };
-type Category = { id: string; name: string; parentId: string | null; isIncome: boolean };
+type Category = { id: string; name: string; slug?: string; parentId: string | null; isIncome: boolean };
 function isUnassigned(row: Row) {
   return !row.categoryId && row.splits.length === 0;
 }
@@ -116,6 +116,11 @@ export default function TransactionsPage() {
   async function setCategory(row: Row, categoryId: string) {
     if (categoryId === "__create__") { setCreatingCategoryFor(row); return; }
     if (!categoryId) { await patch({ id: row.id, categoryId: null, ruleMode: "none" }); return; }
+    if (categories.find((category) => category.id === categoryId)?.slug === "umbuchung") {
+      if (!window.confirm("Diese Buchung als reine Geldverschiebung zwischen eigenen Konten markieren und vollständig aus Einnahmen und Ausgaben ausschließen? Die passende Gegenbuchung kannst du anschließend unter Datenqualität verknüpfen.")) return;
+      if (await patch({ id: row.id, categoryId, ruleMode: "none" })) setLocalMessage("Interne Umbuchung markiert: Sie wird nicht als Ausgabe oder Einkommen gewertet. Eine vorhandene Gegenbuchung kannst du unter Datenqualität verbinden.");
+      return;
+    }
     setPendingCategory({row,categoryId});
   }
   async function confirmCategory(ruleMode:"none"|"future"|"all") { if(!pendingCategory)return;await patch({id:pendingCategory.row.id,categoryId:pendingCategory.categoryId,ruleMode});setPendingCategory(null); }
@@ -325,6 +330,7 @@ export default function TransactionsPage() {
                       </select>
                     )}
                     {row.categoryId&&<div className="mt-1 flex items-center gap-2"><span className={`text-xs font-semibold ${Number(row.categorizationConfidence??1)>=.9?"text-emerald-700":Number(row.categorizationConfidence??0)>=.7?"text-amber-700":"text-red-700"}`}>{row.categorizedBy==="manual"?"Manuell bestätigt":Number(row.categorizationConfidence??0)>=.9?"Sehr sicher":Number(row.categorizationConfidence??0)>=.7?"Wahrscheinlich":"Bitte prüfen"}</span>{row.categorizedBy!=="manual"&&<button type="button" onClick={()=>confirmSuggestion(row)} className="text-xs font-semibold text-[var(--primary)] underline decoration-dotted underline-offset-2">Bestätigen</button>}</div>}
+                    {row.specialType==="transfer"&&<div className="mt-1 text-xs font-semibold text-[var(--primary)]">↔ Zählt weder als Ausgabe noch als Einkommen</div>}
                     {row.aiReviewDeferredAt&&<div className="mt-1 flex items-center gap-2"><span className="text-xs font-semibold text-amber-700">Später prüfen</span><button type="button" onClick={()=>patch({id:row.id,deferAiReview:false})} className="text-xs font-semibold text-[var(--primary)] underline decoration-dotted underline-offset-2">Wieder für KI freigeben</button></div>}
                   </td>
                   <td

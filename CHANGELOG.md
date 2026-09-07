@@ -2,6 +2,12 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.4.13] - 2026-09-07
+
+- Die Kategorie heißt nun eindeutig „Interne Umbuchung (nicht auswerten)“ und erklärt ihre Wirkung direkt in der Kategorien- und Umsatzansicht.
+- Die Auswahl dieser Kategorie kennzeichnet eine Geldverschiebung automatisch als Transfer und schließt sie unabhängig von ihrer Richtung aus Einnahmen, Ausgaben, KI-Hinweisen und wiederkehrenden Kosten aus.
+- Centgleiche Gegenbuchungen verschiedener Konten können verbunden werden; auch zunächst einseitig markierte Umbuchungen bleiben nach späteren Kontenimporten auffindbar. Verknüpfte Paare werden nicht erneut vorgeschlagen.
+
 ## [0.4.12] - 2026-09-07
 
 - Jeder Benutzer kann im persönlichen Sicherheitsbereich sein eigenes Passwort ändern. Die Passwortregeln, Leakprüfung, Sichtbarkeitsumschaltung und bestehende Sitzungserneuerung gelten dabei auch für Administratoren.

@@ -11,7 +11,7 @@ export const defaultCategories = [
   ["Gesundheit", "gesundheit", "#c44f64", "heart-pulse"],
   ["Apotheke & Medikamente", "apotheke-medikamente", "#cf6174", "pill", "gesundheit"],
   ["Haushalt & Drogerie", "haushalt-drogerie", "#159b94", "spray-can"],
-  ["Interne Umbuchung", "umbuchung", "#758387", "arrow-left-right"],
+  ["Interne Umbuchung (nicht auswerten)", "umbuchung", "#758387", "arrow-left-right"],
   ["Kommunikation & Medien", "kommunikation-medien", "#5275a8", "wifi"],
   ["Streaming & Software", "streaming-software", "#6385b5", "tv", "kommunikation-medien"],
   ["Telefon & Internet", "telefon-internet", "#6385b5", "phone", "kommunikation-medien"],
