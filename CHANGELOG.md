@@ -2,6 +2,19 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.7.0] - 2026-09-07
+
+- Die Sicherheitsgrenzen sind zentral vereinheitlicht: „sehr sicher“ beginnt erst bei 95 Prozent, „wahrscheinlich“ bei 75 Prozent.
+- Standardmäßig muss jeder KI-Vorschlag bestätigt werden; die frühere automatische Übernahme ab 70 Prozent wurde vollständig entfernt.
+- Optional können Benutzer ausschließlich KI-Ergebnisse ab 95 Prozent automatisch übernehmen lassen.
+- Automatisch übernommene KI-Ergebnisse erzeugen keine Lernregeln mehr. Erst eine ausdrückliche Bestätigung oder Korrektur darf für die Zukunft gelernt werden.
+- Sammelbestätigungen für Bank- und Amazon-Vorschläge können unmittelbar vollständig rückgängig gemacht werden und erzeugen bewusst keine versteckten Lernregeln.
+- Frühere Einstellungen zur 70-Prozent-Übernahme werden sicher auf „jeden Vorschlag bestätigen“ zurückgestuft.
+- Unsichere ältere KI-Zuordnungen unter 95 Prozent werden bis zur Bestätigung aus der Finanzanalyse ausgeschlossen.
+- Die Analyseseite zeigt eine Datenqualitätsleiste mit bestätigten Zuordnungen, sehr sicheren Automatiken, offenen Prüfungen und nicht zugeordneten Umsätzen.
+- Die Qualitätsanzeige berücksichtigt den gewählten Kontofilter und verlinkt direkt zu den noch notwendigen Prüfungen.
+- Eigene Tests schützen die zentralen Sicherheitsgrenzen vor späteren unbeabsichtigten Änderungen.
+
 ## [0.6.10] - 2026-09-07
 
 - Amazon-Vorschläge besitzen dieselben sichtbaren Sicherheitsstufen wie Bankumsätze und lassen sich danach filtern.

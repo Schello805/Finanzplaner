@@ -10,15 +10,15 @@ import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/current-user";
 import { decryptSecret } from "@/lib/security";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
-import { learnMerchantRule, normalizeMerchant } from "@/features/categorization/merchant-rules";
+import { normalizeMerchant } from "@/features/categorization/merchant-rules";
 import { isForbiddenCategoryName, normalizeCategoryName } from "@/features/categories/policy";
+import { automaticAcceptanceThreshold } from "@/features/categorization/confidence";
 type ProviderConfig = {
   model: string;
   inputPricePerMillion?: number;
   outputPricePerMillion?: number;
 };
 const AI_BATCH_SIZE = 25;
-function autoAcceptThreshold(level:"none"|"very_safe"|"likely"|null|undefined){return level==="likely"?.7:level==="very_safe"?.9:1.01}
 class AiConfigurationError extends Error {}
 async function settings() {
   const rows = await db.select().from(systemSettings);
@@ -199,9 +199,9 @@ export async function POST(request: Request) {
     const byName = new Map(
       allowed.map((c) => [normalizeCategoryName(c.name), c]),
     );
-    const [preferences] = await db.select({ automaticCategorization: userPreferences.automaticCategorization,aiAutoAcceptLevel:userPreferences.aiAutoAcceptLevel }).from(userPreferences).where(eq(userPreferences.userId, user.userId)).limit(1);
-    const trustedAutomaticMode = preferences?.automaticCategorization ?? false;
-    const threshold=trustedAutomaticMode?autoAcceptThreshold(preferences?.aiAutoAcceptLevel as "none"|"very_safe"|"likely"|undefined):1.01;
+    const [preferences] = await db.select({aiAutoAcceptLevel:userPreferences.aiAutoAcceptLevel}).from(userPreferences).where(eq(userPreferences.userId, user.userId)).limit(1);
+    const threshold=automaticAcceptanceThreshold(preferences?.aiAutoAcceptLevel);
+    const trustedAutomaticMode=threshold<=1;
     let applied = 0;
     const suggestions = [];
     const categoryProposalMap = new Map<string, { name: string; isIncome: boolean; transactionIds: string[]; matchingKeywords: Record<string,string>; confidence: number; reason: string }>();
@@ -253,7 +253,6 @@ export async function POST(request: Request) {
               inArray(transactions.accountId, visibleAccountIds),
             ),
           );
-        if(source)await learnMerchantRule({ householdId: member.householdId, ownerMemberId: member.id, visibleAccountIds,sourceAccountId:source.accountId, merchant: source.merchant, purpose:source.purpose, matchingKeyword:item.matchingKeyword, categoryId });
         applied++;
       } else suggestions.push({ ...item, categoryId });
     }

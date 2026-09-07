@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays, ShieldCheck } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { PieLabelRenderProps } from "recharts";
 import {AiInsightsCard} from "@/components/ai-insights-card";
@@ -10,6 +10,7 @@ import {MonthlyWorkflow} from "@/components/monthly-workflow";
 
 type CategoryRow={name:string;current:number;last:number;average:number;color:string};
 type AccountRow={id:string;name:string};
+type QualityTotals={total:number;confirmed:number;automaticSafe:number;needsReview:number;uncategorized:number;qualityPercent:number};
 const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
 const compactEur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const formatMonth=(value:string)=>value?new Intl.DateTimeFormat("de-DE",{month:"long",year:"numeric"}).format(new Date(`${value}-01T12:00:00Z`)):"";
@@ -34,8 +35,10 @@ export function AnalysisDashboard() {
   const [accounts,setAccounts]=useState<AccountRow[]>([]);const[lastMonth,setLastMonth]=useState("");const[currentMonth,setCurrentMonth]=useState("");
   const [totals,setTotals]=useState({last:0,current:0,average:0});
   const [categories,setCategories]=useState<CategoryRow[]>([]);const[months,setMonths]=useState<Array<{month:string;value:number}>>([]);const[historyMonths,setHistoryMonths]=useState(0);const[loading,setLoading]=useState(true);const[loadError,setLoadError]=useState("");
+  const[quality,setQuality]=useState<QualityTotals|null>(null);
   useEffect(()=>{fetch("/api/accounts").then(r=>r.json()).then(body=>{if(Array.isArray(body))setAccounts(body.map((item:AccountRow)=>({id:item.id,name:item.name})))})},[]);
   useEffect(()=>{const suffix=account==="all"?"":`?accountId=${encodeURIComponent(account)}`;fetch(`/api/analytics/overview${suffix}`).then(r=>r.json()).then(body=>{if(body.error){setLoadError(body.error);return}setLastMonth(body.lastMonth??"");setCurrentMonth(body.currentMonth??"");setTotals(body.totals??{last:0,current:0,average:0});setCategories((body.categories??[]).map((c:{categoryName:string;current:number;last:number;average:number|null;color:string})=>({name:c.categoryName,current:c.current,last:c.last,average:c.average??0,color:c.color})));setMonths((body.months??[]).map((m:{month:string;value:number})=>({month:new Intl.DateTimeFormat("de-DE",{month:"short"}).format(new Date(`${m.month}-01T00:00:00Z`)),value:m.value})));setHistoryMonths(body.historyMonths??0)}).catch(()=>setLoadError("Analyse konnte nicht geladen werden.")).finally(()=>setLoading(false))},[account]);
+  useEffect(()=>{const suffix=account==="all"?"":`?accountId=${encodeURIComponent(account)}`;fetch(`/api/data-quality${suffix}`).then(r=>r.json()).then(body=>setQuality(body.totals??null)).catch(()=>setQuality(null))},[account]);
   const lastTotal = totals.last;
   const averageTotal = totals.average;
   const currentTotal = totals.current;
@@ -61,6 +64,8 @@ export function AnalysisDashboard() {
     </header>
 
     <MonthlyWorkflow />
+
+    {quality&&quality.total>0&&<section className="card p-5" aria-label="Zuverlässigkeit der Zuordnungen"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div className="flex gap-3"><ShieldCheck className="mt-0.5 shrink-0 text-[var(--primary)]"/><div><h2 className="font-bold">Datenqualität · {quality.qualityPercent} % belastbar</h2><p className="mt-1 text-sm muted">Unsichere ältere KI-Zuordnungen unter 95 % fließen erst nach Bestätigung wieder in die Analyse ein.</p></div></div><Link href="/einstellungen/datenqualitaet" className="btn-secondary shrink-0">Details prüfen <ArrowRight size={15}/></Link></div><div className="mt-4 flex h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]" aria-hidden="true"><span className="bg-[var(--primary)]" style={{width:`${quality.confirmed/quality.total*100}%`}}/><span className="bg-[var(--accent)]" style={{width:`${quality.automaticSafe/quality.total*100}%`}}/><span className="bg-amber-400" style={{width:`${quality.needsReview/quality.total*100}%`}}/><span className="bg-red-400" style={{width:`${quality.uncategorized/quality.total*100}%`}}/></div><div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold"><span>{Math.round(quality.confirmed/quality.total*100)} % bestätigt/Regel</span><span>{Math.round(quality.automaticSafe/quality.total*100)} % automatisch sehr sicher</span><Link href="/umsaetze?confidence=review" className="text-amber-700">{quality.needsReview} zu prüfen</Link><Link href="/umsaetze?categoryId=none" className="text-[var(--danger)]">{quality.uncategorized} nicht zugeordnet</Link></div></section>}
 
     {loadError&&<div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{loadError}</div>}
     {loading&&<div className="card p-5 text-sm muted">Analysedaten werden geladen …</div>}

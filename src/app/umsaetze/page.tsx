@@ -7,6 +7,7 @@ import { AiCategorizationPanel } from "@/components/ai-categorization-panel";
 import { CategorySelectOptions } from "@/components/category-select-options";
 import { TransactionEditor } from "@/components/transaction-editor";
 import { InlineCategoryCreate } from "@/components/inline-category-create";
+import { LIKELY_CONFIDENCE, VERY_SAFE_CONFIDENCE } from "@/features/categorization/confidence";
 type Row = {
   id: string;
   accountId:string;
@@ -38,8 +39,8 @@ function confidenceBand(row:Row){
   if(!row.categoryId)return "unassigned";
   if(row.categorizedBy==="manual")return "manual";
   const confidence=Number(row.categorizationConfidence??0);
-  if(confidence>=.9)return "very-safe";
-  if(confidence>=.7)return "likely";
+  if(confidence>=VERY_SAFE_CONFIDENCE)return "very-safe";
+  if(confidence>=LIKELY_CONFIDENCE)return "likely";
   return "check";
 }
 export default function TransactionsPage() {
@@ -131,7 +132,7 @@ export default function TransactionsPage() {
     }).catch(()=>setRulePreview(null));
   }
   async function confirmCategory(ruleMode:"none"|"future"|"all") { if(!pendingCategory)return;await patch({id:pendingCategory.row.id,categoryId:pendingCategory.categoryId,ruleMode});setPendingCategory(null);setRulePreview(null); }
-  async function confirmSuggestion(row:Row){if(row.categoryId)await patch({id:row.id,categoryId:row.categoryId,ruleMode:"none"});}
+  async function confirmSuggestion(row:Row){if(row.categoryId)await patch({id:row.id,categoryId:row.categoryId,ruleMode:"future"});}
   async function applyLocalRules() {
     setLocalBusy(true);
     setLocalMessage("");
@@ -337,7 +338,7 @@ export default function TransactionsPage() {
                         <option value="__create__">＋ Neue Kategorie anlegen …</option>
                       </select>
                     )}
-                    {row.categoryId&&<div className="mt-1 flex items-center gap-2"><span className={`text-xs font-semibold ${Number(row.categorizationConfidence??1)>=.9?"text-emerald-700":Number(row.categorizationConfidence??0)>=.7?"text-amber-700":"text-red-700"}`}>{row.categorizedBy==="manual"?"Manuell bestätigt":Number(row.categorizationConfidence??0)>=.9?"Sehr sicher":Number(row.categorizationConfidence??0)>=.7?"Wahrscheinlich":"Bitte prüfen"}</span>{row.categorizedBy!=="manual"&&<button type="button" onClick={()=>confirmSuggestion(row)} className="text-xs font-semibold text-[var(--primary)] underline decoration-dotted underline-offset-2">Bestätigen</button>}</div>}
+                    {row.categoryId&&<div className="mt-1 flex items-center gap-2"><span className={`text-xs font-semibold ${Number(row.categorizationConfidence??1)>=VERY_SAFE_CONFIDENCE?"text-emerald-700":Number(row.categorizationConfidence??0)>=LIKELY_CONFIDENCE?"text-amber-700":"text-red-700"}`}>{row.categorizedBy==="manual"?"Manuell bestätigt":Number(row.categorizationConfidence??0)>=VERY_SAFE_CONFIDENCE?"Sehr sicher":Number(row.categorizationConfidence??0)>=LIKELY_CONFIDENCE?"Wahrscheinlich":"Bitte prüfen"}</span>{row.categorizedBy!=="manual"&&<button type="button" onClick={()=>confirmSuggestion(row)} className="text-xs font-semibold text-[var(--primary)] underline decoration-dotted underline-offset-2">Bestätigen</button>}</div>}
                     {row.specialType==="transfer"&&<div className="mt-1 text-xs font-semibold text-[var(--primary)]">↔ Zählt weder als Ausgabe noch als Einkommen</div>}
                     {row.aiReviewDeferredAt&&<div className="mt-1 flex items-center gap-2"><span className="text-xs font-semibold text-amber-700">Später prüfen</span><button type="button" onClick={()=>patch({id:row.id,deferAiReview:false})} className="text-xs font-semibold text-[var(--primary)] underline decoration-dotted underline-offset-2">Wieder für KI freigeben</button></div>}
                   </td>

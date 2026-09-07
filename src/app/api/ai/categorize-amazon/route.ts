@@ -10,10 +10,10 @@ import { requireUser } from "@/lib/current-user";
 import { decryptSecret } from "@/lib/security";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { isForbiddenCategoryName, normalizeCategoryName } from "@/features/categories/policy";
+import { automaticAcceptanceThreshold } from "@/features/categorization/confidence";
 
 const BATCH_SIZE = 25;
 type ProviderConfig = { model: string; inputPricePerMillion?: number; outputPricePerMillion?: number };
-const threshold = (level: "none" | "very_safe" | "likely" | null | undefined) => level === "likely" ? 0.7 : level === "very_safe" ? 0.9 : 1.01;
 
 async function aiSettings() {
   const rows = await db.select().from(systemSettings);
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     const result = await categorizeWithAi({ provider: ai.provider, apiKey: ai.apiKey, model: ai.config.model }, rows, allowed.map((category) => category.name));
     const byName = new Map(allowed.map((category) => [normalizeCategoryName(category.name), category.id]));
     const [preferences] = await db.select({ level: userPreferences.aiAutoAcceptLevel }).from(userPreferences).where(eq(userPreferences.userId, user.userId)).limit(1);
-    const autoThreshold = threshold(preferences?.level as "none" | "very_safe" | "likely" | undefined);
+    const autoThreshold = automaticAcceptanceThreshold(preferences?.level);
     const suggestions: Array<{ id: string; categoryId: string; category: string; confidence: number; reason: string }> = [];
     const categoryProposals: Array<{ id: string; name: string; confidence: number; reason: string }> = [];
     let applied = 0;

@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { accounts, amazonOrderItems, imports, systemSettings, transactions, transactionSplits } from "@/db/schema";
 import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
+import { VERY_SAFE_CONFIDENCE } from "@/features/categorization/confidence";
 
 export async function GET() {
   try {
@@ -22,7 +23,7 @@ export async function GET() {
     const uncategorizedCount = transactionRows.filter((row) => !row.categoryId && !splitIds.has(row.id)).length;
     const openRows=transactionRows.filter(row=>!row.categoryId&&!splitIds.has(row.id));
     const unresolvedSources={amazon:openRows.filter(row=>/amazon/i.test(`${row.counterparty} ${row.purpose}`)).length,paypal:openRows.filter(row=>/paypal/i.test(`${row.counterparty} ${row.purpose}`)).length,card:openRows.filter(row=>/kreditkarte|credit card|kartenabrechnung/i.test(`${row.counterparty} ${row.purpose} ${row.bookingType}`)).length};
-    const reviewCount=transactionRows.filter(row=>row.categoryId&&row.categorizedBy?.startsWith("ai:")&&Number(row.confidence??0)<.9).length;
+    const reviewCount=transactionRows.filter(row=>row.categoryId&&row.categorizedBy?.startsWith("ai:")&&Number(row.confidence??0)<VERY_SAFE_CONFIDENCE).length;
     const deferredCount=openRows.filter(row=>row.aiReviewDeferredAt).length;
     const provider = (aiDefaultRows[0]?.valueJson as { provider?: "openai" | "gemini" } | null)?.provider ?? "openai";
     const [providerRow] = await db.select({ secret: systemSettings.valueEncrypted }).from(systemSettings).where(eq(systemSettings.key, `ai.${provider}`)).limit(1);

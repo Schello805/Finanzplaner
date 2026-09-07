@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ChevronDown, Clock3, ShieldCheck, Sparkles } from "lucide-react";
 import { CategorySelectOptions, type SelectCategory } from "@/components/category-select-options";
 import { InlineCategoryCreate } from "@/components/inline-category-create";
+import { LIKELY_CONFIDENCE, VERY_SAFE_CONFIDENCE } from "@/features/categorization/confidence";
 type Mode = "minimal" | "full_text";
 type Preview = {
   count: number;
@@ -61,6 +62,7 @@ export function AiCategorizationPanel({
   const [analyzedTransactions, setAnalyzedTransactions] = useState<Preview["transactions"]>([]);
   const [processedIds,setProcessedIds]=useState<string[]>([]);
   const [initialTotal,setInitialTotal]=useState(0);
+  const [undoIds,setUndoIds]=useState<string[]>([]);
   async function requestPreview(nextMode: Mode, preserveMessage = false, excludedIds:string[]=processedIds) {
     const params = new URLSearchParams({ privacyMode: nextMode });
     if (accountId) params.set("accountId", accountId);
@@ -197,26 +199,42 @@ export function AiCategorizationPanel({
   async function acceptMany(ids: string[]) {
     setBusy(true);
     setMessage("");
+    const acceptedIds:string[]=[];
     try {
       const selectedSuggestions=suggestions.filter(suggestion=>ids.includes(suggestion.id));
       for (const suggestion of selectedSuggestions) {
         const response = await fetch("/api/transactions", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: suggestion.id, categoryId: suggestion.categoryId, ruleMode: "future", matchingKeyword: suggestion.matchingKeyword }),
+          body: JSON.stringify({ id: suggestion.id, categoryId: suggestion.categoryId, ruleMode: "none" }),
         });
         if (!response.ok) throw new Error((await response.json()).error);
+        acceptedIds.push(suggestion.id);
       }
       const count = selectedSuggestions.length;
       setSuggestions(current=>current.filter(suggestion=>!ids.includes(suggestion.id)));
-      setMessage(`${count} ${count===1?"KI-Zuordnung wurde":"KI-Zuordnungen wurden"} bestätigt. ${categoryProposals.length ? `${categoryProposals.length} Vorschläge für neue Kategorien warten weiterhin auf deine ausdrückliche Einzelentscheidung.` : ""}`);
+      setUndoIds(acceptedIds);
+      setMessage(`${count} ${count===1?"KI-Zuordnung wurde":"KI-Zuordnungen wurden"} bestätigt. Sammelbestätigungen erzeugen aus Sicherheitsgründen keine Lernregeln. ${categoryProposals.length ? `${categoryProposals.length} Vorschläge für neue Kategorien warten weiterhin auf deine ausdrückliche Einzelentscheidung.` : ""}`);
       await requestPreview(mode, true);
       onApplied();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Die Vorschläge konnten nicht vollständig übernommen werden.");
+      setUndoIds(acceptedIds);
+      setSuggestions(current=>current.filter(suggestion=>!acceptedIds.includes(suggestion.id)));
+      setMessage(`${error instanceof Error ? error.message : "Die Vorschläge konnten nicht vollständig übernommen werden."}${acceptedIds.length?` ${acceptedIds.length} bereits gespeicherte Zuordnungen können rückgängig gemacht werden.`:""}`);
     } finally {
       setBusy(false);
     }
+  }
+  async function undoMany(){
+    if(!undoIds.length)return;
+    setBusy(true);
+    try{
+      for(const id of undoIds){
+        const response=await fetch("/api/transactions",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,categoryId:null,ruleMode:"none"})});
+        if(!response.ok)throw new Error((await response.json()).error);
+      }
+      const count=undoIds.length;setUndoIds([]);setMessage(`${count} ${count===1?"Sammelzuordnung wurde":"Sammelzuordnungen wurden"} rückgängig gemacht.`);setProcessedIds([]);await requestPreview(mode,true,[]);onApplied();
+    }catch(error){setMessage(error instanceof Error?error.message:"Sammelzuordnung konnte nicht rückgängig gemacht werden.");}finally{setBusy(false);}
   }
   useEffect(() => {
     Promise.all([
@@ -381,6 +399,7 @@ export function AiCategorizationPanel({
           className="mt-4 rounded-xl bg-[var(--surface-soft)] p-4 text-sm"
         >
           {message}
+          {undoIds.length>0&&<span className="mt-3 block"><button type="button" disabled={busy} onClick={undoMany} className="font-semibold text-[var(--primary)] underline">Letzte Sammelzuordnung rückgängig machen ({undoIds.length})</button></span>}
           {message.includes("zurückgestellt") && <span className="mt-3 block"><a href="/umsaetze?confidence=deferred" className="font-semibold text-[var(--primary)]">Zur Liste „Später prüfen“</a></span>}
           {(message.includes("eingerichtet") || message.includes("Adminbereich")) && (
             <span className="mt-3 block">
@@ -395,9 +414,9 @@ export function AiCategorizationPanel({
       )}
       {suggestions.length > 0 && (
         <div className="mt-4 border-t border-[var(--border)] pt-4">
-          <div className="mb-3 flex flex-wrap gap-2 text-sm"><span className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-900">{suggestions.filter(item=>item.confidence>=.9).length} sehr sicher</span><span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-900">{suggestions.filter(item=>item.confidence>=.7&&item.confidence<.9).length} wahrscheinlich</span><span className="rounded-full bg-red-100 px-3 py-1 font-semibold text-red-900">{suggestions.filter(item=>item.confidence<.7).length} bitte prüfen</span></div>
+          <div className="mb-3 flex flex-wrap gap-2 text-sm"><span className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-900">{suggestions.filter(item=>item.confidence>=VERY_SAFE_CONFIDENCE).length} sehr sicher</span><span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-900">{suggestions.filter(item=>item.confidence>=LIKELY_CONFIDENCE&&item.confidence<VERY_SAFE_CONFIDENCE).length} wahrscheinlich</span><span className="rounded-full bg-red-100 px-3 py-1 font-semibold text-red-900">{suggestions.filter(item=>item.confidence<LIKELY_CONFIDENCE).length} bitte prüfen</span></div>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button type="button" disabled={busy||!suggestions.some(item=>item.confidence>=.9)} onClick={()=>acceptMany(suggestions.filter(item=>item.confidence>=.9).map(item=>item.id))} className="btn-secondary"><ShieldCheck size={17}/>Nur sehr sichere übernehmen ({suggestions.filter(item=>item.confidence>=.9).length})</button>
+            <button type="button" disabled={busy||!suggestions.some(item=>item.confidence>=VERY_SAFE_CONFIDENCE)} onClick={()=>acceptMany(suggestions.filter(item=>item.confidence>=VERY_SAFE_CONFIDENCE).map(item=>item.id))} className="btn-secondary"><ShieldCheck size={17}/>Nur sehr sichere übernehmen ({suggestions.filter(item=>item.confidence>=VERY_SAFE_CONFIDENCE).length})</button>
             <button type="button" disabled={busy} onClick={()=>acceptMany(suggestions.map(item=>item.id))} className="btn-primary">Alle Vorschläge übernehmen ({suggestions.length})</button>
           </div>
         </div>
@@ -423,7 +442,7 @@ export function AiCategorizationPanel({
                   <div className="font-semibold">
                     {transaction?.merchant ?? "Unbekannter Empfänger"}
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-sm"><span className={`rounded-full px-2.5 py-1 font-semibold ${suggestion.confidence>=.9?"bg-emerald-100 text-emerald-900":suggestion.confidence>=.7?"bg-amber-100 text-amber-900":"bg-red-100 text-red-900"}`}>{suggestion.confidence>=.9?"Sehr sicher":suggestion.confidence>=.7?"Wahrscheinlich":"Bitte prüfen"}</span><span className="muted">{(suggestion.confidence * 100).toFixed(0)} % Sicherheit</span></div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-sm"><span className={`rounded-full px-2.5 py-1 font-semibold ${suggestion.confidence>=VERY_SAFE_CONFIDENCE?"bg-emerald-100 text-emerald-900":suggestion.confidence>=LIKELY_CONFIDENCE?"bg-amber-100 text-amber-900":"bg-red-100 text-red-900"}`}>{suggestion.confidence>=VERY_SAFE_CONFIDENCE?"Sehr sicher":suggestion.confidence>=LIKELY_CONFIDENCE?"Wahrscheinlich":"Bitte prüfen"}</span><span className="muted">{(suggestion.confidence * 100).toFixed(0)} % Sicherheit</span></div>
                   <select
                     aria-label={`Kategorie für ${transaction?.merchant ?? "Umsatz"}`}
                     value={suggestion.categoryId}

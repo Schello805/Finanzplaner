@@ -5,6 +5,7 @@ import { categories, transactions, transactionSplits } from "@/db/schema";
 import { categoryComparison, comparisonTotals, normalizeAnalysisTransactions, spendingTotal } from "@/features/analytics/calculations";
 import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
+import { VERY_SAFE_CONFIDENCE } from "@/features/categorization/confidence";
 
 const monthKey = (date: Date) => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 const dateKey = (date: Date) => `${monthKey(date)}-${String(date.getUTCDate()).padStart(2, "0")}`;
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
         eq(transactions.excludedFromAnalysis, false),
         sql`${transactions.specialType} <> 'transfer'`,
         or(eq(transactions.direction, "expense"), eq(transactions.specialType, "refund")),
+        sql`not (${transactions.categorizedBy} like 'ai:%' and coalesce(${transactions.categorizationConfidence}, 0) < ${VERY_SAFE_CONFIDENCE})`,
         gte(transactions.bookedOn, from),
       ));
     const splits = rows.length
