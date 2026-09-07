@@ -234,6 +234,16 @@ export const amazonOrderItems = pgTable("amazon_order_items", {
   ...timestamps,
 }, (t) => [uniqueIndex("amazon_item_household_source_unique").on(t.householdId, t.sourceFingerprint)]);
 
+export const amazonItemRules = pgTable("amazon_item_rules", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").references(() => households.id, { onDelete: "cascade" }).notNull(),
+  ownerMemberId: uuid("owner_member_id").references(() => householdMembers.id, { onDelete: "cascade" }).notNull(),
+  patternEncrypted: text("pattern_encrypted").notNull(),
+  categoryId: uuid("category_id").references(() => categories.id, { onDelete: "cascade" }).notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  ...timestamps,
+});
+
 export const categorizationRules = pgTable("categorization_rules", {
   id: uuid("id").defaultRandom().primaryKey(),
   householdId: uuid("household_id").references(() => households.id, { onDelete: "cascade" }).notNull(),

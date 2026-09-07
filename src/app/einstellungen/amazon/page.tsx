@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckCircle2, PackageSearch, ShieldCheck, Upload } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
@@ -44,7 +45,12 @@ export default function AmazonImportPage() {
     await loadHistory();
   }
   return <div className="space-y-7">
-    <PageHeader eyebrow="Einstellungen · Daten" title="Amazon-Bestellungen" description="Importiere „Order History.csv“ aus dem Amazon-Datenexport, um Sammelbestellungen aufzuteilen." />
+    <PageHeader
+      eyebrow="Einstellungen · Daten"
+      title="Amazon-Bestellungen"
+      description="Importiere „Order History.csv“ aus dem Amazon-Datenexport, um Sammelbestellungen aufzuteilen."
+      action={<Link href="/einstellungen/amazon-regeln" className="btn-secondary">Artikelregeln verwalten</Link>}
+    />
     <section className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
       <article className="card p-5 sm:p-7">
         <div className="flex items-center gap-3"><PackageSearch className="text-[var(--primary)]"/><div><h2 className="font-bold">Order History.csv auswählen</h2><p className="mt-1 text-sm muted">Aus „Your Orders/Your Amazon Orders“ · maximal 30 MB</p></div></div>

@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { amazonOrderImports, amazonOrderItems } from "@/db/schema";
+import { amazonItemRules, amazonOrderImports, amazonOrderItems } from "@/db/schema";
+import { matchingProductRule } from "@/features/amazon/product-rules";
 import { parseAmazonOrderHistory } from "@/features/amazon/parser";
 import { fingerprintFile } from "@/features/import/parser";
 import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/current-user";
-import { encryptSecret, stablePrivateFingerprint } from "@/lib/security";
+import { decryptSecret, encryptSecret, stablePrivateFingerprint } from "@/lib/security";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 
 const chunks = <T,>(values: T[], size: number) =>
@@ -56,6 +57,22 @@ export async function POST(request: Request) {
       rows.forEach((row) => existingFingerprints.add(row.fingerprint));
     }
     const newItems = uniqueItems.filter((item) => !existingFingerprints.has(item.fingerprint));
+    const productRules = (
+      await db
+        .select()
+        .from(amazonItemRules)
+        .where(
+          and(
+            eq(amazonItemRules.ownerMemberId, member.id),
+            eq(amazonItemRules.enabled, true),
+          ),
+        )
+    ).map((rule) => ({
+      id: rule.id,
+      pattern: decryptSecret(rule.patternEncrypted),
+      categoryId: rule.categoryId,
+      enabled: rule.enabled,
+    }));
     const counts = new Map<string, number>();
     parsed.items.forEach((item) => counts.set(item.orderId, (counts.get(item.orderId) ?? 0) + 1));
     const multipleItemOrders = [...counts.values()].filter((count) => count > 1).length;
@@ -106,6 +123,7 @@ export async function POST(request: Request) {
             shippingCharge: item.shippingCharge.toFixed(2),
             totalDiscounts: item.totalDiscounts.toFixed(2),
             currency: item.currency,
+            categoryId: matchingProductRule(productRules, item.productName)?.categoryId ?? null,
           })),
         );
       }

@@ -127,6 +127,13 @@
       "when": 1789142400000,
       "tag": "0017_ordinary_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789228800000,
+      "tag": "0018_nebulous_deathstrike",
+      "breakpoints": true
     }
   ]
 }

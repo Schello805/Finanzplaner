@@ -2,6 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.7.5] - 2026-09-07
+
+- Eine neue Amazon-Artikelmatrix zeigt jeden unterschiedlichen Produktnamen, seine Häufigkeit und die zugeordnete Kategorie; Änderungen erzeugen eine dauerhaft gültige exakte Artikelregel.
+- Flexible Platzhalterregeln unterstützen unter anderem `Filament*` und `*Filament*`; exakte und längere Regeln haben zuverlässig Vorrang.
+- Artikelregeln werden vor der KI auf bestehende sowie neue Amazon-Importe angewendet und überschreiben keine spezifischere Regel.
+- Das Zuordnungswissen lässt sich als JSON exportieren und wieder importieren. Fehlende oder mehrdeutige Kategorien werden sicher übersprungen statt automatisch erzeugt.
+- Produktnamen und Regelmuster bleiben verschlüsselt in der lokalen Datenbank gespeichert.
+
 ## [0.7.4] - 2026-09-07
 
 - Korrigiert den fehlerhaften Zeitstempel der Amazon-Stapelverarbeitungsmigration, durch den PostgreSQL die neuen Vorschlagsspalten übersprungen hat.

@@ -6,6 +6,7 @@ const settings = [
   { icon:FileUp, title:"Datenimporte", detail:"CSV hochladen und Importverlauf anzeigen", href:"/einstellungen/import" },
   { icon:Building2, title:"Sparkasse verbinden", detail:"Konten und Umsätze ausschließlich lesend über FinTS abrufen", href:"/einstellungen/sparkasse" },
   { icon:PackageSearch, title:"Amazon-Bestellungen", detail:"Order History importieren und Sammelbestellungen aufteilen", href:"/einstellungen/amazon" },
+  { icon:Tags, title:"Amazon-Artikelregeln", detail:"Artikelmatrix, Platzhalter und portable Zuordnungen verwalten", href:"/einstellungen/amazon-regeln" },
   { icon:Bot, title:"KI & Datenschutz", detail:"Einwilligungen, Übertragungsmodus und Kostennutzung", href:"/einstellungen/ki" },
   { icon:Tags, title:"Kategorien", detail:"Ausgaben, Einnahmen und Unterkategorien verwalten", href:"/einstellungen/kategorien" },
   { icon:WandSparkles, title:"Gelernte Regeln", detail:"Automatische Händlerzuordnungen korrigieren oder pausieren", href:"/einstellungen/regeln" },
