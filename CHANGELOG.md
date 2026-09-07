@@ -2,6 +2,12 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.6.5] - 2026-09-07
+
+- Die Eingabe- und Auswahlfelder des Sparkassen-Assistenten sind auf Smartphones nun klar durch Hintergrund, Rahmen und ausreichende Höhe erkennbar.
+- Fokus, Hoverzustand, Platzhalter und deaktivierte Felder besitzen konsistente, kontrastreiche Zustände im Hell- und Dunkelmodus.
+- Die Schriftgröße mobiler Formularfelder verhindert das automatische Hineinzoomen von Safari unter iOS.
+
 ## [0.6.4] - 2026-09-07
 
 - Der beim Update auf 0.6.3 sichtbare `EACCES`-Fehler ist behoben: Das Updateskript lässt npm keine von `root` verwalteten Manifestdateien mehr verändern.
