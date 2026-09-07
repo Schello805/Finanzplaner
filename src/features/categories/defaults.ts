@@ -13,7 +13,7 @@ export const defaultCategories = [
   ["Haushalt & Drogerie", "haushalt-drogerie", "#159b94", "spray-can"],
   ["Interne Umbuchung (nicht auswerten)", "umbuchung", "#758387", "arrow-left-right"],
   ["Kommunikation & Medien", "kommunikation-medien", "#5275a8", "wifi"],
-  ["Streaming & Software", "streaming-software", "#6385b5", "tv", "kommunikation-medien"],
+  ["Abonnements", "abonnements", "#6385b5", "tv", "kommunikation-medien"],
   ["Telefon & Internet", "telefon-internet", "#6385b5", "phone", "kommunikation-medien"],
   ["Lebensmittel", "lebensmittel", "#087e82", "shopping-basket"],
   ["Mobilität", "mobilitaet", "#31a77d", "car"],

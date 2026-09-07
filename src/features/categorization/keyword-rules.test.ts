@@ -32,4 +32,11 @@ describe("lokale Buchungstext-Erkennung", () => {
     expect(keywordCategory("Telefonica Germany GmbH & Co. OHG", false, extended)?.id).toBe("phone");
     expect(keywordCategory("Darlehensrückzahlung an Bank", false, extended)?.id).toBe("rate");
   });
+  it("ordnet eindeutige Abo-Anbieter zu, aber keine mehrdeutige Apple-Abrechnung", () => {
+    const withSubscriptions = [...categories, { id: "subscriptions", name: "Abos", isIncome: false }];
+    expect(keywordCategory("Spotify Premium", false, withSubscriptions)?.id).toBe("subscriptions");
+    expect(keywordCategory("Disney+ Monatsabo", false, withSubscriptions)?.id).toBe("subscriptions");
+    expect(keywordCategory("iCloud+ 200 GB", false, withSubscriptions)?.id).toBe("subscriptions");
+    expect(keywordCategory("APPLE.COM/BILL", false, withSubscriptions)).toBeUndefined();
+  });
 });

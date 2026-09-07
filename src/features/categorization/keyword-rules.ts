@@ -1,6 +1,13 @@
+import { knownSubscriptionPattern } from "./subscription-providers";
+
 export type KeywordCategory = { id: string; name: string; isIncome: boolean };
 
 const rules = [
+  {
+    text: knownSubscriptionPattern,
+    category: /^(abos?|abonnements?)$|streaming\s*&\s*software/i,
+    isIncome: false,
+  },
   {
     text: /sollzinsen|kreditzinsen|darlehenszinsen/i,
     category: /kreditzinsen|zinsen|bankgebühr|gebühr/i,

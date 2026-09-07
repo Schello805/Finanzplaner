@@ -2,6 +2,13 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.4.14] - 2026-09-07
+
+- Gängige eindeutig benannte Abodienste wie Spotify, Netflix, Disney+, iCloud, Microsoft 365, Amazon Prime, DAZN und weitere werden lokal ohne KI-Kosten erkannt.
+- Die Zuordnung verwendet vorhandene Kategorien namens „Abos“, „Abonnements“ oder „Streaming & Software“. Neue Installationen erhalten dafür die Unterkategorie „Abonnements“.
+- Eindeutige Händler werden als kontobezogene Regel gespeichert; Abos im Verwendungszweck eines Sammelzahlers wie PayPal werden bei jedem Import sicher neu erkannt.
+- Bekannte Abos erscheinen bereits nach der ersten Buchung in der Abo-Übersicht. Mehrdeutige Texte wie „APPLE.COM/BILL“ werden bewusst nicht pauschal zugeordnet.
+
 ## [0.4.13] - 2026-09-07
 
 - Die Kategorie heißt nun eindeutig „Interne Umbuchung (nicht auswerten)“ und erklärt ihre Wirkung direkt in der Kategorien- und Umsatzansicht.

@@ -4,6 +4,7 @@ import { categorizationRules, categories, transactions, transactionSplits } from
 import { canLearnMerchant, normalizeMerchant } from "./normalize";
 import { keywordCategory } from "./keyword-rules";
 import {resolveRuleAssignments} from "./rule-resolution";
+import { isKnownSubscription } from "./subscription-providers";
 export { normalizeMerchant } from "./normalize";
 
 export async function merchantRuleMap(householdId: string, ownerMemberId: string, accountId:string) {
@@ -147,14 +148,19 @@ export async function applyMerchantRules(input: {
   }
   const [availableCategories, remaining] = await Promise.all([
     db.select({ id: categories.id, name: categories.name, isIncome: categories.isIncome }).from(categories).where(eq(categories.householdId, input.householdId)),
-    db.select({ id: transactions.id, merchant: transactions.counterparty, purpose: transactions.purpose, amount: transactions.amount }).from(transactions).where(and(inArray(transactions.accountId, input.visibleAccountIds),eq(transactions.excludedFromAnalysis,false), isNull(transactions.aiReviewDeferredAt), isNull(transactions.categoryId), notExists(db.select({ id: transactionSplits.transactionId }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))))),
+    db.select({ id: transactions.id, accountId: transactions.accountId, merchant: transactions.counterparty, purpose: transactions.purpose, amount: transactions.amount }).from(transactions).where(and(inArray(transactions.accountId, input.visibleAccountIds),eq(transactions.excludedFromAnalysis,false), isNull(transactions.aiReviewDeferredAt), isNull(transactions.categoryId), notExists(db.select({ id: transactionSplits.transactionId }).from(transactionSplits).where(eq(transactionSplits.transactionId, transactions.id))))),
   ]);
   let keywordApplied = 0;
+  let subscriptionRulesLearned = 0;
   for (const row of remaining) {
     const category = keywordCategory(`${row.merchant ?? ""} ${row.purpose ?? ""}`, Number(row.amount) >= 0, availableCategories);
     if (!category) continue;
     await db.update(transactions).set({ categoryId: category.id, categorizedBy: "local-keyword", categorizationConfidence: "0.950", updatedAt: new Date() }).where(eq(transactions.id, row.id));
     keywordApplied++;
+    if (isKnownSubscription(row.merchant)) {
+      const learnedSubscription = await learnMerchantRule({ householdId: input.householdId, ownerMemberId: input.ownerMemberId, visibleAccountIds: input.visibleAccountIds, sourceAccountId: row.accountId, merchant: row.merchant, categoryId: category.id, applyExisting: "none" });
+      if (learnedSubscription.learned) subscriptionRulesLearned++;
+    }
   }
-  return { applied: applied + keywordApplied, rules: [...ruleMaps.values()].reduce((sum,map)=>sum+map.size,0), learned: learned.size, keywordApplied };
+  return { applied: applied + keywordApplied, rules: [...ruleMaps.values()].reduce((sum,map)=>sum+map.size,0) + subscriptionRulesLearned, learned: learned.size + subscriptionRulesLearned, keywordApplied, subscriptionRulesLearned };
 }
