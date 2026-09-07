@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, notExists, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -11,6 +11,7 @@ import {
 import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { learnMerchantRule } from "@/features/categorization/merchant-rules";
+import { canLearnMerchant, normalizeMerchant } from "@/features/categorization/normalize";
 import { isBalancedTransfer } from "@/features/analytics/transfers";
 import { writeAudit } from "@/lib/audit";
 export async function GET(request: NextRequest) {
@@ -18,6 +19,21 @@ export async function GET(request: NextRequest) {
     const user = await requireUser();
     const { accountIds } = await memberAndVisibleAccountIds(user.userId);
     if (!accountIds.length) return NextResponse.json([]);
+    const rulePreviewId = request.nextUrl.searchParams.get("rulePreviewId");
+    if (rulePreviewId) {
+      const [source] = await db.select({ accountId:transactions.accountId, counterparty:transactions.counterparty }).from(transactions).where(eq(transactions.id,rulePreviewId)).limit(1);
+      if (!source || !accountIds.includes(source.accountId)) throw new Error("Umsatz nicht sichtbar.");
+      const merchant = normalizeMerchant(source.counterparty);
+      if (!canLearnMerchant(merchant)) return NextResponse.json({ matchCount:0, rulePossible:false });
+      const matches = await db.select({id:transactions.id}).from(transactions).where(and(
+        eq(transactions.accountId,source.accountId),
+        eq(transactions.counterpartyNormalized,merchant),
+        eq(transactions.excludedFromAnalysis,false),
+        isNull(transactions.aiReviewDeferredAt),
+        notExists(db.select({id:transactionSplits.transactionId}).from(transactionSplits).where(eq(transactionSplits.transactionId,transactions.id))),
+      ));
+      return NextResponse.json({ matchCount:matches.length, rulePossible:true });
+    }
     const search = request.nextUrl.searchParams.get("q")?.trim();
     const conditions = [
       inArray(transactions.accountId, accountIds),

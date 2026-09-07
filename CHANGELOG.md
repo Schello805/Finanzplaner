@@ -2,6 +2,13 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.6.6] - 2026-09-07
+
+- Der Dialog zur manuellen Kategoriezuordnung erklärt eindeutig den Unterschied zwischen einmaliger, zukünftiger und rückwirkender Zuordnung.
+- Richtungssymbole machen den zeitlichen Wirkungsbereich der drei Optionen auf einen Blick sichtbar.
+- Vor einer rückwirkenden Änderung wird die exakte Anzahl der betroffenen Umsätze des Kontos angezeigt.
+- Bei Sammelzahlungsanbietern ohne eindeutiges Stichwort werden nicht ausführbare Regeloptionen verständlich deaktiviert.
+
 ## [0.6.5] - 2026-09-07
 
 - Die Eingabe- und Auswahlfelder des Sparkassen-Assistenten sind auf Smartphones nun klar durch Hintergrund, Rahmen und ausreichende Höhe erkennbar.

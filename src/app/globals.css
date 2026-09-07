@@ -113,6 +113,10 @@ select.input { padding-right: 40px; }
   min-height: 44px; border: 1px solid var(--border); border-radius: 12px; padding: 0 16px;
   color: var(--text); background: var(--surface); font-weight: 650; cursor: pointer;
 }
+.btn-primary:disabled, .btn-secondary:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
 @media (max-width: 820px) {
   .app-main { margin-left: 0; padding: 20px 12px calc(92px + env(safe-area-inset-bottom)); overflow-x: hidden; }
   .page-actions, .page-actions > *, .page-actions > div { width: 100%; }

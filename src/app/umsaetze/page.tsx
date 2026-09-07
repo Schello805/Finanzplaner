@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CircleAlert, FileUp, Filter, Pencil, RefreshCw, Search, SlidersHorizontal, WandSparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, CircleAlert, FileUp, Filter, Pencil, RefreshCw, Search, SlidersHorizontal, WandSparkles } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { AiCategorizationPanel } from "@/components/ai-categorization-panel";
 import { CategorySelectOptions } from "@/components/category-select-options";
@@ -57,6 +57,7 @@ export default function TransactionsPage() {
   const [importSummary, setImportSummary] = useState<{accountId?:string;imported:number;locallyCategorized:number;duplicates?:number;skippedSuspected?:number;ignoredPending?:number;ignoredZero?:number}|null>(null);
   const [selected, setSelected] = useState<Row | null>(null);
   const [pendingCategory, setPendingCategory] = useState<{row:Row;categoryId:string}|null>(null);
+  const [rulePreview,setRulePreview]=useState<{matchCount:number;rulePossible:boolean}|null>(null);
   const [creatingCategoryFor, setCreatingCategoryFor] = useState<Row | null>(null);
   async function refreshTransactions() {
     const tx = await fetch("/api/transactions").then((r) => r.json());
@@ -123,9 +124,13 @@ export default function TransactionsPage() {
       if (await patch({ id: row.id, categoryId, ruleMode: "none" })) setLocalMessage("Interne Umbuchung markiert: Sie wird nicht als Ausgabe oder Einkommen gewertet. Eine vorhandene Gegenbuchung kannst du unter Datenqualität verbinden.");
       return;
     }
+    setRulePreview(null);
     setPendingCategory({row,categoryId});
+    fetch(`/api/transactions?rulePreviewId=${encodeURIComponent(row.id)}`).then(response=>response.json()).then(result=>{
+      if(typeof result.matchCount==="number")setRulePreview(result);
+    }).catch(()=>setRulePreview(null));
   }
-  async function confirmCategory(ruleMode:"none"|"future"|"all") { if(!pendingCategory)return;await patch({id:pendingCategory.row.id,categoryId:pendingCategory.categoryId,ruleMode});setPendingCategory(null); }
+  async function confirmCategory(ruleMode:"none"|"future"|"all") { if(!pendingCategory)return;await patch({id:pendingCategory.row.id,categoryId:pendingCategory.categoryId,ruleMode});setPendingCategory(null);setRulePreview(null); }
   async function confirmSuggestion(row:Row){if(row.categoryId)await patch({id:row.id,categoryId:row.categoryId,ruleMode:"none"});}
   async function applyLocalRules() {
     setLocalBusy(true);
@@ -375,7 +380,7 @@ export default function TransactionsPage() {
           onSave={patch}
         />
       )}{" "}
-      {pendingCategory&&<div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-3 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="rule-choice-title"><section className="card w-full max-w-lg p-6"><h2 id="rule-choice-title" className="text-xl font-bold">Zuordnung speichern</h2><p className="mt-2 text-sm leading-6 muted">Wie soll die Zuordnung für „{pendingCategory.row.counterparty??"diesen Umsatz"}“ verwendet werden? Neue Regeln gelten zunächst nur für {pendingCategory.row.accountName}.</p><div className="mt-5 grid gap-3"><button onClick={()=>confirmCategory("none")} className="btn-secondary justify-start">Nur diesen Umsatz ändern</button><button onClick={()=>confirmCategory("future")} className="btn-secondary justify-start">Diesen Umsatz ändern und Kontoregel speichern</button><button onClick={()=>confirmCategory("all")} className="btn-primary justify-start">Alle passenden Umsätze dieses Kontos ändern</button></div><button onClick={()=>setPendingCategory(null)} className="btn-secondary mt-4 w-full">Abbrechen</button></section></div>}
+      {pendingCategory&&<div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-3 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="rule-choice-title"><section className="card w-full max-w-lg p-6"><h2 id="rule-choice-title" className="text-xl font-bold">Zuordnung speichern</h2><p className="mt-2 text-sm leading-6 muted">Wie soll die Zuordnung für „{pendingCategory.row.counterparty??"diesen Umsatz"}“ verwendet werden? Neue Regeln gelten zunächst nur für {pendingCategory.row.accountName}.</p><div className="mt-5 grid gap-3"><button onClick={()=>confirmCategory("none")} className="btn-secondary justify-start"><ArrowUp aria-hidden="true" size={19}/><span>Nur diesen Umsatz ändern</span></button><button onClick={()=>confirmCategory("future")} className="btn-secondary justify-start" disabled={rulePreview===null||rulePreview.rulePossible===false}><ArrowUpRight aria-hidden="true" size={19}/><span className="text-left">Diesen Umsatz ändern und künftig automatisch zuordnen{rulePreview?.rulePossible===false&&<small className="mt-1 block font-normal muted">Für diesen Sammelzahlungsanbieter kann ohne eindeutiges Stichwort keine sichere Regel gespeichert werden.</small>}</span></button><button onClick={()=>confirmCategory("all")} className="btn-primary justify-start" disabled={rulePreview===null||rulePreview.rulePossible===false}><span className="flex shrink-0 items-center" aria-hidden="true"><ArrowLeft size={15}/><ArrowUp size={17}/><ArrowRight size={15}/></span><span className="text-left">Diesen sowie alle vorhandenen passenden Umsätze ändern und künftig automatisch zuordnen{rulePreview?.rulePossible&&<small className="mt-1 block font-normal text-white/85">{rulePreview.matchCount} {rulePreview.matchCount===1?"passender Umsatz wird":"passende Umsätze werden"} insgesamt geändert.</small>}{rulePreview===null&&<small className="mt-1 block font-normal text-white/85">Passende Umsätze werden ermittelt …</small>}</span></button></div><button onClick={()=>{setPendingCategory(null);setRulePreview(null)}} className="btn-secondary mt-4 w-full">Abbrechen</button></section></div>}
       {creatingCategoryFor&&<InlineCategoryCreate categories={categories} defaultIsIncome={creatingCategoryFor.direction==="income"&&creatingCategoryFor.specialType!=="refund"} onClose={()=>setCreatingCategoryFor(null)} onCreated={async(category)=>{setCategories(current=>[...current,category]);setCreatingCategoryFor(null);setPendingCategory({row:creatingCategoryFor,categoryId:category.id});}}/>}
     </div>
   );
