@@ -187,7 +187,7 @@ export default function ImportPage() {
             <div>
               <h2 className="font-bold">CSV-Datei auswählen</h2>
               <p className="mt-1 text-sm muted">
-                Aktiviertes Bankformat · maximal 20 MB
+                Sparkasse, Kreditkarte oder PayPal · maximal 20 MB
               </p>
             </div>
           </div>
@@ -240,6 +240,12 @@ export default function ImportPage() {
             Sparkassen-Zeilen mit dem Status „Umsatz vorgemerkt“ und reine
             0,00-€-Abrechnungszeilen werden bewusst nicht importiert. Endgültig
             gebuchte Entgelte und Zinsen ohne Empfänger bleiben erhalten.
+          </p>
+          <p className="mt-2 text-sm leading-6 muted">
+            PayPal wird über „PayPal-Aktivitätsbericht“ importiert. Für eine
+            Sparkassen-Kreditkarte funktioniert CSV-CAMT V8 direkt; bei einem
+            anderen Kartenanbieter legt der Admin einmalig dessen CSV-Spalten
+            als Importvorlage an.
           </p>
           {file && (
             <div className="mt-4 flex items-center justify-between rounded-xl bg-[var(--surface-soft)] p-4">

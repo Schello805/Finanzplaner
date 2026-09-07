@@ -1,4 +1,4 @@
-export type HierarchyItem = { id: string; parentId: string | null };
+export type HierarchyItem = { id: string; parentId: string | null; name?: string };
 
 export function flattenCategoryHierarchy<T extends HierarchyItem>(items: T[]) {
   const ids = new Set(items.map((item) => item.id));
@@ -7,6 +7,10 @@ export function flattenCategoryHierarchy<T extends HierarchyItem>(items: T[]) {
     const parentId = item.parentId && ids.has(item.parentId) ? item.parentId : null;
     children.set(parentId, [...(children.get(parentId) ?? []), item]);
   }
+
+  const compare = (left: T, right: T) =>
+    (left.name ?? "").localeCompare(right.name ?? "", "de", { sensitivity: "base" });
+  for (const siblings of children.values()) siblings.sort(compare);
 
   const result: Array<{ category: T; depth: number }> = [];
   const visited = new Set<string>();

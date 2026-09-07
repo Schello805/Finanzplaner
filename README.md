@@ -6,7 +6,8 @@ Finanzplaner ist eine private, deutschsprachige Ausgabenanalyse für Familien. D
 
 ## Wichtigste Funktionen
 
-- Sparkasse CSV-CAMT V8 als mitgelieferte Importvorlage
+- Sparkasse CSV-CAMT V8 und PayPal-Aktivitätsbericht als mitgelieferte Importvorlagen
+- Kreditkarten-CSV über CAMT V8 oder eine einmalig im Adminbereich definierte anbieterspezifische Vorlage
 - Amazon-„Order History.csv“-Import mit artikelweiser Kategorisierung und Zuordnung zu Bankbuchungen
 - visueller, versionierter Importformat-Designer für weitere Banken
 - exakte Dubletten automatisch überspringen, Verdachtsfälle manuell entscheiden

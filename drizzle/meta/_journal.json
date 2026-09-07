@@ -92,6 +92,13 @@
       "when": 1788717179144,
       "tag": "0012_default-category-tree",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788796800000,
+      "tag": "0013_reduce_defaults_and_paypal",
+      "breakpoints": true
     }
   ]
 }

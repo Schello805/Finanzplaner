@@ -305,6 +305,7 @@ export interface ImportTemplateConfig {
   decimalSeparator: "," | ".";
   columns: Record<string, string>;
   requiredFields: string[];
+  rowFilter?: { column: string; allowedValues: string[] };
 }
 
 export const householdRelations = relations(households, ({ many }) => ({

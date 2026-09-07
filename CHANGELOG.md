@@ -2,11 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unreleased]
+## [0.4.12] - 2026-09-07
 
-- Neue Haushalte erhalten einen umfassenden deutschen Kategorienbaum für Wohnen, Lebensmittel, Mobilität, Kommunikation, Haushalt, Einkäufe, Gesundheit, Versicherungen, Finanzen, Raten, Freizeit, Reisen, Familie, Beruf, Tierhaltung und Einnahmen.
-- Bestehende Haushalte erhalten fehlende Standardkategorien idempotent per Migration; eigene Kategorien und bestehende Zuordnungen bleiben erhalten. Die unspezifische Standardkategorie „Sonstiges“ wurde vollständig entfernt.
+- Jeder Benutzer kann im persönlichen Sicherheitsbereich sein eigenes Passwort ändern. Die Passwortregeln, Leakprüfung, Sichtbarkeitsumschaltung und bestehende Sitzungserneuerung gelten dabei auch für Administratoren.
+- Die eigene E-Mail-Adresse lässt sich im Profil ändern; zum Schutz des Passwort-Reset-Kanals muss die Änderung mit dem aktuellen Passwort bestätigt werden.
 
+- Neue Haushalte erhalten einen bewusst kleinen deutschen Kategorienbaum mit sinnvollen Hauptkategorien und wenigen Beispiel-Unterkategorien; „Einkäufe“ und Auffangkategorien sind nicht enthalten.
+- Kategorien werden innerhalb ihrer Hierarchie alphabetisch angezeigt. Die einmalige Bestandsbereinigung läuft nur als Migration; später gelöschte Standardkategorien werden durch Updates nicht erneut angelegt.
+- PayPal-Aktivitätsberichte können über eine mitgelieferte deutsch/englische CSV-Vorlage importiert werden. Kreditkarten-CSV werden über CAMT V8 oder eine anbieterspezifische Admin-Vorlage eingelesen.
 - Von npm und Build-Werkzeugen im Installationsverzeichnis erzeugte `.npm/`- und `.config/`-Verzeichnisse gelten nicht mehr fälschlich als lokale Quellcodeänderungen und blockieren das Updateskript nicht mehr.
 
 - Das Updateskript erkennt nach einer veröffentlichten Historienbereinigung auseinanderlaufende Commit-Verläufe. Bei einem unveränderten Installationsverzeichnis richtet es sich automatisch und sicher wieder an `origin/main` aus; lokale Änderungen führen weiterhin zum Abbruch.

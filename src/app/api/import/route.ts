@@ -103,6 +103,7 @@ export async function POST(request: Request) {
         decimalSeparator: c.decimalSeparator,
         columns: c.columns as ImportTemplate["columns"],
         requiredFields: c.requiredFields as ImportTemplate["requiredFields"],
+        rowFilter: c.rowFilter,
       };
       storedTemplateId = row.id;
     } else {

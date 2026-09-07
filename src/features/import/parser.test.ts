@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { findDuplicates, isPendingTransaction, parseBankCsv } from "./parser";
 import { sparkasseCamtV8 } from "./sparkasse-camt-v8";
+import { paypalActivity } from "./paypal-activity";
 
 const header = "Auftragskonto,Buchungstag,Valutadatum,Buchungstext,Verwendungszweck,Glaeubiger ID,Mandatsreferenz,Kundenreferenz (End-to-End),Sammlerreferenz,Lastschrift Ursprungsbetrag,Auslagenersatz Ruecklastschrift,Beguenstigter/Zahlungspflichtiger,Kontonummer/IBAN,BIC (SWIFT-Code),Betrag,Waehrung,Info";
 const row = 'DE00123456780000000000,01.08.2026,01.08.2026,KARTENZAHLUNG,"Einkauf Testmarkt",,,REF-001,,,,Testmarkt,DE00999999999999999999,TESTDEFFXXX,"-42,50",EUR,Umsatz gebucht';
@@ -76,5 +77,27 @@ describe("Sparkasse CAMT V8", () => {
     expect(isPendingTransaction({ counterparty: undefined, originalData: { Info: "Umsatz vorgemerkt" } })).toBe(true);
     expect(isPendingTransaction({ counterparty: undefined, bookingType: "SONSTIGER EINZUG", purpose: "MO 12345678 0101" })).toBe(true);
     expect(isPendingTransaction({ counterparty: undefined, bookingType: "ENTGELTABSCHLUSS", purpose: "Pauschalen" })).toBe(false);
+  });
+});
+
+describe("PayPal-Aktivitätsbericht", () => {
+  it("importiert nur abgeschlossene Bewegungen und nutzt die eindeutige Transaktionsnummer", () => {
+    const csv = [
+      "Datum,Name,Typ,Status,Währung,Netto,Transaktionscode,Betreff",
+      '05.09.2026,Beispiel GmbH,Zahlung,Abgeschlossen,EUR,"-12,34",PAYPAL-123,Einkauf',
+      '06.09.2026,Offene Zahlung,Zahlung,Offen,EUR,"-3,00",PAYPAL-456,Offen',
+    ].join("\n");
+    const result = parseBankCsv(csv, paypalActivity);
+    expect(result.transactions).toHaveLength(1);
+    expect(result.transactions[0]).toMatchObject({
+      amount: -12.34,
+      counterparty: "Beispiel GmbH",
+      bankReference: "PAYPAL-123",
+    });
+  });
+
+  it("akzeptiert die offiziellen englischen Spaltennamen", () => {
+    const csv = 'Date,Name,Type,Status,Currency,Net,Transaction ID,Subject\n05.09.2026,Example Ltd,Payment,Completed,EUR,"-1,25",TX-1,Order';
+    expect(parseBankCsv(csv, paypalActivity).transactions).toHaveLength(1);
   });
 });

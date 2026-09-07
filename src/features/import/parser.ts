@@ -30,8 +30,12 @@ function toAmount(value: string, decimalSeparator: "," | "."): number {
   return amount;
 }
 
+const aliases = (header?: string) => (header ?? "").split("|").map(normalize).filter(Boolean);
+function resolveHeader(headers: string[], configured?: string) {
+  return aliases(configured).find((alias) => headers.includes(alias));
+}
 function get(row: Record<string, string>, template: ImportTemplate, field: CanonicalField) {
-  const header = template.columns[field];
+  const header = resolveHeader(Object.keys(row), template.columns[field]);
   return header ? normalize(row[header]) : "";
 }
 
@@ -40,10 +44,10 @@ export function parseBankCsv(input: string, template: ImportTemplate): ImportRes
   const source = input.replace(/^\uFEFF/, "").split(/\r?\n/).slice(headerRow - 1).join("\n");
   const delimiters = [...new Set([template.delimiter, ";", ",", "\t"] )];
   const candidates = delimiters.map(delimiter => Papa.parse<Record<string, string>>(source, { header: true, delimiter, skipEmptyLines: template.skipEmptyLines ?? false }));
-  const parsed = candidates.find(candidate => template.requiredFields.every(field => (candidate.meta.fields ?? []).includes(template.columns[field] ?? ""))) ?? candidates[0];
+  const parsed = candidates.find(candidate => template.requiredFields.every(field => Boolean(resolveHeader(candidate.meta.fields ?? [], template.columns[field])))) ?? candidates[0];
   if (parsed.errors.some((e) => e.type === "Delimiter" || e.type === "Quotes")) throw new Error(`CSV konnte nicht gelesen werden: ${parsed.errors.find(e => e.type === "Delimiter" || e.type === "Quotes")?.message}`);
   const headers = parsed.meta.fields ?? [];
-  const missing = template.requiredFields.filter((field) => !headers.includes(template.columns[field] ?? ""));
+  const missing = template.requiredFields.filter((field) => !resolveHeader(headers, template.columns[field]));
   if (missing.length) throw new Error(`Notwendige Spalten fehlen: ${missing.map(f => template.columns[f] ?? f).join(", ")}`);
 
   const transactions: ParsedTransaction[] = [];
@@ -51,6 +55,12 @@ export function parseBankCsv(input: string, template: ImportTemplate): ImportRes
   let skippedEmptyRows = 0;
   parsed.data.forEach((row, index) => {
     if (!Object.values(row).some((value) => normalize(value))) { skippedEmptyRows++; return; }
+    if (template.rowFilter) {
+      const filterHeader = resolveHeader(headers, template.rowFilter.column);
+      const value = filterHeader ? normalize(row[filterHeader]).toLocaleLowerCase("de-DE") : "";
+      const allowed = template.rowFilter.allowedValues.map((item) => normalize(item).toLocaleLowerCase("de-DE"));
+      if (!allowed.includes(value)) return;
+    }
     try {
       const amount = toAmount(get(row, template, "amount"), template.decimalSeparator);
       const bookedOn = toIsoDate(get(row, template, "bookedOn"), template.dateFormat);

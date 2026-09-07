@@ -12,6 +12,7 @@ export interface ImportTemplate {
   decimalSeparator: "," | ".";
   columns: Partial<Record<CanonicalField, string>>;
   requiredFields: CanonicalField[];
+  rowFilter?: { column: string; allowedValues: string[] };
 }
 
 export interface ParsedTransaction {

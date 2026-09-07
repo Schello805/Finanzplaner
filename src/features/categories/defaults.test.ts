@@ -14,10 +14,12 @@ describe("Standardkategorien", () => {
     }
   });
 
-  it("liefert einen ausreichend differenzierten Familien-Kategorienbaum", () => {
-    expect(defaultCategories.length).toBeGreaterThanOrEqual(60);
+  it("liefert einen bewusst kleinen, aber brauchbaren Familien-Kategorienbaum", () => {
+    expect(defaultCategories.length).toBeGreaterThanOrEqual(25);
+    expect(defaultCategories.length).toBeLessThanOrEqual(35);
+    expect(defaultCategories.some(([name]) => String(name) === "Einkäufe")).toBe(false);
     expect(defaultCategories.some(([name]) => name === "Kfz-Versicherung")).toBe(true);
-    expect(defaultCategories.some(([name]) => name === "Darlehensrate")).toBe(true);
+    expect(defaultCategories.some(([name]) => name === "Kredite & Raten")).toBe(true);
     expect(defaultCategories.some(([name]) => name === "Telefon & Internet")).toBe(true);
   });
 });
