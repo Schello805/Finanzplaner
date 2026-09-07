@@ -2,6 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.5.4] - 2026-09-07
+
+- Administratoren können unter „Systemstatus“ den gesamten finanziellen Arbeitsbestand eines Haushalts kontrolliert zurücksetzen.
+- Gelöscht werden Umsätze, Importverläufe, Amazon-Bestellungen, gelernte Regeln, wiederkehrende Kosten, KI-Kostenhistorie und individuelle Kategorien.
+- Anschließend wird der schlanke Standard-Kategorienbaum vollständig neu angelegt.
+- Konten samt Profilbildern, Benutzer, Rollen, Freigaben, Passwörter, persönliche Einstellungen, KI-/SMTP-Konfiguration und Importvorlagen bleiben erhalten.
+- Die endgültige Aktion erfordert die explizite Eingabe „ALLES LÖSCHEN“ und wird im Systemprotokoll dokumentiert.
+
 ## [0.5.3] - 2026-09-07
 
 - Der neue Adminbereich „Hilfe & Ablauf“ zeigt den vollständigen Verarbeitungsweg grafisch vom Bankimport bis zur fertigen Analyse.
