@@ -1,6 +1,6 @@
 {
   "name": "finanzplaner",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "private": true,
   "license": "PolyForm-Noncommercial-1.0.0",
   "engines": {
@@ -14,8 +14,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run src",
     "test:e2e": "playwright test",
-    "quality": "npm run typecheck && npm run lint && npm test && npm run build",
+    "quality": "npm run db:check-migrations && npm run typecheck && npm run lint && npm test && npm run build",
     "e2e:seed": "node scripts/e2e-seed.mjs",
+    "db:check-migrations": "node scripts/check-migrations.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },

@@ -2,6 +2,13 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.10.1] - 2026-09-08
+
+- Korrigiert die internen Zeitstempel der Migrationen 21 und 22, damit Drizzle sie auf bestehenden Installationen nach Migration 20 tatsächlich ausführt.
+- Eine neue statische Migrationsprüfung blockiert fehlende SQL-Dateien, doppelte Einträge, falsche Indizes und nicht streng aufsteigende Zeitstempel bereits lokal und in GitHub CI.
+- Installation und Update prüfen zusätzlich zum Eintragszähler nun den Zeitstempel der zuletzt angewendeten Migration.
+- Das bei 21 von 23 Migrationen abgebrochene Update kann ohne manuelle Datenbankeingriffe erneut gestartet werden.
+
 ## [0.10.0] - 2026-09-08
 
 - Ein vollständiger Browser-Test prüft Anmeldung, Sparkassen-CSV-Import, Umsatzanzeige und die mobile Profilansicht gemeinsam gegen eine isolierte PostgreSQL-Testdatenbank.

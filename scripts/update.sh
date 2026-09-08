@@ -48,13 +48,17 @@ if [[ "${REVISION}" != "${REMOTE_REVISION}" ]]; then
 fi
 set -a; source /etc/finanzplaner.env; set +a
 run_migrations() {
-  local migration_start expected_migrations applied_migrations
+  local migration_start expected_migrations expected_latest applied_migrations applied_latest
   migration_start="${SECONDS}"
+  npm run db:check-migrations
   sudo -u "${APP_USER}" --preserve-env=DATABASE_URL npm run db:migrate
   expected_migrations="$(node -e 'const journal=require("./drizzle/meta/_journal.json");process.stdout.write(String(journal.entries.length))')"
+  expected_latest="$(node -e 'const journal=require("./drizzle/meta/_journal.json");process.stdout.write(String(journal.entries.at(-1)?.when??0))')"
   applied_migrations="$(sudo -u "${APP_USER}" --preserve-env=DATABASE_URL psql "${DATABASE_URL}" -Atc 'select count(*) from drizzle.__drizzle_migrations')"
-  if [[ "${applied_migrations}" -lt "${expected_migrations}" ]]; then
+  applied_latest="$(sudo -u "${APP_USER}" --preserve-env=DATABASE_URL psql "${DATABASE_URL}" -Atc 'select coalesce(max(created_at),0) from drizzle.__drizzle_migrations')"
+  if [[ "${applied_migrations}" -lt "${expected_migrations}" || "${applied_latest}" -lt "${expected_latest}" ]]; then
     echo "FEHLER: Nur ${applied_migrations} von ${expected_migrations} Datenbankmigrationen wurden ausgeführt." >&2
+    echo "Letzter Datenbankstand: ${applied_latest}; erwartet: ${expected_latest}." >&2
     echo "Der Dienst wird nicht mit einem veralteten Datenbankschema gestartet." >&2
     exit 1
   fi

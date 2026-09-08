@@ -115,11 +115,15 @@ sudo -u "${APP_USER}" npm ci --prefer-offline --no-audit --no-fund
 install -d -o "${APP_USER}" -g "${APP_USER}" -m 0750 /var/lib/finanzplaner
 node -e 'const fs=require("node:fs"),crypto=require("node:crypto"),lock=JSON.parse(fs.readFileSync("package-lock.json","utf8"));delete lock.version;if(lock.packages?.[""])delete lock.packages[""].version;process.stdout.write(crypto.createHash("sha256").update(JSON.stringify(lock)).digest("hex")+"\n");' > /var/lib/finanzplaner/package-lock.sha256
 chown "${APP_USER}:${APP_USER}" /var/lib/finanzplaner/package-lock.sha256
+npm run db:check-migrations
 sudo -u "${APP_USER}" --preserve-env=DATABASE_URL npm run db:migrate
 EXPECTED_MIGRATIONS="$(node -e 'const journal=require("./drizzle/meta/_journal.json");process.stdout.write(String(journal.entries.length))')"
+EXPECTED_LATEST="$(node -e 'const journal=require("./drizzle/meta/_journal.json");process.stdout.write(String(journal.entries.at(-1)?.when??0))')"
 APPLIED_MIGRATIONS="$(sudo -u "${APP_USER}" --preserve-env=DATABASE_URL psql "${DATABASE_URL}" -Atc 'select count(*) from drizzle.__drizzle_migrations')"
-if [[ "${APPLIED_MIGRATIONS}" -lt "${EXPECTED_MIGRATIONS}" ]]; then
+APPLIED_LATEST="$(sudo -u "${APP_USER}" --preserve-env=DATABASE_URL psql "${DATABASE_URL}" -Atc 'select coalesce(max(created_at),0) from drizzle.__drizzle_migrations')"
+if [[ "${APPLIED_MIGRATIONS}" -lt "${EXPECTED_MIGRATIONS}" || "${APPLIED_LATEST}" -lt "${EXPECTED_LATEST}" ]]; then
   echo "FEHLER: Nur ${APPLIED_MIGRATIONS} von ${EXPECTED_MIGRATIONS} Datenbankmigrationen wurden ausgeführt." >&2
+  echo "Letzter Datenbankstand: ${APPLIED_LATEST}; erwartet: ${EXPECTED_LATEST}." >&2
   exit 1
 fi
 ADMIN_RESULT="$(sudo -u "${APP_USER}" --preserve-env=DATABASE_URL,ADMIN_EMAIL,ADMIN_DISPLAY_NAME node scripts/init-admin.mjs)"
