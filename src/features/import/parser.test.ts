@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { findDuplicates, isPendingTransaction, parseBankCsv } from "./parser";
 import { sparkasseCamtV8 } from "./sparkasse-camt-v8";
 import { paypalActivity } from "./paypal-activity";
+import { sparkasseCreditCard } from "./sparkasse-credit-card";
 
 const header = "Auftragskonto,Buchungstag,Valutadatum,Buchungstext,Verwendungszweck,Glaeubiger ID,Mandatsreferenz,Kundenreferenz (End-to-End),Sammlerreferenz,Lastschrift Ursprungsbetrag,Auslagenersatz Ruecklastschrift,Beguenstigter/Zahlungspflichtiger,Kontonummer/IBAN,BIC (SWIFT-Code),Betrag,Waehrung,Info";
 const row = 'DE00123456780000000000,01.08.2026,01.08.2026,KARTENZAHLUNG,"Einkauf Testmarkt",,,REF-001,,,,Testmarkt,DE00999999999999999999,TESTDEFFXXX,"-42,50",EUR,Umsatz gebucht';
@@ -99,5 +100,29 @@ describe("PayPal-Aktivitätsbericht", () => {
   it("akzeptiert die offiziellen englischen Spaltennamen", () => {
     const csv = 'Date,Name,Type,Status,Currency,Net,Transaction ID,Subject\n05.09.2026,Example Ltd,Payment,Completed,EUR,"-1,25",TX-1,Order';
     expect(parseBankCsv(csv, paypalActivity).transactions).toHaveLength(1);
+  });
+});
+
+describe("Sparkassen-Kreditkartenumsätze", () => {
+  it("übernimmt Händler, Zusatztext, Referenz und gebuchten Eurobetrag", () => {
+    const csv = [
+      "Umsatz getätigt von;Belegdatum;Buchungsdatum;Originalbetrag;Originalwährung;Umrechnungskurs;Buchungsbetrag;Buchungswährung;Transaktionsbeschreibung;Transaktionsbeschreibung Zusatz;Buchungsreferenz;Gebührenschlüssel;Länderkennzeichen;BAR-Entgelt+Buchungsreferenz;AEE+Buchungsreferenz;Abrechnungskennzeichen",
+      "MICHAEL;01.09.26;03.09.26;12,00;EUR;1,000000;-12,00;EUR;BEISPIEL HÄNDLER;NÜRNBERG;REF-123456;;DE;;;Belastung",
+    ].join("\n");
+    expect(parseBankCsv(csv, sparkasseCreditCard).transactions[0]).toMatchObject({
+      bookedOn: "2026-09-03",
+      valuedOn: "2026-09-01",
+      counterparty: "BEISPIEL HÄNDLER",
+      purpose: "NÜRNBERG",
+      bankReference: "REF-123456",
+      amount: -12,
+      currency: "EUR",
+      direction: "expense",
+    });
+  });
+
+  it("behandelt eine positive Kartengutschrift als Einnahme", () => {
+    const csv = "Buchungsdatum;Buchungsbetrag;Buchungswährung;Transaktionsbeschreibung\n03.09.2026;12,00;EUR;ERSTATTUNG HÄNDLER";
+    expect(parseBankCsv(csv, sparkasseCreditCard).transactions[0].direction).toBe("income");
   });
 });

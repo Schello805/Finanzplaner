@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays, CircleDollarSign, ShieldCheck, TrendingDown, TrendingUp, X } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays, CircleDollarSign, CreditCard, Landmark, PackageSearch, ShieldCheck, TrendingDown, TrendingUp, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { PieLabelRenderProps } from "recharts";
 import {AiInsightsCard} from "@/components/ai-insights-card";
@@ -61,13 +61,13 @@ export function AnalysisDashboard() {
   return <div className="space-y-7">
     <header className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
       <div><div className="eyebrow">Analyse</div><h1 className="page-heading mt-1">Wohin fließt dein Geld?</h1><p className="mt-2 muted">Letzter vollständiger Monat im Vergleich zu deinem üblichen Monatswert.</p></div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-2 lg:items-end"><nav aria-label="Schnellimport" className="flex flex-wrap gap-2"><Link href="/einstellungen/import?source=bank" className="btn-secondary !min-h-9 !px-3 text-sm"><Landmark size={15}/>Bank</Link><Link href="/einstellungen/amazon" className="btn-secondary !min-h-9 !px-3 text-sm"><PackageSearch size={15}/>Amazon</Link><Link href="/einstellungen/import?source=credit-card" className="btn-secondary !min-h-9 !px-3 text-sm"><CreditCard size={15}/>Kreditkarte</Link></nav><div className="flex flex-wrap gap-2">
         <label className="sr-only" htmlFor="account-filter">Konten filtern</label>
         <select id="account-filter" value={account} onChange={(e) => {setLoading(true);setLoadError("");setAccount(e.target.value)}} className="min-h-11 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 font-semibold">
           <option value="all">Alle sichtbaren Konten</option>{accounts.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
         </select>
         <div className="btn-secondary" aria-label="Ausgewerteter Monat"><CalendarDays size={18} /> {formatMonth(lastMonth)||"Letzter Monat"}</div>
-      </div>
+      </div></div>
     </header>
 
     {quality&&quality.total>0&&<section className="card p-5" aria-label="Zuverlässigkeit der Zuordnungen"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div className="flex gap-3"><ShieldCheck className="mt-0.5 shrink-0 text-[var(--primary)]"/><div><h2 className="font-bold">Datenqualität · {quality.qualityPercent} % belastbar</h2><p className="mt-1 text-sm muted">Jede echte Ausgabe zählt in der Gesamtsumme. Unsichere KI-Treffer erscheinen bis zur Bestätigung unter „Nicht zugeordnet“, damit nur ihre Verteilung offen bleibt.</p></div></div><Link href="/einstellungen/datenqualitaet" className="btn-secondary shrink-0">Details prüfen <ArrowRight size={15}/></Link></div><div className="mt-4 flex h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]" aria-hidden="true"><span className="bg-[var(--primary)]" style={{width:`${quality.confirmed/quality.total*100}%`}}/><span className="bg-[var(--accent)]" style={{width:`${quality.automaticSafe/quality.total*100}%`}}/><span className="bg-amber-400" style={{width:`${quality.needsReview/quality.total*100}%`}}/><span className="bg-red-400" style={{width:`${quality.uncategorized/quality.total*100}%`}}/></div><div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold"><span>{Math.round(quality.confirmed/quality.total*100)} % bestätigt/Regel</span><span>{Math.round(quality.automaticSafe/quality.total*100)} % automatisch sehr sicher</span><Link href="/umsaetze?confidence=review" className="text-amber-700">{quality.needsReview} zu prüfen</Link><Link href="/umsaetze?categoryId=none" className="text-[var(--danger)]">{quality.uncategorized} nicht zugeordnet</Link></div></section>}

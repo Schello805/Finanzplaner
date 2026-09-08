@@ -83,7 +83,13 @@ export default function ImportPage() {
       }
       if (Array.isArray(templateRows)) {
         setTemplates(templateRows);
-        setTemplateId(templateRows[0]?.id ?? "");
+        const requestedSource = new URLSearchParams(window.location.search).get("source");
+        const preferred = requestedSource === "credit-card"
+          ? templateRows.find((template: { bankName: string }) => template.bankName === "Sparkasse Kreditkarte")
+          : requestedSource === "bank"
+            ? templateRows.find((template: { name: string }) => template.name === "Sparkasse CSV-CAMT V8")
+            : templateRows[0];
+        setTemplateId(preferred?.id ?? templateRows[0]?.id ?? "");
       }
     });
   }, []);
@@ -243,10 +249,16 @@ export default function ImportPage() {
             gebuchte Entgelte und Zinsen ohne Empfänger bleiben erhalten.
           </p>
           <p className="mt-2 text-sm leading-6 muted">
-            PayPal wird über „PayPal-Aktivitätsbericht“ importiert. Für eine
-            Sparkassen-Kreditkarte funktioniert CSV-CAMT V8 direkt; bei einem
-            anderen Kartenanbieter legt der Admin einmalig dessen CSV-Spalten
-            als Importvorlage an.
+            PayPal wird über „PayPal-Aktivitätsbericht“ importiert. Für die
+            Sparkassen-Kreditkarte wählst du die eigene Vorlage
+            „Sparkassen-Kreditkartenumsätze“ – CAMT V8 ist ausschließlich für
+            Bankkonten gedacht.
+          </p>
+          <p className="mt-2 text-sm leading-6 muted">
+            Lege die Kreditkarte am besten als separates Konto an und importiere
+            ihre Umsätze dorthin. Die spätere Abbuchung der Kartenabrechnung vom
+            Girokonto wird dann als interne Umbuchung behandelt, damit Ausgaben
+            nicht doppelt gezählt werden.
           </p>
           {file && (
             <div className="mt-4 flex items-center justify-between rounded-xl bg-[var(--surface-soft)] p-4">

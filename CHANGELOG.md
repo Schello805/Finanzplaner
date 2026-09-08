@@ -2,6 +2,15 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.8.6] - 2026-09-08
+
+- Das separate CSV-Format für Sparkassen-Kreditkarten mit Buchungsdatum, Belegdatum, Buchungsbetrag, Händlerbeschreibung und Buchungsreferenz kann nun direkt importiert werden.
+- Belastungen und Kartengutschriften behalten ihr Vorzeichen und werden dadurch korrekt als Ausgabe beziehungsweise Einnahme behandelt.
+- Bestehende Haushalte erhalten die neue Importvorlage einmalig per Datenbankmigration; eine später bewusst gelöschte Vorlage wird bei Updates nicht erneut angelegt.
+- Neuinstallationen richten Bank-, Kreditkarten- und PayPal-Vorlage von Anfang an getrennt ein.
+- Die Startseite bietet oben dezente Schnellimporte für Bank, Amazon und Kreditkarte; das gewählte Format wird im Importdialog vorausgewählt.
+- Der Importdialog erklärt die Trennung zwischen CAMT-Bankauszug und Kreditkarten-CSV sowie die empfohlene Führung der Kreditkarte als eigenes Konto.
+
 ## [0.8.5] - 2026-09-08
 
 - Eine Amazon-Bankbuchung kann nun mit mehreren Zahlungsgruppen desselben Amazon-Tages abgeglichen werden, wenn deren Summe centgenau übereinstimmt.
