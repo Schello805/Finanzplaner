@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Download, RefreshCw, Search, Trash2, Upload } from "lucide-react";
+import { Download, ListFilter, RefreshCw, Search, Trash2, Upload } from "lucide-react";
 
 import {
   CategorySelectOptions,
@@ -22,6 +22,7 @@ type Item = {
   categoryId: string | null;
   rule: Rule | null;
   occurrences: number;
+  assignmentStatus: "assigned" | "unassigned" | "partial";
 };
 
 type Data = {
@@ -31,6 +32,7 @@ type Data = {
   total: number;
   page: number;
   pageSize: number;
+  counts: { all: number; assigned: number; unassigned: number; partial: number };
 };
 
 export default function AmazonRulesPage() {
@@ -39,26 +41,28 @@ export default function AmazonRulesPage() {
   const [page, setPage] = useState(1);
   const [pattern, setPattern] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [status, setStatus] = useState("all");
+  const [sort, setSort] = useState("unassigned");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     const response = await fetch(
-      `/api/amazon/rules?page=${page}&search=${encodeURIComponent(search)}`,
+      `/api/amazon/rules?page=${page}&search=${encodeURIComponent(search)}&status=${status}&sort=${sort}`,
     );
     const body = await response.json();
     if (response.ok) setData(body);
     else setMessage(body.error);
-  }, [page, search]);
+  }, [page, search, sort, status]);
 
   useEffect(() => {
-    fetch(`/api/amazon/rules?page=${page}&search=${encodeURIComponent(search)}`)
+    fetch(`/api/amazon/rules?page=${page}&search=${encodeURIComponent(search)}&status=${status}&sort=${sort}`)
       .then((response) => response.json().then((body) => ({ response, body })))
       .then(({ response, body }) => {
         if (response.ok) setData(body);
         else setMessage(body.error);
       });
-  }, [page, search]);
+  }, [page, search, sort, status]);
 
   async function save(value: string, selectedCategoryId: string) {
     setBusy(true);
@@ -107,33 +111,23 @@ export default function AmazonRulesPage() {
     await load();
   }
 
-  function exportJson() {
-    if (!data) return;
-    const categoryNames = new Map(data.categories.map((category) => [category.id, category.name]));
-    const blob = new Blob(
-      [
-        JSON.stringify(
-          {
-            format: "finanzplaner-amazon-artikelregeln",
-            version: 1,
-            exportedAt: new Date().toISOString(),
-            rules: data.rules.map((rule) => ({
-              pattern: rule.pattern,
-              category: categoryNames.get(rule.categoryId) ?? "",
-            })),
-          },
-          null,
-          2,
-        ),
-      ],
-      { type: "application/json" },
-    );
+  async function exportJson() {
+    setBusy(true);
+    const response = await fetch("/api/amazon/rules?export=1");
+    if (!response.ok) {
+      const body = await response.json();
+      setMessage(body.error ?? "Export fehlgeschlagen.");
+      setBusy(false);
+      return;
+    }
+    const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
     anchor.download = `finanzplaner-amazon-regeln-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
+    setBusy(false);
   }
 
   async function importJson(file?: File) {
@@ -189,7 +183,7 @@ export default function AmazonRulesPage() {
         description="Ordne bekannte Artikel dauerhaft zu und pflege das Wissen als exportierbare Regelmatrix."
         action={
           <div className="flex flex-wrap gap-2">
-            <button className="btn-secondary" onClick={exportJson} disabled={!data}>
+            <button className="btn-secondary" onClick={() => void exportJson()} disabled={!data || busy}>
               <Download size={17} />
               JSON exportieren
             </button>
@@ -293,21 +287,37 @@ export default function AmazonRulesPage() {
         <header className="border-b border-[var(--border)] p-5">
           <h2 className="font-bold">Artikelmatrix</h2>
           <p className="mt-1 text-sm muted">
-            {data?.total ?? 0} unterschiedliche Artikel. Eine Änderung erzeugt eine
+            {data?.counts.all ?? 0} unterschiedliche Artikel · {data?.counts.unassigned ?? 0} nicht zugeordnet · {data?.counts.partial ?? 0} teilweise. Eine Änderung erzeugt eine
             exakte Regel und gilt rückwirkend sowie für künftige Importe.
           </p>
-          <label className="mt-4 flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] px-3">
-            <Search size={17} />
-            <input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
-              placeholder="Artikel suchen"
-              className="min-w-0 flex-1 bg-transparent outline-none"
-            />
-          </label>
+          <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_240px_240px]">
+            <label className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] px-3">
+              <Search size={17} />
+              <input
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="Artikel suchen"
+                className="min-w-0 flex-1 bg-transparent outline-none"
+              />
+            </label>
+            <label className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] px-3">
+              <ListFilter size={17} />
+              <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="min-w-0 flex-1 bg-transparent outline-none">
+                <option value="all">Alle Artikel ({data?.counts.all ?? 0})</option>
+                <option value="unassigned">Nicht zugeordnet ({data?.counts.unassigned ?? 0})</option>
+                <option value="partial">Teilweise zugeordnet ({data?.counts.partial ?? 0})</option>
+                <option value="assigned">Zugeordnet ({data?.counts.assigned ?? 0})</option>
+              </select>
+            </label>
+            <select value={sort} onChange={(event) => { setSort(event.target.value); setPage(1); }} aria-label="Artikel sortieren" className="min-h-11 min-w-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3">
+              <option value="unassigned">Nicht zugeordnet zuerst</option>
+              <option value="assigned">Zugeordnet zuerst</option>
+              <option value="name">Artikelname A–Z</option>
+            </select>
+          </div>
         </header>
         {data?.items.map((item) => (
           <div
@@ -317,15 +327,15 @@ export default function AmazonRulesPage() {
             <div>
               <div className="break-words font-semibold">{item.name}</div>
               <div className="mt-1 text-xs muted">
-                {item.occurrences}× importiert · {item.rule ? `Regel: ${item.rule.pattern}` : "Noch keine Regel"}
+                {item.occurrences}× importiert · {item.assignmentStatus === "partial" ? "Teilweise zugeordnet" : item.rule ? `Regel: ${item.rule.pattern}` : item.assignmentStatus === "assigned" ? "Kategorie aus Artikelzuordnung" : "Noch nicht zugeordnet"}
               </div>
             </div>
             <select
-              value={item.rule?.categoryId ?? item.categoryId ?? ""}
+              value={item.assignmentStatus === "partial" ? "" : (item.rule?.categoryId ?? item.categoryId ?? "")}
               onChange={(event) => void save(item.name, event.target.value)}
               className="min-h-11 min-w-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3"
             >
-              <option value="">Kategorie auswählen</option>
+              <option value="">{item.assignmentStatus === "partial" ? "Kategorie für alle festlegen" : "Kategorie auswählen"}</option>
               <CategorySelectOptions categories={expenseCategories} />
             </select>
           </div>

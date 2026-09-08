@@ -27,7 +27,7 @@ const importSchema = z.object({
         category: z.string().trim().min(1).max(120),
       }),
     )
-    .max(5000),
+    .max(20000),
 });
 
 const deleteSchema = z.object({ id: z.string().uuid() });
@@ -130,14 +130,16 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const search = normalizeProductPattern(url.searchParams.get("search") ?? "");
     const page = Math.max(1, Number(url.searchParams.get("page") ?? 1) || 1);
+    const status = url.searchParams.get("status") ?? "all";
+    const sort = url.searchParams.get("sort") ?? "unassigned";
     const catalog = new Map<
       string,
       {
         id: string;
         name: string;
-        categoryId: string | null;
-        rule: AmazonProductRule | null;
         occurrences: number;
+        uncategorizedOccurrences: number;
+        categoryIds: Set<string>;
       }
     >();
 
@@ -147,20 +149,95 @@ export async function GET(request: Request) {
       const known = catalog.get(key);
       if (known) {
         known.occurrences += 1;
+        if (item.categoryId) known.categoryIds.add(item.categoryId);
+        else known.uncategorizedOccurrences += 1;
         continue;
       }
       catalog.set(key, {
         id: item.id,
         name,
-        categoryId: item.categoryId,
-        rule: matchingProductRule(rules, name),
         occurrences: 1,
+        uncategorizedOccurrences: item.categoryId ? 0 : 1,
+        categoryIds: new Set(item.categoryId ? [item.categoryId] : []),
       });
     }
 
-    const filteredItems = [...catalog.values()]
+    const catalogItems = [...catalog.values()].map((item) => {
+      const rule = matchingProductRule(rules, item.name);
+      const assignmentStatus = rule
+        ? "assigned"
+        : item.categoryIds.size === 0
+          ? "unassigned"
+          : item.categoryIds.size === 1 && item.uncategorizedOccurrences === 0
+            ? "assigned"
+            : "partial";
+      return {
+        id: item.id,
+        name: item.name,
+        occurrences: item.occurrences,
+        categoryId:
+          rule?.categoryId ??
+          (item.categoryIds.size === 1 ? [...item.categoryIds][0] : null),
+        rule,
+        assignmentStatus,
+      };
+    });
+    const counts = {
+      all: catalogItems.length,
+      assigned: catalogItems.filter((item) => item.assignmentStatus === "assigned").length,
+      unassigned: catalogItems.filter((item) => item.assignmentStatus === "unassigned").length,
+      partial: catalogItems.filter((item) => item.assignmentStatus === "partial").length,
+    };
+
+    if (url.searchParams.get("export") === "1") {
+      const categoryNames = new Map(categoryRows.map((category) => [category.id, category.name]));
+      const exportRules = new Map<string, { pattern: string; category: string; source: "rule" | "matrix" }>(
+        rules.map((rule) => [normalizeProductPattern(rule.pattern), {
+          pattern: rule.pattern,
+          category: categoryNames.get(rule.categoryId) ?? "",
+          source: "rule" as const,
+        }]),
+      );
+      let derivedExactRules = 0;
+      for (const item of catalogItems) {
+        if (item.assignmentStatus !== "assigned" || item.rule || !item.categoryId) continue;
+        const key = normalizeProductPattern(item.name);
+        if (exportRules.has(key)) continue;
+        exportRules.set(key, {
+          pattern: item.name,
+          category: categoryNames.get(item.categoryId) ?? "",
+          source: "matrix" as const,
+        });
+        derivedExactRules += 1;
+      }
+      const payload = {
+        format: "finanzplaner-amazon-artikelregeln",
+        version: 2,
+        exportedAt: new Date().toISOString(),
+        statistics: {
+          ...counts,
+          explicitRules: rules.length,
+          derivedExactRules,
+        },
+        rules: [...exportRules.values()].filter((rule) => rule.category),
+      };
+      return new NextResponse(JSON.stringify(payload, null, 2), {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Disposition": `attachment; filename="finanzplaner-amazon-regeln-${new Date().toISOString().slice(0, 10)}.json"`,
+        },
+      });
+    }
+
+    const filteredItems = catalogItems
       .filter((item) => !search || normalizeProductPattern(item.name).includes(search))
-      .sort((a, b) => a.name.localeCompare(b.name, "de"));
+      .filter((item) => status === "all" || item.assignmentStatus === status)
+      .sort((a, b) => {
+        if (sort === "name") return a.name.localeCompare(b.name, "de");
+        const rank = (value: string) => value === "unassigned" ? 0 : value === "partial" ? 1 : 2;
+        const direction = sort === "assigned" ? -1 : 1;
+        return direction * (rank(a.assignmentStatus) - rank(b.assignmentStatus)) || a.name.localeCompare(b.name, "de");
+      });
     const pageSize = 100;
 
     return NextResponse.json({
@@ -168,6 +245,7 @@ export async function GET(request: Request) {
       categories: categoryRows,
       items: filteredItems.slice((page - 1) * pageSize, page * pageSize),
       total: filteredItems.length,
+      counts,
       page,
       pageSize,
     });

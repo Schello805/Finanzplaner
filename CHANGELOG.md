@@ -2,6 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.7.7] - 2026-09-08
+
+- Der Amazon-Matrixexport enthält nun neben bewusst gespeicherten Platzhaltern auch sämtliche eindeutig kategorisierten Artikel als exakte portable Regeln.
+- Der Export weist getrennt aus, wie viele Regeln ausdrücklich angelegt und wie viele aus vorhandenen Matrixzuordnungen gewonnen wurden.
+- Die Artikelmatrix kann nach zugeordneten, nicht zugeordneten und teilweise zugeordneten Artikeln gefiltert werden.
+- Als Sortierung stehen „Nicht zugeordnet zuerst“, „Zugeordnet zuerst“ und „Artikelname A–Z“ zur Verfügung.
+- Unterschiedlich kategorisierte Vorkommen desselben Artikels werden sichtbar als teilweise zugeordnet markiert und erst nach einer eindeutigen Entscheidung exportiert.
+
 ## [0.7.6] - 2026-09-08
 
 - KI-Kategorien müssen nun den tatsächlichen Verwendungszweck beschreiben, nicht Händler, Zahlungsweg oder Bezugsquelle.
