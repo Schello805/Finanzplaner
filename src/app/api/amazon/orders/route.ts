@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { accounts, amazonOrderItems, categories, transactions, transactionSplits } from "@/db/schema";
 import { allocateAmazonCategories } from "@/features/amazon/allocation";
 import { suggestAmazonCategory } from "@/features/amazon/category-suggestions";
-import { amazonMatchScore } from "@/features/amazon/matching";
+import { amazonMatchScore, uniqueAmountCombination } from "@/features/amazon/matching";
 import { amazonAnalysisCoverage, isWithinAmazonCoverage } from "@/features/amazon/analysis-coverage";
 import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/current-user";
@@ -13,8 +13,10 @@ import { decryptSecret } from "@/lib/security";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 
 const categorySchema = z.object({ itemId: z.string().uuid(), categoryId: z.string().uuid().nullable() });
-const applySchema = z.object({ itemIds: z.array(z.string().uuid()).min(1).max(50), transactionId: z.string().uuid() });
+const applySchema = z.object({ itemIds: z.array(z.string().uuid()).min(1).max(200), transactionId: z.string().uuid() });
 const cents = (value: number) => Math.round(value * 100);
+const paymentGroupKey = (item: { orderIdFingerprint: string; orderTotal: unknown; shipDate: string | null; orderDate: string }) =>
+  `${item.orderIdFingerprint}|${Number(item.orderTotal).toFixed(2)}|${item.shipDate ?? item.orderDate}`;
 
 export async function GET(request: Request) {
   try {
@@ -43,7 +45,7 @@ export async function GET(request: Request) {
     const coverage = amazonAnalysisCoverage(amazonTransactions.map((transaction) => transaction.bookedOn));
     const groups = new Map<string, typeof items>();
     for (const item of items) {
-      const key = `${item.orderIdFingerprint}|${Number(item.orderTotal).toFixed(2)}|${item.shipDate ?? item.orderDate}`;
+      const key = paymentGroupKey(item);
       groups.set(key, [...(groups.get(key) ?? []), item]);
     }
     const usedTransactionIds = new Set(
@@ -51,17 +53,60 @@ export async function GET(request: Request) {
     );
     const relevantGroups = [...groups.entries()].filter(([, rows]) => isWithinAmazonCoverage(rows[0].shipDate ?? rows[0].orderDate, coverage));
     const openGroups = relevantGroups.filter(([, rows]) => !rows.some((row) => row.matchedTransactionId));
-    const preparedGroups = openGroups.map(([key, rows]) => {
+    const linkedGroupCount = relevantGroups.length - openGroups.length;
+    const openRecords = openGroups.map(([key, rows]) => ({ key, rows, first: rows[0], date: rows[0].shipDate ?? rows[0].orderDate, totalCents: cents(Number(rows[0].orderTotal)) }));
+    const directMatchTransactions = new Set(amazonTransactions.filter((transaction) =>
+      !usedTransactionIds.has(transaction.id) && openRecords.some((group) =>
+        transaction.currency === group.first.currency && amazonMatchScore(Number(group.first.orderTotal), group.date, Number(transaction.amount), transaction.bookedOn),
+      ),
+    ).map((transaction) => transaction.id));
+    const combinationProposals = amazonTransactions.flatMap((transaction) => {
+      if (usedTransactionIds.has(transaction.id) || directMatchTransactions.has(transaction.id)) return [];
+      const targetCents = cents(Math.abs(Number(transaction.amount)));
+      const dates = [...new Set(openRecords.map((group) => group.date))];
+      const matches = dates.flatMap((groupDate) => {
+        if (!amazonMatchScore(targetCents / 100, groupDate, Number(transaction.amount), transaction.bookedOn)) return [];
+        const sameDayGroups = openRecords.filter((group) => group.date === groupDate && group.first.currency === transaction.currency && group.totalCents < targetCents);
+        const result = uniqueAmountCombination(sameDayGroups.map((group) => ({ id: group.key, amountCents: group.totalCents })), targetCents);
+        return result.combination ? [{ groupKeys: result.combination, groupDate }] : [];
+      });
+      if (matches.length !== 1) return [];
+      const match = amazonMatchScore(targetCents / 100, matches[0].groupDate, Number(transaction.amount), transaction.bookedOn)!;
+      return [{ transaction, groupKeys: matches[0].groupKeys, match }];
+    });
+    const groupProposalCounts = new Map<string, number>();
+    combinationProposals.forEach((proposal) => proposal.groupKeys.forEach((key) => groupProposalCounts.set(key, (groupProposalCounts.get(key) ?? 0) + 1)));
+    const safeCombinations = combinationProposals.filter((proposal) => proposal.groupKeys.every((key) => groupProposalCounts.get(key) === 1));
+    const combinationByKey = new Map(safeCombinations.flatMap((proposal) => proposal.groupKeys.map((key) => [key, proposal] as const)));
+    const emittedCombinations = new Set<string>();
+    const preparedGroups = openRecords.flatMap((record) => {
+      const combination = combinationByKey.get(record.key);
+      if (combination) {
+        const combinationKey = combination.groupKeys.join("+");
+        if (emittedCombinations.has(combinationKey)) return [];
+        emittedCombinations.add(combinationKey);
+      }
+      const selectedRecords = combination ? combination.groupKeys.map((key) => openRecords.find((group) => group.key === key)!) : [record];
+      const rows = selectedRecords.flatMap((group) => group.rows);
       const first = rows[0];
       const currentTransactionId = rows.find((row) => row.matchedTransactionId)?.matchedTransactionId ?? null;
-      const candidates = amazonTransactions.flatMap((transaction) => {
+      const candidates = combination ? [{
+        ...combination.transaction,
+        ...combination.match,
+        reason: `${combination.groupKeys.length} Amazon-Zahlungsgruppen ergeben zusammen centgenau ${Math.abs(Number(combination.transaction.amount)).toFixed(2)} €`,
+      }] : amazonTransactions.flatMap((transaction) => {
         if (usedTransactionIds.has(transaction.id) && transaction.id !== currentTransactionId) return [];
         if (transaction.currency !== first.currency) return [];
         const match = amazonMatchScore(Number(first.orderTotal), first.shipDate ?? first.orderDate, Number(transaction.amount), transaction.bookedOn);
         return match ? [{ ...transaction, ...match }] : [];
       }).sort((a, b) => b.score - a.score);
       return {
-        key, orderDate: first.orderDate, shipDate: first.shipDate, total: Number(first.orderTotal), currency: first.currency,
+        key: combination ? combination.groupKeys.join("+") : record.key,
+        orderDate: selectedRecords.map((group) => group.date).sort()[0],
+        shipDate: null,
+        total: selectedRecords.reduce((sum, group) => sum + Number(group.first.orderTotal), 0),
+        paymentGroupCount: selectedRecords.length,
+        currency: first.currency,
         matchedTransactionId: currentTransactionId,
         items: rows.map((row) => {
           const productName = decryptSecret(row.productNameEncrypted);
@@ -91,8 +136,11 @@ export async function GET(request: Request) {
         importedGroups: groups.size,
         relevantGroups: relevantGroups.length,
         excludedGroups: groups.size - relevantGroups.length,
+        unlinkedGroups: openGroups.length,
         openGroups: preparedGroups.length,
-        linkedGroups: relevantGroups.length - preparedGroups.length,
+        combinedGroups: safeCombinations.reduce((sum, combination) => sum + combination.groupKeys.length, 0),
+        combinedAssignments: safeCombinations.length,
+        linkedGroups: linkedGroupCount,
         bankMatchFound: found,
         bankMatchMissing: preparedGroups.length - found,
       },
@@ -131,11 +179,20 @@ export async function POST(request: Request) {
     const transaction = transactionRows[0];
     if (items.length !== body.itemIds.length || !transaction || !accountIds.includes(transaction.accountId)) throw new Error("Bestellung oder Bankumsatz ist nicht zugänglich.");
     if (!`${transaction.counterparty ?? ""} ${transaction.purpose ?? ""}`.toLowerCase().includes("amazon")) throw new Error("Der gewählte Umsatz ist keine erkennbare Amazon-Buchung.");
-    const first = items[0];
-    if (items.some((item) => item.orderIdFingerprint !== first.orderIdFingerprint || Number(item.orderTotal) !== Number(first.orderTotal) || (item.shipDate ?? item.orderDate) !== (first.shipDate ?? first.orderDate))) throw new Error("Die gewählten Artikel gehören nicht zur selben Amazon-Belastung.");
-    if (cents(Math.abs(Number(transaction.amount))) !== cents(Number(first.orderTotal))) throw new Error("Amazon-Bestellsumme und Bankumsatz stimmen nicht centgenau überein.");
-    if (transaction.currency !== first.currency) throw new Error("Währungen von Amazon-Bestellung und Bankumsatz stimmen nicht überein.");
-    if (!amazonMatchScore(Number(first.orderTotal), first.shipDate ?? first.orderDate, Number(transaction.amount), transaction.bookedOn)) throw new Error("Die Bankbuchung liegt außerhalb des zulässigen Zeitraums von 21 Tagen.");
+    const selectedGroupKeys = new Set(items.map(paymentGroupKey));
+    const fingerprints = [...new Set(items.map((item) => item.orderIdFingerprint))];
+    const completeGroupRows = await db.select().from(amazonOrderItems).where(and(eq(amazonOrderItems.ownerMemberId, member.id), inArray(amazonOrderItems.orderIdFingerprint, fingerprints)));
+    const expectedItems = completeGroupRows.filter((item) => selectedGroupKeys.has(paymentGroupKey(item)));
+    const selectedIds = new Set(body.itemIds);
+    if (expectedItems.length !== items.length || expectedItems.some((item) => !selectedIds.has(item.id))) throw new Error("Eine Amazon-Zahlungsgruppe ist unvollständig. Bitte die Ansicht aktualisieren.");
+    const paymentGroups = [...selectedGroupKeys].map((key) => {
+      const first = items.find((item) => paymentGroupKey(item) === key)!;
+      return { total: Number(first.orderTotal), date: first.shipDate ?? first.orderDate, currency: first.currency };
+    });
+    const combinedTotal = paymentGroups.reduce((sum, group) => sum + group.total, 0);
+    if (cents(Math.abs(Number(transaction.amount))) !== cents(combinedTotal)) throw new Error("Die Summe der Amazon-Zahlungsgruppen und der Bankumsatz stimmen nicht centgenau überein.");
+    if (paymentGroups.some((group) => transaction.currency !== group.currency)) throw new Error("Währungen von Amazon-Bestellungen und Bankumsatz stimmen nicht überein.");
+    if (paymentGroups.some((group) => !amazonMatchScore(combinedTotal, group.date, Number(transaction.amount), transaction.bookedOn))) throw new Error("Mindestens eine Amazon-Bestellung liegt außerhalb des zulässigen Zeitraums von 21 Tagen.");
     const alreadyUsed = await db.select({id:amazonOrderItems.id}).from(amazonOrderItems).where(and(eq(amazonOrderItems.matchedTransactionId,transaction.id),notInArray(amazonOrderItems.id,body.itemIds))).limit(1);
     if(alreadyUsed.length)throw new Error("Diese Bankbuchung ist bereits mit einer anderen Amazon-Bestellung verbunden.");
     if (items.some((item) => !item.categoryId)) throw new Error("Bitte zuerst jedem Artikel eine Kategorie zuordnen.");
@@ -154,8 +211,8 @@ export async function POST(request: Request) {
       }
       await tx.update(amazonOrderItems).set({ matchedTransactionId: transaction.id, updatedAt: new Date() }).where(inArray(amazonOrderItems.id, body.itemIds));
     });
-    await writeAudit("amazon-match", "Amazon-Artikel wurden einer Bankbuchung zugeordnet.", { userId: user.userId, metadata: { transactionId: transaction.id, items: items.length, categories: grouped.size } });
-    return NextResponse.json({ ok: true, splitCount: grouped.size });
+    await writeAudit("amazon-match", "Amazon-Artikel wurden einer Bankbuchung zugeordnet.", { userId: user.userId, metadata: { transactionId: transaction.id, items: items.length, paymentGroups: paymentGroups.length, categories: grouped.size } });
+    return NextResponse.json({ ok: true, splitCount: grouped.size, paymentGroupCount: paymentGroups.length });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Amazon-Zuordnung fehlgeschlagen." }, { status: 400 });
   }

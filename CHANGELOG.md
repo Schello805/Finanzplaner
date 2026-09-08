@@ -2,6 +2,15 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.8.5] - 2026-09-08
+
+- Eine Amazon-Bankbuchung kann nun mit mehreren Zahlungsgruppen desselben Amazon-Tages abgeglichen werden, wenn deren Summe centgenau übereinstimmt.
+- Eindeutige Kombinationen wie 8 € plus 4 € zu einer 12-€-Bankbuchung werden als gemeinsamer Sammelabgleich dargestellt.
+- Direkte Einzelübereinstimmungen haben weiterhin Vorrang; mehrdeutige Kombinationen werden aus Sicherheitsgründen nicht automatisch vorgeschlagen.
+- Beim Bestätigen werden alle Artikel der beteiligten Zahlungsgruppen gemeinsam auf die Bankbuchung verteilt und vollständig verknüpft.
+- Die Oberfläche unterscheidet zwischen unverbundenen Zahlungsgruppen und den daraus gebildeten offenen Abstimmungsaufgaben.
+- Zusätzliche Tests sichern eindeutige, mehrdeutige und unzulässige Betragskombinationen ab.
+
 ## [0.8.4] - 2026-09-08
 
 - KI-Analyse und Bankabstimmung verwenden nun denselben Amazon-Zeitraum und dasselbe maßgebliche Versand- beziehungsweise Bestelldatum.
