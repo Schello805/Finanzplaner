@@ -3,6 +3,8 @@ import Papa from "papaparse";
 import type { CanonicalField, ImportResult, ImportTemplate, ParsedTransaction } from "./types";
 
 const normalize = (value?: string | null) => (value ?? "").replace(/\s+/g, " ").trim();
+const normalizeMalformedCsvValue = (value?: string | null) =>
+  normalize(value).replace(/^"/, "").replace(/"$/, "").replaceAll('""', '"').trim();
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
 function toIsoDate(value: string, format: ImportTemplate["dateFormat"]): string {
@@ -44,14 +46,35 @@ export function parseBankCsv(input: string, template: ImportTemplate): ImportRes
   const source = input.replace(/^\uFEFF/, "").split(/\r?\n/).slice(headerRow - 1).join("\n");
   const delimiters = [...new Set([template.delimiter, ";", ",", "\t"] )];
   const candidates = delimiters.map(delimiter => Papa.parse<Record<string, string>>(source, { header: true, delimiter, skipEmptyLines: template.skipEmptyLines ?? false }));
-  const parsed = candidates.find(candidate => template.requiredFields.every(field => Boolean(resolveHeader(candidate.meta.fields ?? [], template.columns[field])))) ?? candidates[0];
+  let parsed = candidates.find(candidate => template.requiredFields.every(field => Boolean(resolveHeader(candidate.meta.fields ?? [], template.columns[field])))) ?? candidates[0];
+  let toleratedMalformedQuotes = false;
+  if (parsed.errors.some((error) => error.type === "Quotes")) {
+    const fallback = Papa.parse<Record<string, string>>(source, {
+      header: true,
+      delimiter: parsed.meta.delimiter || template.delimiter,
+      quoteChar: "\0",
+      escapeChar: "\0",
+      skipEmptyLines: template.skipEmptyLines ?? false,
+      transform: normalizeMalformedCsvValue,
+      transformHeader: normalizeMalformedCsvValue,
+    });
+    const fallbackHasRequiredFields = template.requiredFields.every((field) =>
+      Boolean(resolveHeader(fallback.meta.fields ?? [], template.columns[field])),
+    );
+    if (fallbackHasRequiredFields) {
+      parsed = fallback;
+      toleratedMalformedQuotes = true;
+    }
+  }
   if (parsed.errors.some((e) => e.type === "Delimiter" || e.type === "Quotes")) throw new Error(`CSV konnte nicht gelesen werden: ${parsed.errors.find(e => e.type === "Delimiter" || e.type === "Quotes")?.message}`);
   const headers = parsed.meta.fields ?? [];
   const missing = template.requiredFields.filter((field) => !resolveHeader(headers, template.columns[field]));
   if (missing.length) throw new Error(`Notwendige Spalten fehlen: ${missing.map(f => template.columns[f] ?? f).join(", ")}`);
 
   const transactions: ParsedTransaction[] = [];
-  const warnings: string[] = [];
+  const warnings: string[] = toleratedMalformedQuotes
+    ? ["Die Datei enthielt fehlerhafte Anführungszeichen und wurde deshalb im toleranten CSV-Modus gelesen."]
+    : [];
   let skippedEmptyRows = 0;
   parsed.data.forEach((row, index) => {
     if (!Object.values(row).some((value) => normalize(value))) { skippedEmptyRows++; return; }

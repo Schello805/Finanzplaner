@@ -2,6 +2,12 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.8.8] - 2026-09-08
+
+- Sparkassen-Kreditkartenexporte mit fehlerhaften oder nicht korrekt maskierten Anführungszeichen werden in einem abgesicherten, toleranten CSV-Modus eingelesen.
+- Der tolerante Import wird sichtbar als Warnung ausgewiesen; Pflichtspalten, Datums-, Betrags- und Währungsprüfung bleiben aktiv.
+- Ein Regressionstest deckt die bisherige Fehlermeldung „Trailing quote on quoted field is malformed“ ab.
+
 ## [0.8.7] - 2026-09-08
 
 - Amazon-Nullzeilen, Nullmengen und Stornierungen werden beim Import ignoriert, aus KI und Abstimmung ausgeschlossen und bei bestehenden Installationen einmalig entfernt.

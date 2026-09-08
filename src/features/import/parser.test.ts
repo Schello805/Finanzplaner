@@ -125,4 +125,20 @@ describe("Sparkassen-Kreditkartenumsätze", () => {
     const csv = "Buchungsdatum;Buchungsbetrag;Buchungswährung;Transaktionsbeschreibung\n03.09.2026;12,00;EUR;ERSTATTUNG HÄNDLER";
     expect(parseBankCsv(csv, sparkasseCreditCard).transactions[0].direction).toBe("income");
   });
+
+  it("liest Sparkassen-Exporte mit fehlerhaften Anführungszeichen tolerant", () => {
+    const csv = [
+      "Buchungsdatum;Buchungsbetrag;Buchungswährung;Transaktionsbeschreibung;Transaktionsbeschreibung Zusatz",
+      '03.09.2026;-12,00;EUR;"HÄNDLER" SHOP;NÜRNBERG',
+    ].join("\n");
+    const result = parseBankCsv(csv, sparkasseCreditCard);
+    expect(result.transactions[0]).toMatchObject({
+      amount: -12,
+      counterparty: 'HÄNDLER" SHOP',
+      purpose: "NÜRNBERG",
+    });
+    expect(result.warnings).toContain(
+      "Die Datei enthielt fehlerhafte Anführungszeichen und wurde deshalb im toleranten CSV-Modus gelesen.",
+    );
+  });
 });
