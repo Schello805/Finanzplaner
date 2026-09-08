@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, count, eq, inArray, isNull, notInArray } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNull, lte, notInArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { aiUsage, amazonOrderItems, categories, systemSettings, userPreferences } from "@/db/schema";
+import { aiUsage, amazonOrderItems, categories, systemSettings, transactions, userPreferences } from "@/db/schema";
 import { categorizeWithAi, estimateCost, resolveModelPrice } from "@/features/ai/provider";
 import type { AiTransactionInput } from "@/features/ai/types";
 import { writeAudit } from "@/lib/audit";
@@ -11,8 +11,10 @@ import { decryptSecret } from "@/lib/security";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { isForbiddenCategoryName, normalizeCategoryName } from "@/features/categories/policy";
 import { automaticAcceptanceThreshold, LIKELY_CONFIDENCE } from "@/features/categorization/confidence";
+import { amazonAnalysisCoverage } from "@/features/amazon/analysis-coverage";
 
 const BATCH_SIZE = 25;
+const MATCH_TOLERANCE_DAYS = 21;
 type ProviderConfig = { model: string; inputPricePerMillion?: number; outputPricePerMillion?: number };
 
 async function aiSettings() {
@@ -24,10 +26,17 @@ async function aiSettings() {
 }
 
 async function pending(userId: string, ids?: string[], excludedIds: string[] = []) {
-  const { member } = await memberAndVisibleAccountIds(userId);
+  const { member, accountIds } = await memberAndVisibleAccountIds(userId);
   const base = [eq(amazonOrderItems.ownerMemberId, member.id), isNull(amazonOrderItems.categoryId),isNull(amazonOrderItems.aiAnalyzedAt)];
-  const [{ value: total }] = await db.select({ value: count() }).from(amazonOrderItems).where(and(...base));
-  const filters = [...base];
+  const [{ value: totalPending }] = await db.select({ value: count() }).from(amazonOrderItems).where(and(...base));
+  const bankDates = accountIds.length ? await db
+    .select({ bookedOn: transactions.bookedOn })
+    .from(transactions)
+    .where(and(inArray(transactions.accountId, accountIds), or(sql`${transactions.counterparty} ilike '%amazon%'`, sql`${transactions.purpose} ilike '%amazon%'`))) : [];
+  const coverage = amazonAnalysisCoverage(bankDates.map((row) => row.bookedOn), MATCH_TOLERANCE_DAYS);
+  const eligibleBase = coverage ? [...base, gte(amazonOrderItems.orderDate, coverage.from), lte(amazonOrderItems.orderDate, coverage.to)] : [...base, sql`false`];
+  const [{ value: total }] = await db.select({ value: count() }).from(amazonOrderItems).where(and(...eligibleBase));
+  const filters = [...eligibleBase];
   if (ids) filters.push(inArray(amazonOrderItems.id, ids));
   else if (excludedIds.length) filters.push(notInArray(amazonOrderItems.id, excludedIds));
   const databaseRows = await db.select({ id: amazonOrderItems.id, date: amazonOrderItems.orderDate, amount: amazonOrderItems.unitPrice, tax: amazonOrderItems.unitTax, quantity: amazonOrderItems.quantity, currency: amazonOrderItems.currency, productName: amazonOrderItems.productNameEncrypted, department: amazonOrderItems.department }).from(amazonOrderItems).where(and(...filters)).limit(ids ? 100 : BATCH_SIZE);
@@ -40,18 +49,18 @@ async function pending(userId: string, ids?: string[], excludedIds: string[] = [
     merchant: "Amazon",
     purpose: `${decryptSecret(row.productName)}${row.department ? ` · Bereich: ${row.department}` : ""}`,
   } satisfies AiTransactionInput));
-  return { member, total, rows };
+  return { member, total, totalPending, excludedOutsideCoverage: Math.max(0, totalPending - total), coverage, rows };
 }
 
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUser();
     const excludedIds = (request.nextUrl.searchParams.get("exclude") ?? "").split(",").filter((id) => z.string().uuid().safeParse(id).success).slice(0, 1000);
-    const { rows, total } = await pending(user.userId, undefined, excludedIds);
-    if (!rows.length) return NextResponse.json({ available: true, count: total, batchSize: 0, items: [] });
+    const { rows, total, totalPending, excludedOutsideCoverage, coverage } = await pending(user.userId, undefined, excludedIds);
+    if (!rows.length) return NextResponse.json({ available: true, count: total, totalPending, excludedOutsideCoverage, coverage, batchSize: 0, totalRounds: 0, items: [] });
     const ai = await aiSettings();
     const price = resolveModelPrice(ai.provider, ai.config.model, ai.config);
-    return NextResponse.json({ available: true, count: total, batchSize: rows.length, totalRounds: Math.ceil(total / BATCH_SIZE), remainingAfterBatch: Math.max(0, total - excludedIds.length - rows.length), provider: ai.provider, model: ai.config.model, items: rows.map(({ id }) => ({ id })), cost: price ? estimateCost(rows, price, Math.max(300, rows.length * 80)) : null });
+    return NextResponse.json({ available: true, count: total, totalPending, excludedOutsideCoverage, coverage, batchSize: rows.length, totalRounds: Math.ceil(total / BATCH_SIZE), remainingAfterBatch: Math.max(0, total - excludedIds.length - rows.length), provider: ai.provider, model: ai.config.model, items: rows.map(({ id }) => ({ id })), cost: price ? estimateCost(rows, price, Math.max(300, rows.length * 80)) : null });
   } catch (error) {
     return NextResponse.json({ available: false, error: error instanceof Error ? error.message : "Amazon-KI-Vorschau fehlgeschlagen." }, { status: 400 });
   }

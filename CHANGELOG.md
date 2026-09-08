@@ -2,6 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.8.3] - 2026-09-08
+
+- Die Amazon-KI analysiert nur noch Artikel aus dem Zeitraum, der durch importierte Amazon-Bankbuchungen abgedeckt ist.
+- Das 21-tägige Abgleichfenster vor der ersten und nach der letzten Bankbuchung wird berücksichtigt, damit zeitversetzte Belastungen nicht verloren gehen.
+- Ohne eine importierte Amazon-Bankbuchung wird keine kostenpflichtige Artikelanalyse gestartet.
+- Die Oberfläche nennt den berücksichtigten Zeitraum und zeigt, wie viele ältere oder spätere Artikel bewusst keine KI-Kosten verursachen.
+- Regressionstests sichern leere Zeiträume sowie Monats- und Jahresgrenzen ab.
+
 ## [0.8.2] - 2026-09-08
 
 - Die Amazon-Abstimmung berechnet ihre Summen nun über den vollständigen Import statt nur über die ersten 1.000 Artikel.
