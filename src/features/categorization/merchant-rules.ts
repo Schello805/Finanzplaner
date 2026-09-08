@@ -21,7 +21,11 @@ export async function merchantRuleMap(householdId: string, ownerMemberId: string
         or(and(eq(categorizationRules.ownerMemberId, ownerMemberId),eq(categorizationRules.accountId,accountId)), eq(categorizationRules.shared, true)),
       ),
     );
-  return resolveRuleAssignments(rows).assignments;
+  return new Map(
+    [...resolveRuleAssignments(rows).assignments].filter(
+      ([merchant]) => !isAggregatorMerchant(merchant),
+    ),
+  );
 }
 
 export async function learnMerchantRule(input: {
@@ -92,6 +96,7 @@ export async function applyMerchantRules(input: {
       merchantNormalized: transactions.counterpartyNormalized,
       categoryId: transactions.categoryId,
       accountId:transactions.accountId,
+      categorizedBy: transactions.categorizedBy,
     })
     .from(transactions)
     .where(
@@ -110,7 +115,7 @@ export async function applyMerchantRules(input: {
   for (const row of assigned) {
     const merchant = normalizeMerchant(row.merchantNormalized || row.merchant);
     const key=`${row.accountId}|${merchant}`;
-    if (!row.categoryId || ruleMaps.get(row.accountId)?.has(merchant) || learned.has(key) || !canLearnMerchant(merchant)) continue;
+    if (row.categorizedBy !== "manual" || !row.categoryId || ruleMaps.get(row.accountId)?.has(merchant) || learned.has(key) || !canLearnMerchant(merchant) || isAggregatorMerchant(merchant)) continue;
     learned.set(key,{accountId:row.accountId,categoryId:row.categoryId});
   }
   if (learned.size) {

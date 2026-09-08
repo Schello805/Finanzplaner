@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoryComparison, comparisonTotals, normalizeAnalysisTransactions, spendingTotal } from "./calculations";
+import { categoryComparison, categoryTrendAnalysis, comparisonTotals, normalizeAnalysisTransactions, spendingOpportunities, spendingTotal } from "./calculations";
 
 describe("Kategorievergleich",()=>{
   it("vergleicht den letzten Monat mit verfügbaren vollständigen Monaten",()=>{
@@ -59,5 +59,24 @@ describe("Kategorievergleich",()=>{
     const rows=[{month:"2026-06",categoryId:"food",categoryName:"Lebensmittel",amount:-100},{month:"2026-07",categoryId:"other",categoryName:"Andere Kategorie",amount:-20},{month:"2026-08",categoryId:"food",categoryName:"Lebensmittel",amount:-50}];
     const food=categoryComparison(rows,"2026-08","2026-09").find(row=>row.categoryId==="food")!;
     expect(food.average).toBe(50);
+  });
+  it("erkennt nur einen durchgängig steigenden Mehrmonatstrend",()=>{
+    const rows=[100,120,145,170].map((value,index)=>({month:`2026-0${index+5}`,categoryId:"fuel",categoryName:"Tanken",amount:-value}));
+    const comparisons=categoryComparison(rows,"2026-08","2026-09");
+    const trends=categoryTrendAnalysis(rows,["2026-05","2026-06","2026-07","2026-08"],comparisons);
+    expect(trends).toMatchObject([{categoryId:"fuel",direction:"rising",change:70,months:4}]);
+  });
+  it("meldet schwankende Werte nicht als dauerhaften Trend",()=>{
+    const rows=[100,160,120,170].map((value,index)=>({month:`2026-0${index+5}`,categoryId:"fuel",categoryName:"Tanken",amount:-value}));
+    const comparisons=categoryComparison(rows,"2026-08","2026-09");
+    expect(categoryTrendAnalysis(rows,["2026-05","2026-06","2026-07","2026-08"],comparisons)).toEqual([]);
+  });
+  it("weist Mehrkosten transparent als Monatsabweichung und rechnerische Jahreswirkung aus",()=>{
+    const comparisons=categoryComparison([
+      {month:"2026-06",categoryId:"media",categoryName:"Medien",amount:-40},
+      {month:"2026-07",categoryId:"media",categoryName:"Medien",amount:-60},
+      {month:"2026-08",categoryId:"media",categoryName:"Medien",amount:-75},
+    ],"2026-08","2026-09");
+    expect(spendingOpportunities(comparisons)[0]).toMatchObject({monthlyIncrease:25,annualImpact:300});
   });
 });

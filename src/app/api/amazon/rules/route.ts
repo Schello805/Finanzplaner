@@ -3,7 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { amazonItemRules, amazonOrderItems, categories } from "@/db/schema";
+import { accounts, amazonItemRules, amazonOrderItems, categories, transactions } from "@/db/schema";
 import {
   matchingProductRule,
   normalizeProductPattern,
@@ -122,6 +122,16 @@ export async function GET(request: Request) {
           id: amazonOrderItems.id,
           name: amazonOrderItems.productNameEncrypted,
           categoryId: amazonOrderItems.categoryId,
+          orderDate: amazonOrderItems.orderDate,
+          shipDate: amazonOrderItems.shipDate,
+          quantity: amazonOrderItems.quantity,
+          unitPrice: amazonOrderItems.unitPrice,
+          unitTax: amazonOrderItems.unitTax,
+          currency: amazonOrderItems.currency,
+          matchedTransactionId: amazonOrderItems.matchedTransactionId,
+          aiSuggestedCategoryName: amazonOrderItems.aiSuggestedCategoryName,
+          aiSuggestionConfidence: amazonOrderItems.aiSuggestionConfidence,
+          aiSuggestionReason: amazonOrderItems.aiSuggestionReason,
         })
         .from(amazonOrderItems)
         .where(eq(amazonOrderItems.ownerMemberId, member.id)),
@@ -132,6 +142,42 @@ export async function GET(request: Request) {
     const page = Math.max(1, Number(url.searchParams.get("page") ?? 1) || 1);
     const status = url.searchParams.get("status") ?? "all";
     const sort = url.searchParams.get("sort") ?? "unassigned";
+    const detailsId = url.searchParams.get("details");
+    if (detailsId) {
+      const selected = itemRows.find((item) => item.id === detailsId);
+      if (!selected) throw new Error("Amazon-Artikel nicht gefunden.");
+      const selectedName = normalizeProductPattern(decryptSecret(selected.name));
+      const matchingItems = itemRows.filter(
+        (item) => normalizeProductPattern(decryptSecret(item.name)) === selectedName,
+      );
+      const transactionIds = [...new Set(matchingItems.flatMap((item) => item.matchedTransactionId ? [item.matchedTransactionId] : []))];
+      const bankRows = transactionIds.length ? await db
+        .select({ id: transactions.id, bookedOn: transactions.bookedOn, amount: transactions.amount, currency: transactions.currency, counterparty: transactions.counterparty, purpose: transactions.purpose, accountName: accounts.name })
+        .from(transactions)
+        .innerJoin(accounts, eq(transactions.accountId, accounts.id))
+        .where(and(inArray(transactions.id, transactionIds), inArray(transactions.accountId, (await memberAndVisibleAccountIds(user.userId)).accountIds))) : [];
+      const banksById = new Map(bankRows.map((row) => [row.id, { ...row, amount: Number(row.amount) }]));
+      const categoryNames = new Map(categoryRows.map((category) => [category.id, category.name]));
+      return NextResponse.json({
+        name: decryptSecret(selected.name),
+        occurrences: matchingItems.map((item) => ({
+          id: item.id,
+          orderDate: item.orderDate,
+          shipDate: item.shipDate,
+          quantity: Number(item.quantity),
+          gross: (Number(item.unitPrice) + Number(item.unitTax)) * Number(item.quantity),
+          currency: item.currency,
+          categoryId: item.categoryId,
+          categoryName: item.categoryId ? categoryNames.get(item.categoryId) ?? null : null,
+          aiSuggestion: item.aiSuggestedCategoryName ? {
+            categoryName: item.aiSuggestedCategoryName,
+            confidence: Number(item.aiSuggestionConfidence ?? 0),
+            reason: item.aiSuggestionReason,
+          } : null,
+          bankTransaction: item.matchedTransactionId ? banksById.get(item.matchedTransactionId) ?? null : null,
+        })),
+      });
+    }
     const catalog = new Map<
       string,
       {

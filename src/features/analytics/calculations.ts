@@ -42,3 +42,56 @@ export function comparisonTotals(rows:ReturnType<typeof categoryComparison>){
 }
 export function spendingTotal(rows:MonthlyCategoryTotal[]){return Math.max(0,netSpending(rows))}
 const netSpending = (rows: MonthlyCategoryTotal[]) => -rows.reduce((total,row)=>total+Math.round(row.amount*100),0)/100;
+
+export function categoryTrendAnalysis(
+  rows: MonthlyCategoryTotal[],
+  completeMonths: string[],
+  categoryRows: ReturnType<typeof categoryComparison>,
+) {
+  if (completeMonths.length < 3) return [];
+  return categoryRows.flatMap((category) => {
+    if (category.categoryId === "uncategorized") return [];
+    const series = completeMonths.map((month) => ({
+      month,
+      value: spendingTotal(
+        rows.filter(
+          (row) => row.categoryId === category.categoryId && row.month === month,
+        ),
+      ),
+    }));
+    const recent = series.slice(-4);
+    const changes = recent
+      .slice(1)
+      .map((point, index) => point.value - recent[index].value);
+    const rising = changes.length >= 2 && changes.every((value) => value > 0);
+    const falling = changes.length >= 2 && changes.every((value) => value < 0);
+    const change = recent.at(-1)!.value - recent[0].value;
+    if ((!rising && !falling) || Math.abs(change) < 10) return [];
+    return [{
+      categoryId: category.categoryId,
+      categoryName: category.categoryName,
+      direction: rising ? "rising" as const : "falling" as const,
+      change: Math.round(change * 100) / 100,
+      months: recent.length,
+      series,
+    }];
+  }).sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+}
+
+export function spendingOpportunities(
+  comparisons: ReturnType<typeof categoryComparison>,
+) {
+  return comparisons
+    .flatMap((category) => {
+      if (category.categoryId === "uncategorized" || category.average === null) return [];
+      const increase = category.last - category.average;
+      return increase >= 5 ? [{
+        categoryId: category.categoryId,
+        categoryName: category.categoryName,
+        monthlyIncrease: Math.round(increase * 100) / 100,
+        annualImpact: Math.round(increase * 12 * 100) / 100,
+      }] : [];
+    })
+    .sort((a, b) => b.annualImpact - a.annualImpact)
+    .slice(0, 3);
+}

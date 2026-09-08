@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Download, ListFilter, RefreshCw, Search, Trash2, Upload } from "lucide-react";
+import { Download, Eye, ListFilter, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
 
 import {
   CategorySelectOptions,
@@ -34,6 +34,7 @@ type Data = {
   pageSize: number;
   counts: { all: number; assigned: number; unassigned: number; partial: number };
 };
+type ItemDetails = {name:string;occurrences:Array<{id:string;orderDate:string;shipDate:string|null;quantity:number;gross:number;currency:string;categoryName:string|null;aiSuggestion:{categoryName:string;confidence:number;reason:string|null}|null;bankTransaction:{id:string;bookedOn:string;amount:number;currency:string;counterparty:string|null;purpose:string|null;accountName:string}|null}>};
 
 export default function AmazonRulesPage() {
   const [data, setData] = useState<Data | null>(null);
@@ -45,6 +46,8 @@ export default function AmazonRulesPage() {
   const [sort, setSort] = useState("unassigned");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [details, setDetails] = useState<ItemDetails | null>(null);
+  const [detailsBusy, setDetailsBusy] = useState(false);
 
   const load = useCallback(async () => {
     const response = await fetch(
@@ -97,6 +100,15 @@ export default function AmazonRulesPage() {
         : body.error,
     );
     if (response.ok) await load();
+  }
+
+  async function showDetails(itemId: string) {
+    setDetailsBusy(true);
+    const response = await fetch(`/api/amazon/rules?details=${encodeURIComponent(itemId)}`);
+    const body = await response.json();
+    setDetailsBusy(false);
+    if (response.ok) setDetails(body);
+    else setMessage(body.error);
   }
 
   async function remove(id: string) {
@@ -322,7 +334,7 @@ export default function AmazonRulesPage() {
         {data?.items.map((item) => (
           <div
             key={item.id}
-            className="grid gap-3 border-b border-[var(--border)] p-4 md:grid-cols-[1fr_280px] md:items-center"
+            className="grid gap-3 border-b border-[var(--border)] p-4 md:grid-cols-[1fr_280px_auto] md:items-center"
           >
             <div>
               <div className="break-words font-semibold">{item.name}</div>
@@ -338,6 +350,7 @@ export default function AmazonRulesPage() {
               <option value="">{item.assignmentStatus === "partial" ? "Kategorie für alle festlegen" : "Kategorie auswählen"}</option>
               <CategorySelectOptions categories={expenseCategories} />
             </select>
+            <button type="button" className="btn-secondary" disabled={detailsBusy} onClick={() => void showDetails(item.id)} aria-label={`Details zu ${item.name} anzeigen`}><Eye size={17}/>Details</button>
           </div>
         ))}
         <footer className="flex items-center justify-between gap-3 p-4">
@@ -360,6 +373,7 @@ export default function AmazonRulesPage() {
           </button>
         </footer>
       </section>
+      {details ? <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-3 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="amazon-item-details-title"><section className="card w-full max-w-3xl p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div><h2 id="amazon-item-details-title" className="break-words text-xl font-bold">{details.name}</h2><p className="mt-1 text-sm muted">Alle vorhandenen Bestellvorkommen, KI-Hinweise und verknüpften Bankbuchungen.</p></div><button type="button" onClick={() => setDetails(null)} className="btn-secondary !min-h-10 !px-3" aria-label="Details schließen"><X size={18}/></button></div><div className="mt-5 max-h-[65dvh] space-y-3 overflow-y-auto">{details.occurrences.map(entry => <article key={entry.id} className="rounded-xl border border-[var(--border)] p-4"><div className="flex flex-wrap items-center justify-between gap-2"><strong>Bestellung vom {new Intl.DateTimeFormat("de-DE").format(new Date(`${entry.orderDate}T12:00:00Z`))}</strong><strong>{entry.gross.toLocaleString("de-DE",{style:"currency",currency:entry.currency})}</strong></div><p className="mt-1 text-sm muted">Menge {entry.quantity}{entry.shipDate?` · Versand ${new Intl.DateTimeFormat("de-DE").format(new Date(`${entry.shipDate}T12:00:00Z`))}`:""} · Kategorie: {entry.categoryName??"nicht zugeordnet"}</p>{entry.aiSuggestion&&<div className="mt-3 rounded-lg bg-[var(--surface-soft)] p-3 text-sm"><strong>KI-Vorschlag: {entry.aiSuggestion.categoryName} · {(entry.aiSuggestion.confidence*100).toFixed(0)} %</strong><p className="mt-1 muted">{entry.aiSuggestion.reason||"Keine Begründung vorhanden"}</p></div>}{entry.bankTransaction?<div className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-950"><strong>Verknüpfte Bankbuchung · {entry.bankTransaction.accountName}</strong><p className="mt-1">{entry.bankTransaction.bookedOn} · {Number(entry.bankTransaction.amount).toLocaleString("de-DE",{style:"currency",currency:entry.bankTransaction.currency})} · {entry.bankTransaction.counterparty??"Unbekannt"}</p><p className="mt-1 text-xs">{entry.bankTransaction.purpose||"Kein Verwendungszweck"}</p></div>:<p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-950">Keine Bankbuchung verknüpft.</p>}</article>)}</div></section></div> : null}
     </div>
   );
 }

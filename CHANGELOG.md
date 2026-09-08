@@ -2,6 +2,19 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.8.0] - 2026-09-08
+
+- Die Analyse erkennt nun ausschließlich durchgängige mehrmonatige Anstiege und Rückgänge und zeigt die zugrunde liegende Wertefolge direkt an.
+- Eine neue Mehrkostenansicht priorisiert die drei größten Abweichungen vom Monatsdurchschnitt und weist ihre rechnerische Jahreswirkung transparent aus.
+- Hauptkategorien enthalten in der Analyse nun auch ihre Unterkategorien; dadurch stimmen Übersicht, Ringdiagramm, Trends und KI-Hinweise fachlich überein.
+- Jede Top-, Trend- und Mehrkostenkategorie öffnet einen Drill-down mit Unterkategorie, Datum, Betrag, Konto, Empfänger und vollständigem Buchungstext.
+- Die vollständige Kategorienübersicht ist direkt aus der Analyse erreichbar. Auch Segmente im Ringdiagramm öffnen die zugehörigen Buchungen.
+- Der Monatsarbeitsablauf steht kompakt nach der Finanzanalyse, sodass Kosten, Veränderungen und Sparansätze zuerst sichtbar sind.
+- Die Amazon-Artikelmatrix besitzt eine Detailansicht mit allen Bestellvorkommen, KI-Begründungen, Sicherheitswerten und verknüpften Bankbuchungen.
+- Eindeutige lokale Stichwort-, Abo-, Händler- und Artikelregeln werden weiterhin vor der KI angewendet und bleiben jederzeit änderbar.
+- Automatische Händlerregeln werden nur noch aus ausdrücklich manuell bestätigten Buchungen gelernt. Breite Altregeln für Amazon, PayPal und andere Sammelzahler werden nicht mehr angewendet.
+- Trend-, Monats- und KI-Auswertungen verwenden dieselben Ausschluss-, Sicherheits-, Erstattungs-, Umbuchungs- und Hierarchieregeln.
+
 ## [0.7.7] - 2026-09-08
 
 - Der Amazon-Matrixexport enthält nun neben bewusst gespeicherten Platzhaltern auch sämtliche eindeutig kategorisierten Artikel als exakte portable Regeln.
