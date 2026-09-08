@@ -2,6 +2,12 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.9.2] - 2026-09-08
+
+- Kreditkarten-CSV-Dateien mit einer von Excel oder der Sparkasse vorangestellten `sep=;`-Zeile werden automatisch erkannt und korrekt ab der eigentlichen Kopfzeile gelesen.
+- Der tolerante Modus für fehlerhafte Anführungszeichen prüft nun sämtliche unterstützten Trennzeichen, statt vom ersten Parsergebnis abhängig zu sein.
+- Ein Regressionstest kombiniert beide Fehlerbilder und sichert den Import des gebuchten Betrags, Händlers und Zusatztextes ab.
+
 ## [0.9.1] - 2026-09-08
 
 - Die Einstellungsübersicht konzentriert sich auf fachliche Funktionen und zeigt sie in kompakteren, leichter erfassbaren Karten.

@@ -141,4 +141,21 @@ describe("Sparkassen-Kreditkartenumsätze", () => {
       "Die Datei enthielt fehlerhafte Anführungszeichen und wurde deshalb im toleranten CSV-Modus gelesen.",
     );
   });
+
+  it("überspringt die Excel-Trennzeichenzeile auch bei fehlerhaften Anführungszeichen", () => {
+    const csv = [
+      "sep=;",
+      "Buchungsdatum;Buchungsbetrag;Buchungswährung;Transaktionsbeschreibung;Transaktionsbeschreibung Zusatz",
+      '03.09.2026;-12,00;EUR;"HÄNDLER" SHOP;NÜRNBERG',
+    ].join("\r\n");
+    const result = parseBankCsv(csv, sparkasseCreditCard);
+    expect(result.transactions[0]).toMatchObject({
+      amount: -12,
+      counterparty: 'HÄNDLER" SHOP',
+      purpose: "NÜRNBERG",
+    });
+    expect(result.warnings).toContain(
+      "Die Excel-Trennzeichenzeile am Dateianfang wurde automatisch erkannt.",
+    );
+  });
 });

@@ -43,25 +43,31 @@ function get(row: Record<string, string>, template: ImportTemplate, field: Canon
 
 export function parseBankCsv(input: string, template: ImportTemplate): ImportResult {
   const headerRow = Math.max(1, template.headerRow ?? 1);
-  const source = input.replace(/^\uFEFF/, "").split(/\r?\n/).slice(headerRow - 1).join("\n");
-  const delimiters = [...new Set([template.delimiter, ";", ",", "\t"] )];
+  let source = input.replace(/^\uFEFF/, "").split(/\r?\n/).slice(headerRow - 1).join("\n");
+  const separatorDirective = /^\s*"?sep\s*=\s*([;,\t])"?\s*(?:\r?\n|$)/i.exec(source);
+  if (separatorDirective) source = source.slice(separatorDirective[0].length);
+  const delimiters = [...new Set([separatorDirective?.[1], template.delimiter, ";", ",", "\t"].filter(Boolean) as string[])];
   const candidates = delimiters.map(delimiter => Papa.parse<Record<string, string>>(source, { header: true, delimiter, skipEmptyLines: template.skipEmptyLines ?? false }));
   let parsed = candidates.find(candidate => template.requiredFields.every(field => Boolean(resolveHeader(candidate.meta.fields ?? [], template.columns[field])))) ?? candidates[0];
   let toleratedMalformedQuotes = false;
   if (parsed.errors.some((error) => error.type === "Quotes")) {
-    const fallback = Papa.parse<Record<string, string>>(source, {
-      header: true,
-      delimiter: parsed.meta.delimiter || template.delimiter,
-      quoteChar: "\0",
-      escapeChar: "\0",
-      skipEmptyLines: template.skipEmptyLines ?? false,
-      transform: normalizeMalformedCsvValue,
-      transformHeader: normalizeMalformedCsvValue,
-    });
-    const fallbackHasRequiredFields = template.requiredFields.every((field) =>
-      Boolean(resolveHeader(fallback.meta.fields ?? [], template.columns[field])),
+    const fallbacks = delimiters.map((delimiter) =>
+      Papa.parse<Record<string, string>>(source, {
+        header: true,
+        delimiter,
+        quoteChar: "\0",
+        escapeChar: "\0",
+        skipEmptyLines: template.skipEmptyLines ?? false,
+        transform: normalizeMalformedCsvValue,
+        transformHeader: normalizeMalformedCsvValue,
+      }),
     );
-    if (fallbackHasRequiredFields) {
+    const fallback = fallbacks.find((candidate) =>
+      template.requiredFields.every((field) =>
+        Boolean(resolveHeader(candidate.meta.fields ?? [], template.columns[field])),
+      ),
+    );
+    if (fallback) {
       parsed = fallback;
       toleratedMalformedQuotes = true;
     }
@@ -75,6 +81,7 @@ export function parseBankCsv(input: string, template: ImportTemplate): ImportRes
   const warnings: string[] = toleratedMalformedQuotes
     ? ["Die Datei enthielt fehlerhafte Anführungszeichen und wurde deshalb im toleranten CSV-Modus gelesen."]
     : [];
+  if (separatorDirective) warnings.push("Die Excel-Trennzeichenzeile am Dateianfang wurde automatisch erkannt.");
   let skippedEmptyRows = 0;
   parsed.data.forEach((row, index) => {
     if (!Object.values(row).some((value) => normalize(value))) { skippedEmptyRows++; return; }
