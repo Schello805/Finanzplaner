@@ -115,6 +115,10 @@ export async function GET(request: Request) {
   try {
     const user = await requireUser();
     const { member, categoryRows } = await getContext(user.userId);
+    const url = new URL(request.url);
+    if (url.searchParams.get("view") === "rules") {
+      return NextResponse.json({ rules: await getDecryptedRules(member.id) });
+    }
     const [rules, itemRows] = await Promise.all([
       getDecryptedRules(member.id),
       db
@@ -137,7 +141,6 @@ export async function GET(request: Request) {
         .where(eq(amazonOrderItems.ownerMemberId, member.id)),
     ]);
 
-    const url = new URL(request.url);
     const search = normalizeProductPattern(url.searchParams.get("search") ?? "");
     const page = Math.max(1, Number(url.searchParams.get("page") ?? 1) || 1);
     const status = url.searchParams.get("status") ?? "all";

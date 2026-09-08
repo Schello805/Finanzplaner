@@ -19,3 +19,14 @@ export function amazonAnalysisCoverage(bankBookingDates: string[], toleranceDays
 export function isWithinAmazonCoverage(value: string, coverage: { from: string; to: string } | null) {
   return Boolean(coverage && value >= coverage.from && value <= coverage.to);
 }
+
+export function countOpenAmazonPaymentGroups(rows:Array<{
+  orderIdFingerprint:string;
+  orderDate:string;
+  shipDate:string|null;
+  orderTotal:number|string;
+  quantity:number|string;
+  matchedTransactionId:string|null;
+}>,coverage:{from:string;to:string}|null){
+  return new Set(rows.filter(row=>Number(row.quantity)>0&&Number(row.orderTotal)>0&&!row.matchedTransactionId&&isWithinAmazonCoverage(row.shipDate??row.orderDate,coverage)).map(row=>`${row.orderIdFingerprint}|${Number(row.orderTotal).toFixed(2)}|${row.shipDate??row.orderDate}`)).size;
+}

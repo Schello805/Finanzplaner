@@ -2,6 +2,17 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.9.0] - 2026-09-08
+
+- Eine neue zentrale Seite „Zuordnungen & Automatik“ verwaltet Bank-, Buchungstext- und Amazon-Artikelregeln gemeinsam und erklärt die feste Prioritätsreihenfolge.
+- Manuelle Einzelzuordnungen erzeugen nur noch nach ausdrücklicher Auswahl von „künftig“ oder „rückwirkend“ eine Regel; das frühere ungefragte Nachlernen wurde entfernt.
+- Import, FinTS-Abruf und manueller Regellauf verwenden denselben Einstieg für sichere automatische Zuordnungen.
+- Jeder Umsatz zeigt seine Zuordnungsherkunft mit einer verständlichen „Warum?“-Erklärung; auch Amazon-Aufteilungen werden kenntlich gemacht.
+- Offene Aufgaben und der nächste sinnvolle Arbeitsschritt stehen jetzt oben auf der Analyse statt am Seitenende.
+- Monatswert, laufender Monat, Kategoriesummen, historischer Durchschnitt und Aufteilungen werden serverseitig centgenau gegengeprüft und der erfolgreiche Check wird sichtbar ausgewiesen.
+- Amazon-Aufgaben zählen nur noch gültige, nicht verknüpfte Zahlungsgruppen im Zeitraum vorhandener Amazon-Bankbuchungen; historische Artikel verfälschen den Aufgabenstatus nicht mehr.
+- Die Amazon-Regelübersicht lädt ohne die vollständige Artikelmatrix und bleibt dadurch auch bei großen Bestellhistorien schnell.
+
 ## [0.8.8] - 2026-09-08
 
 - Sparkassen-Kreditkartenexporte mit fehlerhaften oder nicht korrekt maskierten Anführungszeichen werden in einem abgesicherten, toleranten CSV-Modus eingelesen.

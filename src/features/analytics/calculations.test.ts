@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoryComparison, categoryTrendAnalysis, comparisonTotals, hasTrustedAnalysisCategory, normalizeAnalysisTransactions, spendingOpportunities, spendingTotal } from "./calculations";
+import { categoryComparison, categoryTrendAnalysis, comparisonTotals, hasTrustedAnalysisCategory, normalizeAnalysisTransactions, spendingOpportunities, spendingTotal, verifyAnalyticsIntegrity } from "./calculations";
 
 describe("Kategorievergleich",()=>{
   it("vergleicht den letzten Monat mit verfügbaren vollständigen Monaten",()=>{
@@ -86,5 +86,12 @@ describe("Kategorievergleich",()=>{
     const normalized=normalizeAnalysisTransactions([{id:"uncertain",bookedOn:"2026-08-01",amount:"-79.90",specialType:"normal",categoryId:null,categoryName:null}],[]);
     expect(spendingTotal(normalized)).toBe(79.9);
     expect(normalized[0].categoryName).toBe("Nicht zugeordnet");
+  });
+  it("prüft Monats-, Kategorie- und Buchungssumme centgenau gegeneinander",()=>{
+    const rows=[{month:"2026-07",categoryId:"a",categoryName:"A",amount:-10},{month:"2026-08",categoryId:"a",categoryName:"A",amount:-12.34},{month:"2026-09",categoryId:"a",categoryName:"A",amount:-5}];
+    const comparisons=categoryComparison(rows,"2026-08","2026-09");
+    const totals=comparisonTotals(comparisons);
+    expect(verifyAnalyticsIntegrity({rows,comparisons,totals,lastMonth:"2026-08",currentMonth:"2026-09"}).status).toBe("passed");
+    expect(()=>verifyAnalyticsIntegrity({rows,comparisons,totals:{...totals,last:12.33},lastMonth:"2026-08",currentMonth:"2026-09"})).toThrow("Monatswert und Kategoriesumme");
   });
 });

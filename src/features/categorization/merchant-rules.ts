@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, isNull, notExists, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, notExists, or } from "drizzle-orm";
 import { db } from "@/db";
 import { categorizationRules, categories, transactions, transactionSplits } from "@/db/schema";
 import { canLearnMerchant, normalizeMerchant } from "./normalize";
@@ -90,51 +90,6 @@ export async function applyMerchantRules(input: {
   if (!input.visibleAccountIds.length) return { applied: 0, rules: 0 };
   const ruleMaps=new Map<string,Map<string,string>>();for(const accountId of input.visibleAccountIds)ruleMaps.set(accountId,await merchantRuleMap(input.householdId,input.ownerMemberId,accountId));
   const compoundRows = await db.select({value:categorizationRules.value,categoryId:categorizationRules.categoryId,accountId:categorizationRules.accountId,shared:categorizationRules.shared}).from(categorizationRules).where(and(eq(categorizationRules.householdId,input.householdId),eq(categorizationRules.field,COMPOUND_RULE_FIELD),eq(categorizationRules.operator,COMPOUND_RULE_OPERATOR),eq(categorizationRules.enabled,true),or(eq(categorizationRules.shared,true),and(eq(categorizationRules.ownerMemberId,input.ownerMemberId),inArray(categorizationRules.accountId,input.visibleAccountIds)))));
-  const assigned = await db
-    .select({
-      merchant: transactions.counterparty,
-      merchantNormalized: transactions.counterpartyNormalized,
-      categoryId: transactions.categoryId,
-      accountId:transactions.accountId,
-      categorizedBy: transactions.categorizedBy,
-    })
-    .from(transactions)
-    .where(
-      and(
-        inArray(transactions.accountId, input.visibleAccountIds),
-        eq(transactions.excludedFromAnalysis,false),
-        isNotNull(transactions.categoryId),
-      ),
-    )
-    .orderBy(desc(transactions.updatedAt));
-
-  // Vor Einführung der Regeltabelle vorgenommene Zuordnungen werden beim
-  // manuellen Lauf einmalig nachgelernt. Bei widersprüchlichen Altzuordnungen
-  // gewinnt die zuletzt bearbeitete Buchung.
-  const learned = new Map<string, {accountId:string;categoryId:string}>();
-  for (const row of assigned) {
-    const merchant = normalizeMerchant(row.merchantNormalized || row.merchant);
-    const key=`${row.accountId}|${merchant}`;
-    if (row.categorizedBy !== "manual" || !row.categoryId || ruleMaps.get(row.accountId)?.has(merchant) || learned.has(key) || !canLearnMerchant(merchant) || isAggregatorMerchant(merchant)) continue;
-    learned.set(key,{accountId:row.accountId,categoryId:row.categoryId});
-  }
-  if (learned.size) {
-    await db.insert(categorizationRules).values(
-      [...learned].map(([key, rule]) => ({
-        householdId: input.householdId,
-        ownerMemberId: input.ownerMemberId,
-        categoryId:rule.categoryId,
-        accountId:rule.accountId,
-        field: "counterparty",
-        operator: "equals",
-        value:key.slice(key.indexOf("|")+1),
-        shared: false,
-        priority: 100,
-      })),
-    );
-  }
-
-  for(const [key,rule]of learned){const merchant=key.slice(key.indexOf("|")+1);ruleMaps.get(rule.accountId)?.set(merchant,rule.categoryId)}
   let applied = 0;
   for(const accountId of input.visibleAccountIds)for (const [merchant, categoryId] of ruleMaps.get(accountId)??[]) {
     const rows = await db
@@ -178,5 +133,5 @@ export async function applyMerchantRules(input: {
       if (learnedSubscription.learned) subscriptionRulesLearned++;
     }
   }
-  return { applied: applied + compoundApplied + keywordApplied, rules: [...ruleMaps.values()].reduce((sum,map)=>sum+map.size,0) + compoundRows.length + subscriptionRulesLearned, learned: learned.size + subscriptionRulesLearned, keywordApplied, compoundApplied, subscriptionRulesLearned };
+  return { applied: applied + compoundApplied + keywordApplied, rules: [...ruleMaps.values()].reduce((sum,map)=>sum+map.size,0) + compoundRows.length + subscriptionRulesLearned, learned: subscriptionRulesLearned, keywordApplied, compoundApplied, subscriptionRulesLearned };
 }

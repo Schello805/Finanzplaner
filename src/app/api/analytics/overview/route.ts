@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, gte, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, transactions, transactionSplits } from "@/db/schema";
-import { categoryComparison, categoryTrendAnalysis, comparisonTotals, hasTrustedAnalysisCategory, normalizeAnalysisTransactions, spendingOpportunities, spendingTotal } from "@/features/analytics/calculations";
+import { categoryComparison, categoryTrendAnalysis, comparisonTotals, hasTrustedAnalysisCategory, normalizeAnalysisTransactions, spendingOpportunities, spendingTotal, verifyAnalyticsIntegrity } from "@/features/analytics/calculations";
 import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 
@@ -88,6 +88,7 @@ export async function GET(request: NextRequest) {
         excludedManually: excludedRows.filter((row) => row.bookedOn.slice(0, 7) === month && row.specialType !== "transfer" && row.excludedFromAnalysis).reduce((sum, row) => sum + Math.abs(Number(row.amount)), 0),
       }));
     const totals=comparisonTotals(comparisons);
+    const integrityCheck=verifyAnalyticsIntegrity({rows:rowsThroughToday,comparisons,totals,lastMonth,currentMonth});
     const lastSeriesValue=months.find(item=>item.month===lastMonth)?.value??0;
     if(Math.round(lastSeriesValue*100)!==Math.round(totals.last*100))throw new Error("Interne Summenprüfung fehlgeschlagen: Monatsverlauf und Kategorien stimmen nicht überein.");
     const completeMonths = [...new Set(normalized.map((row) => row.month))].filter((month) => month < currentMonth).sort().slice(-12);
@@ -100,7 +101,7 @@ export async function GET(request: NextRequest) {
       asOfDate,
       historyMonths: Math.max(0, ...comparisons.map((item) => item.historyMonths)),
       totals,
-      integrityCheck:"passed",
+      integrityCheck,
       categories: comparisons.filter((item) => item.last !== 0 || item.current !== 0 || (item.average ?? 0) !== 0),
       months: months.slice(-6),
       trends: trends.slice(0, 5),

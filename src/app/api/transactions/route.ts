@@ -14,6 +14,7 @@ import { learnMerchantRule } from "@/features/categorization/merchant-rules";
 import { canLearnMerchant, normalizeMerchant } from "@/features/categorization/normalize";
 import { isBalancedTransfer } from "@/features/analytics/transfers";
 import { writeAudit } from "@/lib/audit";
+import { shouldLearnAssignmentRule } from "@/features/categorization/assignment-policy";
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUser();
@@ -269,7 +270,7 @@ export async function PATCH(request: Request) {
           .delete(transactionSplits)
           .where(eq(transactionSplits.transactionId, body.id));
     });
-    const learned = effectiveSpecialType !== "transfer" && body.categoryId !== undefined && !body.splits && body.ruleMode !== "none"
+    const learned = effectiveSpecialType !== "transfer" && body.categoryId !== undefined && !body.splits && shouldLearnAssignmentRule(body.ruleMode)
       ? await learnMerchantRule({
           householdId: member.householdId,
           ownerMemberId: member.id,

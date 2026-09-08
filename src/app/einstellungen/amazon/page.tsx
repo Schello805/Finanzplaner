@@ -49,7 +49,7 @@ export default function AmazonImportPage() {
       eyebrow="Einstellungen · Daten"
       title="Amazon-Bestellungen"
       description="Importiere „Order History.csv“ aus dem Amazon-Datenexport, um Sammelbestellungen aufzuteilen."
-      action={<Link href="/einstellungen/amazon-regeln" className="btn-secondary">Artikelregeln verwalten</Link>}
+      action={<Link href="/einstellungen/automatik" className="btn-secondary">Zuordnungen verwalten</Link>}
     />
     <section className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
       <article className="card p-5 sm:p-7">

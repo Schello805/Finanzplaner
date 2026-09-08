@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { amazonAnalysisCoverage, isWithinAmazonCoverage } from "./analysis-coverage";
+import { amazonAnalysisCoverage, countOpenAmazonPaymentGroups, isWithinAmazonCoverage } from "./analysis-coverage";
 
 describe("Amazon-KI-Analysezeitraum", () => {
   it("startet ohne importierte Amazon-Bankbuchung keine Analyse", () => {
@@ -28,5 +28,19 @@ describe("Amazon-KI-Analysezeitraum", () => {
     expect(isWithinAmazonCoverage("2026-05-12", coverage)).toBe(false);
     expect(isWithinAmazonCoverage("2026-06-25", coverage)).toBe(false);
     expect(isWithinAmazonCoverage("2026-06-03", null)).toBe(false);
+  });
+});
+
+describe("offene Amazon-Zahlungsgruppen",()=>{
+  it("zählt nur gültige, unverknüpfte Gruppen im Bankzeitraum",()=>{
+    const coverage={from:"2026-08-01",to:"2026-08-31"};
+    const base={orderIdFingerprint:"a",orderDate:"2026-08-10",shipDate:null,orderTotal:"12.00",quantity:1,matchedTransactionId:null};
+    expect(countOpenAmazonPaymentGroups([
+      base,
+      {...base},
+      {...base,orderIdFingerprint:"b",orderDate:"2026-07-01"},
+      {...base,orderIdFingerprint:"c",matchedTransactionId:"bank"},
+      {...base,orderIdFingerprint:"d",orderTotal:"0"},
+    ],coverage)).toBe(1);
   });
 });

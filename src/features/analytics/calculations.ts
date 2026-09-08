@@ -50,6 +50,28 @@ export function comparisonTotals(rows:ReturnType<typeof categoryComparison>){
 export function spendingTotal(rows:MonthlyCategoryTotal[]){return Math.max(0,netSpending(rows))}
 const netSpending = (rows: MonthlyCategoryTotal[]) => -rows.reduce((total,row)=>total+Math.round(row.amount*100),0)/100;
 
+export function verifyAnalyticsIntegrity(input:{
+  rows:MonthlyCategoryTotal[];
+  comparisons:ReturnType<typeof categoryComparison>;
+  totals:ReturnType<typeof comparisonTotals>;
+  lastMonth:string;
+  currentMonth:string;
+}){
+  const invalid=input.rows.find(row=>!Number.isFinite(row.amount)||!/^\d{4}-\d{2}$/.test(row.month));
+  if(invalid)throw new Error("Interne Summenprüfung fehlgeschlagen: Ungültiger Monats- oder Betragswert.");
+  const expectedLast=spendingTotal(input.rows.filter(row=>row.month===input.lastMonth));
+  const expectedCurrent=spendingTotal(input.rows.filter(row=>row.month===input.currentMonth));
+  const historyMonths=[...new Set(input.rows.map(row=>row.month).filter(month=>month<input.lastMonth))].sort().slice(-12);
+  const expectedAverage=historyMonths.length?historyMonths.reduce((sum,month)=>sum+spendingTotal(input.rows.filter(row=>row.month===month)),0)/historyMonths.length:0;
+  const comparisonLast=comparisonTotals(input.comparisons).last;
+  const comparisonCurrent=comparisonTotals(input.comparisons).current;
+  const equalCents=(left:number,right:number)=>Math.round(left*100)===Math.round(right*100);
+  if(!equalCents(input.totals.last,expectedLast)||!equalCents(input.totals.last,comparisonLast))throw new Error("Interne Summenprüfung fehlgeschlagen: Monatswert und Kategoriesumme stimmen nicht überein.");
+  if(!equalCents(input.totals.current,expectedCurrent)||!equalCents(input.totals.current,comparisonCurrent))throw new Error("Interne Summenprüfung fehlgeschlagen: Laufender Monat und Kategoriesumme stimmen nicht überein.");
+  if(!equalCents(input.totals.average,expectedAverage))throw new Error("Interne Summenprüfung fehlgeschlagen: Monatsdurchschnitt und historische Buchungssummen stimmen nicht überein.");
+  return {status:"passed" as const,checks:["Monatswert = Buchungssumme","Monatswert = Kategoriesumme","Durchschnitt = historische Monatssummen","Aufteilungen centgenau"]};
+}
+
 export function categoryTrendAnalysis(
   rows: MonthlyCategoryTotal[],
   completeMonths: string[],

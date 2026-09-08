@@ -190,9 +190,9 @@ export default function AmazonRulesPage() {
   return (
     <div className="space-y-7">
       <PageHeader
-        eyebrow="Amazon · Zuordnungswissen"
-        title="Amazon-Artikelregeln"
-        description="Ordne bekannte Artikel dauerhaft zu und pflege das Wissen als exportierbare Regelmatrix."
+        eyebrow="Amazon · Detailwissen"
+        title="Amazon-Artikelmatrix"
+        description="Prüfe einzelne Artikel, ihre vorhandenen Informationen und die daraus entstandenen Zuordnungen. Die gemeinsame Regelverwaltung findest du unter Zuordnungen & Automatik."
         action={
           <div className="flex flex-wrap gap-2">
             <button className="btn-secondary" onClick={() => void exportJson()} disabled={!data || busy}>

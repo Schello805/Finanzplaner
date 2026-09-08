@@ -6,7 +6,8 @@ import {z} from "zod";
 import {db} from "@/db";
 import {imports,importTemplates,systemSettings,transactions} from "@/db/schema";
 import {cleanupFinTsStatementSessions,finTsStatementSessions} from "@/features/fints/pending-sessions";
-import {applyMerchantRules,normalizeMerchant} from "@/features/categorization/merchant-rules";
+import {normalizeMerchant} from "@/features/categorization/merchant-rules";
+import {applyAutomaticAssignments} from "@/features/categorization/automatic-assignments";
 import {findDuplicates} from "@/features/import/parser";
 import type {ParsedTransaction} from "@/features/import/types";
 import {requireUser} from "@/lib/current-user";
@@ -24,7 +25,7 @@ async function save(response:StatementResponse,context:{connection:Connection;se
  const[record]=await db.insert(imports).values({accountId:context.localAccountId,templateId:template.id,uploadedBy:context.userId,fileFingerprint:hash(`fints:${Date.now()}:${randomUUID()}`),originalFilename:`Sparkasse FinTS ${new Date().toLocaleDateString("de-DE")}`,status:"completed",importedCount:selected.length,duplicateCount:duplicates.exact.length+duplicates.suspected.length,reviewCount:0,completedAt:new Date()}).returning();
  const inserted=selected.length?await db.insert(transactions).values(selected.map(item=>({accountId:context.localAccountId,importId:record.id,bookedOn:item.bookedOn,valuedOn:item.valuedOn,amount:item.amount.toFixed(2),currency:item.currency,direction:item.direction,bookingType:item.bookingType,counterparty:item.counterparty,counterpartyNormalized:normalizeMerchant(item.counterparty),purpose:item.purpose,bankReference:item.bankReference,fingerprint:item.fingerprint,originalDataEncrypted:encryptSecret(JSON.stringify(item.originalData))}))).onConflictDoNothing().returning({id:transactions.id}):[];
  if(inserted.length!==selected.length)await db.update(imports).set({importedCount:inserted.length,duplicateCount:duplicates.exact.length+duplicates.suspected.length+(selected.length-inserted.length)}).where(eq(imports.id,record.id));
- const local=await applyMerchantRules({householdId:context.householdId,ownerMemberId:context.memberId,visibleAccountIds:[context.localAccountId]});
+ const local=await applyAutomaticAssignments({householdId:context.householdId,ownerMemberId:context.memberId,visibleAccountIds:[context.localAccountId]});
  if(response.bankingInformationUpdated)await db.update(systemSettings).set({valueEncrypted:encryptSecret(JSON.stringify(context.connection)),updatedAt:new Date()}).where(eq(systemSettings.key,context.settingsKey));
  await writeAudit("bank-import","Sparkassen-Umsätze wurden lesend über FinTS abgerufen.",{userId:context.userId,metadata:{accountId:context.localAccountId,imported:inserted.length,duplicates:duplicates.exact.length+duplicates.suspected.length+(selected.length-inserted.length)}});return{ok:true,imported:inserted.length,duplicates:duplicates.exact.length+duplicates.suspected.length+(selected.length-inserted.length),locallyCategorized:local.applied};
 }

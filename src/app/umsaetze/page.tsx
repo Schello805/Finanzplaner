@@ -8,6 +8,7 @@ import { CategorySelectOptions } from "@/components/category-select-options";
 import { TransactionEditor } from "@/components/transaction-editor";
 import { InlineCategoryCreate } from "@/components/inline-category-create";
 import { LIKELY_CONFIDENCE, VERY_SAFE_CONFIDENCE } from "@/features/categorization/confidence";
+import { assignmentExplanation } from "@/features/categorization/assignment-policy";
 type Row = {
   id: string;
   accountId:string;
@@ -42,6 +43,12 @@ function confidenceBand(row:Row){
   if(confidence>=VERY_SAFE_CONFIDENCE)return "very-safe";
   if(confidence>=LIKELY_CONFIDENCE)return "likely";
   return "check";
+}
+function AssignmentEvidence({row,onConfirm}:{row:Row;onConfirm?:()=>void}){
+  const explanation=assignmentExplanation(row.categorizedBy,row.categorizationConfidence);
+  const confidence=Number(row.categorizationConfidence??0);
+  const color=row.categorizedBy==="manual"||confidence>=VERY_SAFE_CONFIDENCE?"text-emerald-700":confidence>=LIKELY_CONFIDENCE?"text-amber-700":"text-red-700";
+  return <div className="mt-1 text-xs"><div className="flex flex-wrap items-center gap-2"><details><summary className={`cursor-pointer font-semibold underline decoration-dotted underline-offset-2 ${color}`}>{explanation.short} · Warum?</summary><p className="mt-2 max-w-xs rounded-lg bg-[var(--surface-soft)] p-2 font-normal leading-5 text-[var(--text)]">{explanation.detail}</p></details>{onConfirm&&row.categorizedBy?.startsWith("ai:")&&<button type="button" onClick={onConfirm} className="font-semibold text-[var(--primary)] underline decoration-dotted underline-offset-2">Bestätigen</button>}</div></div>;
 }
 export default function TransactionsPage() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -142,9 +149,9 @@ export default function TransactionsPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Automatische Erkennung konnte nicht ausgeführt werden.");
       if (result.applied > 0) {
-        setLocalMessage(`${result.applied} vorhandene Umsätze wurden anhand deiner bisherigen Zuordnungen und eindeutiger Buchungstexte automatisch kategorisiert.${result.learned ? ` Dabei wurden ${result.learned} ältere Händler-Zuordnungen nachträglich gelernt.` : ""}${result.keywordApplied ? ` ${result.keywordApplied} Zuordnungen wurden direkt aus dem Buchungstext erkannt.` : ""}`);
+        setLocalMessage(`${result.applied} offene Umsätze wurden anhand bestätigter Regeln und eindeutiger Buchungstexte automatisch kategorisiert.${result.keywordApplied ? ` ${result.keywordApplied} Zuordnungen wurden direkt aus dem Buchungstext erkannt.` : ""}`);
       } else if (result.learned > 0) {
-        setLocalMessage(`${result.learned} ältere Händler-Zuordnungen wurden nachträglich gelernt. Weitere passende offene Umsätze waren nicht vorhanden.`);
+        setLocalMessage(`${result.learned} eindeutige Abo-Anbieter wurden für künftige Importe vorgemerkt. Weitere passende offene Umsätze waren nicht vorhanden.`);
       } else if (result.rules === 0) {
         setLocalMessage("Noch keine gelernten Zuordnungen vorhanden. Ordne zuerst einen eindeutigen Händler manuell einer Kategorie zu.");
       } else {
@@ -167,13 +174,13 @@ export default function TransactionsPage() {
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn-primary" onClick={applyLocalRules} disabled={localBusy}>
               <RefreshCw size={18} className={localBusy ? "animate-spin" : ""} />
-              {localBusy ? "Erkennung läuft …" : "Gelernte Regeln anwenden"}
+              {localBusy ? "Erkennung läuft …" : "Sichere Automatik anwenden"}
             </button>
             <Link href="/einstellungen/kategorien" className="btn-secondary">
               <SlidersHorizontal size={18} /> Kategorien verwalten
             </Link>
-            <Link href="/einstellungen/regeln" className="btn-secondary">
-              <WandSparkles size={18} /> Regeln verwalten
+            <Link href="/einstellungen/automatik" className="btn-secondary">
+              <WandSparkles size={18} /> Automatik verwalten
             </Link>
           </div>
         }
@@ -324,9 +331,7 @@ export default function TransactionsPage() {
                   <td data-label="Konto" className="px-5 py-4 muted">{row.accountName}</td>
                   <td data-label="Kategorie" className="px-5 py-4">
                     {row.splits.length > 0 ? (
-                      <span className="inline-flex min-h-9 items-center rounded-lg bg-[var(--surface-soft)] px-3 text-xs font-semibold">
-                        Aufgeteilt ({row.splits.length})
-                      </span>
+                      <><span className="inline-flex min-h-9 items-center rounded-lg bg-[var(--surface-soft)] px-3 text-xs font-semibold">Aufgeteilt ({row.splits.length})</span><AssignmentEvidence row={row}/></>
                     ) : (
                       <select
                         value={row.categoryId ?? ""}
@@ -338,7 +343,7 @@ export default function TransactionsPage() {
                         <option value="__create__">＋ Neue Kategorie anlegen …</option>
                       </select>
                     )}
-                    {row.categoryId&&<div className="mt-1 flex items-center gap-2"><span className={`text-xs font-semibold ${Number(row.categorizationConfidence??1)>=VERY_SAFE_CONFIDENCE?"text-emerald-700":Number(row.categorizationConfidence??0)>=LIKELY_CONFIDENCE?"text-amber-700":"text-red-700"}`}>{row.categorizedBy==="manual"?"Manuell bestätigt":Number(row.categorizationConfidence??0)>=VERY_SAFE_CONFIDENCE?"Sehr sicher":Number(row.categorizationConfidence??0)>=LIKELY_CONFIDENCE?"Wahrscheinlich":"Bitte prüfen"}</span>{row.categorizedBy!=="manual"&&<button type="button" onClick={()=>confirmSuggestion(row)} className="text-xs font-semibold text-[var(--primary)] underline decoration-dotted underline-offset-2">Bestätigen</button>}</div>}
+                    {row.categoryId&&<AssignmentEvidence row={row} onConfirm={()=>void confirmSuggestion(row)}/>}
                     {row.specialType==="transfer"&&<div className="mt-1 text-xs font-semibold text-[var(--primary)]">↔ Zählt weder als Ausgabe noch als Einkommen</div>}
                     {row.aiReviewDeferredAt&&<div className="mt-1 flex items-center gap-2"><span className="text-xs font-semibold text-amber-700">Später prüfen</span><button type="button" onClick={()=>patch({id:row.id,deferAiReview:false})} className="text-xs font-semibold text-[var(--primary)] underline decoration-dotted underline-offset-2">Wieder für KI freigeben</button></div>}
                   </td>

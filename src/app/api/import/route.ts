@@ -13,7 +13,8 @@ import type {
   ImportTemplate,
   ParsedTransaction,
 } from "@/features/import/types";
-import { applyMerchantRules, merchantRuleMap, normalizeMerchant } from "@/features/categorization/merchant-rules";
+import { merchantRuleMap, normalizeMerchant } from "@/features/categorization/merchant-rules";
+import { applyAutomaticAssignments } from "@/features/categorization/automatic-assignments";
 import { requireUser } from "@/lib/current-user";
 import { encryptSecret, stablePrivateFingerprint } from "@/lib/security";
 import { decodeBankCsv } from "@/features/import/decode";
@@ -268,7 +269,7 @@ export async function POST(request: Request) {
           );
       return record;
     });
-    const localResult = await applyMerchantRules({
+    const localResult = await applyAutomaticAssignments({
       householdId: member.householdId,
       ownerMemberId: member.id,
       visibleAccountIds: [account.id],

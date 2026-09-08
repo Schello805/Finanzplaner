@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { applyMerchantRules } from "@/features/categorization/merchant-rules";
+import { applyAutomaticAssignments } from "@/features/categorization/automatic-assignments";
 import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
@@ -12,12 +12,12 @@ export async function POST(request: NextRequest) {
     if (body.accountId && !accountIds.includes(body.accountId))
       throw new Error("Das ausgewählte Konto ist nicht sichtbar.");
     const scopedAccountIds = body.accountId ? [body.accountId] : accountIds;
-    const result = await applyMerchantRules({
+    const result = await applyAutomaticAssignments({
       householdId: member.householdId,
       ownerMemberId: member.id,
       visibleAccountIds: scopedAccountIds,
     });
-    await writeAudit("categorization", "Gelernte lokale Händlerregeln wurden manuell angewendet.", {
+    await writeAudit("categorization", "Sichere automatische Zuordnungen wurden manuell angewendet.", {
       userId: user.userId,
       metadata: { ...result, accountId: body.accountId ?? null },
     });
