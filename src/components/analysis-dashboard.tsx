@@ -7,6 +7,7 @@ import { Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart, Responsiv
 import type { PieLabelRenderProps } from "recharts";
 import {AiInsightsCard} from "@/components/ai-insights-card";
 import {MonthlyWorkflow} from "@/components/monthly-workflow";
+import { CategoryHistoryChart } from "@/components/category-history-chart";
 
 type CategoryRow={id:string;name:string;current:number;last:number;average:number;color:string};
 type AccountRow={id:string;name:string};
@@ -100,6 +101,8 @@ export function AnalysisDashboard() {
       </article>
       <article className="card p-5 sm:p-6"><h2 className="text-lg font-bold">Verteilung</h2><p className="mt-1 text-sm muted">Top-Kategorien im {formatMonth(lastMonth)||"letzten Monat"}; Segmente lassen sich für Details öffnen.</p><div className="h-[330px] w-full"><ResponsiveContainer><PieChart margin={{top:42,right:72,bottom:42,left:72}}><Pie data={distribution} dataKey="last" nameKey="name" innerRadius={52} outerRadius={76} paddingAngle={2} labelLine={false} label={RingLabel} onClick={(entry)=>{const item=entry as unknown as CategoryRow;if(item.id)void openDetails(item.id,item.name)}} className="cursor-pointer">{distribution.map(c=><Cell key={c.name} fill={c.color}/>)}</Pie><Tooltip formatter={(v)=>eur.format(Number(v))}/></PieChart></ResponsiveContainer></div>{refundOffset>0&&<p className="mt-1 rounded-lg bg-emerald-50 p-2 text-xs text-emerald-900">Erstattungen von {eur.format(refundOffset)} reduzieren den Monatsgesamtwert auf {eur.format(lastTotal)}.</p>}</article>
     </section>
+
+    {!loading&&!loadError&&categories.length>0&&<CategoryHistoryChart accountId={account}/>}
 
     <section className={`grid gap-5 lg:grid-cols-2 ${loading||loadError||!categories.length?"hidden":""}`}>
       <article className="card p-5 sm:p-6"><h2 className="flex items-center gap-2 text-lg font-bold"><TrendingUp className="text-[var(--primary)]"/>Erkannte Entwicklungen</h2><p className="mt-1 text-sm muted">Nur klare, durchgängige Bewegungen über mindestens drei vollständige Monate.</p><div className="mt-4 space-y-2">{trends.length?trends.map(trend=><button type="button" key={trend.categoryId} onClick={()=>void openDetails(trend.categoryId,trend.categoryName)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border)] p-3 text-left hover:bg-[var(--surface-soft)]"><span><strong>{trend.categoryName}</strong><span className="mt-1 block text-xs muted">{trend.months} Monate in Folge {trend.direction==="rising"?"gestiegen":"gesunken"}</span><span className="mt-1 block text-xs muted">{trend.series.slice(-4).map(point=>`${new Intl.DateTimeFormat("de-DE",{month:"short"}).format(new Date(`${point.month}-01T12:00:00Z`))} ${compactEur.format(point.value)}`).join(" → ")}</span></span><span className={`flex shrink-0 items-center gap-1 font-bold ${trend.direction==="rising"?"text-[var(--danger)]":"text-[var(--primary)]"}`}>{trend.direction==="rising"?<TrendingUp size={17}/>:<TrendingDown size={17}/>} {eur.format(Math.abs(trend.change))}</span></button>):<p className="rounded-xl bg-[var(--surface-soft)] p-4 text-sm muted">Noch kein eindeutiger mehrmonatiger Trend erkennbar.</p>}</div></article>

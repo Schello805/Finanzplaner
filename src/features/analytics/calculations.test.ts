@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoryComparison, categoryTrendAnalysis, comparisonTotals, hasTrustedAnalysisCategory, normalizeAnalysisTransactions, spendingOpportunities, spendingTotal, verifyAnalyticsIntegrity } from "./calculations";
+import { annualCategoryHistory, averageCategoryValues, categoryComparison, categoryHistorySeries, categoryTrendAnalysis, comparisonTotals, completeMonthRange, hasTrustedAnalysisCategory, normalizeAnalysisTransactions, spendingOpportunities, spendingTotal, verifyAnalyticsIntegrity } from "./calculations";
 
 describe("Kategorievergleich",()=>{
   it("vergleicht den letzten Monat mit verfügbaren vollständigen Monaten",()=>{
@@ -59,6 +59,27 @@ describe("Kategorievergleich",()=>{
     const rows=[{month:"2026-06",categoryId:"food",categoryName:"Lebensmittel",amount:-100},{month:"2026-07",categoryId:"other",categoryName:"Andere Kategorie",amount:-20},{month:"2026-08",categoryId:"food",categoryName:"Lebensmittel",amount:-50}];
     const food=categoryComparison(rows,"2026-08","2026-09").find(row=>row.categoryId==="food")!;
     expect(food.average).toBe(50);
+  });
+  it("erzeugt für den vollständigen Zeitraum auch Monate ohne Buchungen",()=>{
+    expect(completeMonthRange("2025-11","2026-02")).toEqual(["2025-11","2025-12","2026-01","2026-02"]);
+  });
+  it("liefert centgenaue Kategorieverläufe und einen Durchschnitt über alle dargestellten Monate",()=>{
+    const rows=[
+      {month:"2026-06",categoryId:"food",categoryName:"Lebensmittel",amount:-100.01},
+      {month:"2026-08",categoryId:"food",categoryName:"Lebensmittel",amount:-49.99},
+      {month:"2026-07",categoryId:"fuel",categoryName:"Tanken",amount:-30},
+    ];
+    const result=categoryHistorySeries(rows,["2026-06","2026-07","2026-08"]);
+    expect(result[0]).toEqual({categoryId:"food",categoryName:"Lebensmittel",values:[100.01,0,49.99],total:150,average:50});
+    expect(result[1]).toEqual({categoryId:"fuel",categoryName:"Tanken",values:[0,30,0],total:30,average:10});
+  });
+  it("bildet centgenaue Jahressummen und kennzeichnet unvollständige Jahre",()=>{
+    const categories=[{categoryId:"food",values:[10.01,20.02,30.03]},{categoryId:"fuel",values:[1,2,3]}];
+    expect(annualCategoryHistory(["2025-12","2026-01","2026-02"],categories)).toEqual([
+      {year:"2025",monthCount:1,values:{food:10.01,fuel:1}},
+      {year:"2026",monthCount:2,values:{food:50.05,fuel:5}},
+    ]);
+    expect(averageCategoryValues([10.01,20.02,30.03])).toBe(20.02);
   });
   it("erkennt nur einen durchgängig steigenden Mehrmonatstrend",()=>{
     const rows=[100,120,145,170].map((value,index)=>({month:`2026-0${index+5}`,categoryId:"fuel",categoryName:"Tanken",amount:-value}));

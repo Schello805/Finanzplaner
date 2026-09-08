@@ -1,5 +1,19 @@
 export interface MonthlyCategoryTotal { month: string; categoryId: string; categoryName: string; amount: number; bookedOn?: string }
 
+export interface CategoryHistorySeries {
+  categoryId: string;
+  categoryName: string;
+  average: number;
+  total: number;
+  values: number[];
+}
+
+export interface AnnualCategoryHistory {
+  year: string;
+  monthCount: number;
+  values: Record<string, number>;
+}
+
 export interface AnalysisTransaction { id:string;bookedOn:string;amount:number|string;specialType:string;categoryId:string|null;categoryName:string|null }
 export interface AnalysisSplit { transactionId:string;categoryId:string;categoryName:string|null;amount:number|string }
 
@@ -48,7 +62,77 @@ export function comparisonTotals(rows:ReturnType<typeof categoryComparison>){
   };
 }
 export function spendingTotal(rows:MonthlyCategoryTotal[]){return Math.max(0,netSpending(rows))}
-const netSpending = (rows: MonthlyCategoryTotal[]) => -rows.reduce((total,row)=>total+Math.round(row.amount*100),0)/100;
+const netSpending = (rows: MonthlyCategoryTotal[]) => {
+  const cents = rows.reduce((total, row) => total + Math.round(row.amount * 100), 0);
+  return cents === 0 ? 0 : -cents / 100;
+};
+
+export function completeMonthRange(firstMonth: string, lastMonth: string) {
+  if (!/^\d{4}-\d{2}$/.test(firstMonth) || !/^\d{4}-\d{2}$/.test(lastMonth) || firstMonth > lastMonth) return [];
+  const result: string[] = [];
+  let [year, month] = firstMonth.split("-").map(Number);
+  const [lastYear, lastMonthNumber] = lastMonth.split("-").map(Number);
+  while (year < lastYear || (year === lastYear && month <= lastMonthNumber)) {
+    result.push(`${year}-${String(month).padStart(2, "0")}`);
+    month += 1;
+    if (month === 13) {
+      year += 1;
+      month = 1;
+    }
+  }
+  return result;
+}
+
+export function categoryHistorySeries(
+  rows: MonthlyCategoryTotal[],
+  months: string[],
+): CategoryHistorySeries[] {
+  if (!months.length) return [];
+  const categoryNames = new Map(rows.map((row) => [row.categoryId, row.categoryName]));
+  return [...categoryNames]
+    .map(([categoryId, categoryName]) => {
+      const values = months.map((month) => netSpending(
+        rows.filter((row) => row.categoryId === categoryId && row.month === month),
+      ));
+      const totalCents = values.reduce((sum, value) => sum + Math.round(value * 100), 0);
+      return {
+        categoryId,
+        categoryName,
+        values,
+        total: totalCents / 100,
+        average: Math.round(totalCents / months.length) / 100,
+      };
+    })
+    .filter((category) => category.values.some((value) => value !== 0))
+    .sort((left, right) => right.total - left.total);
+}
+
+export function averageCategoryValues(values: number[]) {
+  if (!values.length) return 0;
+  const totalCents = values.reduce((sum, value) => sum + Math.round(value * 100), 0);
+  return Math.round(totalCents / values.length) / 100;
+}
+
+export function annualCategoryHistory(
+  months: string[],
+  categories: Pick<CategoryHistorySeries, "categoryId" | "values">[],
+): AnnualCategoryHistory[] {
+  const years = new Map<string, { months: Set<string>; cents: Record<string, number> }>();
+  months.forEach((month, index) => {
+    const year = month.slice(0, 4);
+    const point = years.get(year) ?? { months: new Set<string>(), cents: {} };
+    point.months.add(month);
+    for (const category of categories) {
+      point.cents[category.categoryId] = (point.cents[category.categoryId] ?? 0) + Math.round((category.values[index] ?? 0) * 100);
+    }
+    years.set(year, point);
+  });
+  return [...years].map(([year, point]) => ({
+    year,
+    monthCount: point.months.size,
+    values: Object.fromEntries(Object.entries(point.cents).map(([categoryId, cents]) => [categoryId, cents / 100])),
+  }));
+}
 
 export function verifyAnalyticsIntegrity(input:{
   rows:MonthlyCategoryTotal[];

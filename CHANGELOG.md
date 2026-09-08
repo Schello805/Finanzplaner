@@ -2,6 +2,15 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.11.0] - 2026-09-08
+
+- Eine neue interaktive Auswertung zeigt die Hauptkategorien als Linien für die letzten zwölf vollständigen Monate und als gestapelte Jahressummen über den gesamten verfügbaren Zeitraum.
+- Standardmäßig bleiben die fünf ausgabenstärksten Kategorien sichtbar; jede Kategorie lässt sich einzeln per Checkbox ein- oder ausblenden.
+- Für jede ausgewählte Kategorie erscheint im Monatsverlauf eine farbgleiche gestrichelte 12-Monats-Durchschnittslinie. Schnellaktionen wählen die Top 5, alle oder keine Kategorien und steuern beide Diagramme gemeinsam.
+- Unterkategorien fließen in ihre Hauptkategorie ein. Erstattungen werden verrechnet; interne Umbuchungen, manuell ausgeschlossene Umsätze und unsichere KI-Kategorien bleiben nach derselben geprüften Analyselogik behandelt wie in den übrigen Auswertungen.
+- Monate ohne Buchung einer Kategorie werden mit null Euro berücksichtigt, damit Verlauf und Durchschnitt nicht durch ausgelassene Monate verzerrt werden.
+- Der Monatsabschluss führt nur noch durch vier Schritte. Amazon-Bestellungen ohne belegten Bankumsatz werden klar erklärt und blockieren die Finanzanalyse nicht.
+
 ## [0.10.2] - 2026-09-08
 
 - Der CSV-Import erkennt eine eindeutig passende aktive Datenquelle automatisch, wenn versehentlich die falsche Vorlage ausgewählt wurde.
