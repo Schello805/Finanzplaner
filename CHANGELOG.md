@@ -2,6 +2,15 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.8.7] - 2026-09-08
+
+- Amazon-Nullzeilen, Nullmengen und Stornierungen werden beim Import ignoriert, aus KI und Abstimmung ausgeschlossen und bei bestehenden Installationen einmalig entfernt.
+- Sammelabgleiche gruppieren mehrere Amazon-Zahlungsgruppen nun nach ihrem gemeinsamen Bestelltag statt nach möglicherweise unterschiedlichen Versanddaten.
+- Eine eindeutige centgenaue Summenkombination wird mit konkurrierenden Einzeltreffern verglichen; die zeitlich bessere Zuordnung gewinnt, Gleichstand bleibt bewusst offen.
+- Bankbuchungen, die einer Sammelkombination zugeordnet sind, erscheinen nicht zusätzlich als Kandidat bei einzelnen Amazon-Gruppen.
+- Der Ausgabenverlauf weist pro Monat sichtbar aus, welche Beträge als interne Umbuchung oder manuell ausgeschlossen wurden.
+- Ein direkter Link öffnet alle als Umbuchung markierten Umsätze zur Kontrolle und möglichen Korrektur.
+
 ## [0.8.6] - 2026-09-08
 
 - Das separate CSV-Format für Sparkassen-Kreditkarten mit Buchungsdatum, Belegdatum, Buchungsbetrag, Händlerbeschreibung und Buchungsreferenz kann nun direkt importiert werden.

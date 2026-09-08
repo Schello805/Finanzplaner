@@ -27,7 +27,7 @@ async function aiSettings() {
 
 async function pending(userId: string, ids?: string[], excludedIds: string[] = []) {
   const { member, accountIds } = await memberAndVisibleAccountIds(userId);
-  const base = [eq(amazonOrderItems.ownerMemberId, member.id), isNull(amazonOrderItems.categoryId),isNull(amazonOrderItems.aiAnalyzedAt)];
+  const base = [eq(amazonOrderItems.ownerMemberId, member.id), isNull(amazonOrderItems.categoryId),isNull(amazonOrderItems.aiAnalyzedAt),sql`${amazonOrderItems.quantity} > 0`,sql`${amazonOrderItems.orderTotal} > 0`,sql`${amazonOrderItems.status} !~* 'cancel|storniert'`];
   const [{ value: totalPending }] = await db.select({ value: count() }).from(amazonOrderItems).where(and(...base));
   const bankDates = accountIds.length ? await db
     .select({ bookedOn: transactions.bookedOn })

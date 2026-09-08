@@ -49,7 +49,7 @@ export default function TransactionsPage() {
   const [query, setQuery] = useState("");
   const [accountFilter, setAccountFilter] = useState(()=>typeof window==="undefined"?"all":new URLSearchParams(window.location.search).get("accountId")??"all");
   const [categoryFilter, setCategoryFilter] = useState(()=>typeof window==="undefined"?"all":new URLSearchParams(window.location.search).get("categoryId")??"all");
-  const [typeFilter, setTypeFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState(()=>typeof window==="undefined"?"all":new URLSearchParams(window.location.search).get("type")??"all");
   const [confidenceFilter,setConfidenceFilter]=useState(()=>typeof window==="undefined"?"all":new URLSearchParams(window.location.search).get("confidence")??"all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [error, setError] = useState("");

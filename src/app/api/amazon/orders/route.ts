@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   try {
     const user = await requireUser();
     const { member, accountIds } = await memberAndVisibleAccountIds(user.userId);
-    const items = await db
+    const allItems = await db
       .select({
         id: amazonOrderItems.id, orderIdFingerprint: amazonOrderItems.orderIdFingerprint,
         orderDate: amazonOrderItems.orderDate, shipDate: amazonOrderItems.shipDate,
@@ -35,6 +35,7 @@ export async function GET(request: Request) {
       .from(amazonOrderItems)
       .where(eq(amazonOrderItems.ownerMemberId, member.id))
       .orderBy(desc(amazonOrderItems.orderDate));
+    const items = allItems.filter((item) => Number(item.quantity) > 0 && Number(item.orderTotal) > 0);
     const availableCategories = await db.select({ id: categories.id, name: categories.name, isIncome: categories.isIncome }).from(categories).where(eq(categories.householdId, member.householdId));
     const amazonTransactions = accountIds.length ? await db
       .select({ id: transactions.id, bookedOn: transactions.bookedOn, amount: transactions.amount, currency: transactions.currency, accountName: accounts.name })
@@ -54,29 +55,31 @@ export async function GET(request: Request) {
     const relevantGroups = [...groups.entries()].filter(([, rows]) => isWithinAmazonCoverage(rows[0].shipDate ?? rows[0].orderDate, coverage));
     const openGroups = relevantGroups.filter(([, rows]) => !rows.some((row) => row.matchedTransactionId));
     const linkedGroupCount = relevantGroups.length - openGroups.length;
-    const openRecords = openGroups.map(([key, rows]) => ({ key, rows, first: rows[0], date: rows[0].shipDate ?? rows[0].orderDate, totalCents: cents(Number(rows[0].orderTotal)) }));
-    const directMatchTransactions = new Set(amazonTransactions.filter((transaction) =>
-      !usedTransactionIds.has(transaction.id) && openRecords.some((group) =>
-        transaction.currency === group.first.currency && amazonMatchScore(Number(group.first.orderTotal), group.date, Number(transaction.amount), transaction.bookedOn),
-      ),
-    ).map((transaction) => transaction.id));
+    const openRecords = openGroups.map(([key, rows]) => ({ key, rows, first: rows[0], date: rows[0].shipDate ?? rows[0].orderDate, orderDate: rows[0].orderDate, totalCents: cents(Number(rows[0].orderTotal)) }));
     const combinationProposals = amazonTransactions.flatMap((transaction) => {
-      if (usedTransactionIds.has(transaction.id) || directMatchTransactions.has(transaction.id)) return [];
+      if (usedTransactionIds.has(transaction.id)) return [];
       const targetCents = cents(Math.abs(Number(transaction.amount)));
-      const dates = [...new Set(openRecords.map((group) => group.date))];
-      const matches = dates.flatMap((groupDate) => {
-        if (!amazonMatchScore(targetCents / 100, groupDate, Number(transaction.amount), transaction.bookedOn)) return [];
-        const sameDayGroups = openRecords.filter((group) => group.date === groupDate && group.first.currency === transaction.currency && group.totalCents < targetCents);
+      const orderDates = [...new Set(openRecords.map((group) => group.orderDate))];
+      const matches = orderDates.flatMap((groupDate) => {
+        const combinationMatch = amazonMatchScore(targetCents / 100, groupDate, Number(transaction.amount), transaction.bookedOn);
+        if (!combinationMatch) return [];
+        const sameDayGroups = openRecords.filter((group) => group.orderDate === groupDate && group.first.currency === transaction.currency && group.totalCents < targetCents);
         const result = uniqueAmountCombination(sameDayGroups.map((group) => ({ id: group.key, amountCents: group.totalCents })), targetCents);
-        return result.combination ? [{ groupKeys: result.combination, groupDate }] : [];
+        return result.combination ? [{ groupKeys: result.combination, groupDate, match: combinationMatch }] : [];
       });
       if (matches.length !== 1) return [];
-      const match = amazonMatchScore(targetCents / 100, matches[0].groupDate, Number(transaction.amount), transaction.bookedOn)!;
-      return [{ transaction, groupKeys: matches[0].groupKeys, match }];
+      const bestDirectScore = Math.max(0, ...openRecords.flatMap((group) => {
+        if (group.first.currency !== transaction.currency) return [];
+        const direct = amazonMatchScore(Number(group.first.orderTotal), group.date, Number(transaction.amount), transaction.bookedOn);
+        return direct ? [direct.score] : [];
+      }));
+      if (bestDirectScore >= matches[0].match.score) return [];
+      return [{ transaction, groupKeys: matches[0].groupKeys, match: matches[0].match }];
     });
     const groupProposalCounts = new Map<string, number>();
     combinationProposals.forEach((proposal) => proposal.groupKeys.forEach((key) => groupProposalCounts.set(key, (groupProposalCounts.get(key) ?? 0) + 1)));
     const safeCombinations = combinationProposals.filter((proposal) => proposal.groupKeys.every((key) => groupProposalCounts.get(key) === 1));
+    const combinedTransactionIds = new Set(safeCombinations.map((combination) => combination.transaction.id));
     const combinationByKey = new Map(safeCombinations.flatMap((proposal) => proposal.groupKeys.map((key) => [key, proposal] as const)));
     const emittedCombinations = new Set<string>();
     const preparedGroups = openRecords.flatMap((record) => {
@@ -95,6 +98,7 @@ export async function GET(request: Request) {
         ...combination.match,
         reason: `${combination.groupKeys.length} Amazon-Zahlungsgruppen ergeben zusammen centgenau ${Math.abs(Number(combination.transaction.amount)).toFixed(2)} €`,
       }] : amazonTransactions.flatMap((transaction) => {
+        if (combinedTransactionIds.has(transaction.id)) return [];
         if (usedTransactionIds.has(transaction.id) && transaction.id !== currentTransactionId) return [];
         if (transaction.currency !== first.currency) return [];
         const match = amazonMatchScore(Number(first.orderTotal), first.shipDate ?? first.orderDate, Number(transaction.amount), transaction.bookedOn);

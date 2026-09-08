@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const lastMonth = monthKey(shift(now, -1));
     const asOfDate = dateKey(now);
     const from = `${monthKey(shift(now, -13))}-01`;
-    const [rows, categoryRows] = await Promise.all([db
+    const [rows, categoryRows, excludedRows] = await Promise.all([db
       .select({ id: transactions.id, bookedOn: transactions.bookedOn, amount: transactions.amount, specialType: transactions.specialType, categoryId: transactions.categoryId, categoryName: categories.name, color: categories.color, categorizedBy: transactions.categorizedBy, categorizationConfidence: transactions.categorizationConfidence })
       .from(transactions)
       .leftJoin(categories, eq(transactions.categoryId, categories.id))
@@ -39,7 +39,16 @@ export async function GET(request: NextRequest) {
         sql`${transactions.specialType} <> 'transfer'`,
         or(eq(transactions.direction, "expense"), eq(transactions.specialType, "refund")),
         gte(transactions.bookedOn, from),
-      )), db.select({ id: categories.id, name: categories.name, parentId: categories.parentId, color: categories.color }).from(categories).where(eq(categories.householdId, visible.member.householdId))]);
+      )), db.select({ id: categories.id, name: categories.name, parentId: categories.parentId, color: categories.color }).from(categories).where(eq(categories.householdId, visible.member.householdId)), db
+      .select({ bookedOn: transactions.bookedOn, amount: transactions.amount, specialType: transactions.specialType, excludedFromAnalysis: transactions.excludedFromAnalysis })
+      .from(transactions)
+      .where(and(
+        inArray(transactions.accountId, accountIds),
+        gte(transactions.bookedOn, from),
+        eq(transactions.direction, "expense"),
+        sql`${transactions.amount} <> 0`,
+        or(eq(transactions.specialType, "transfer"), eq(transactions.excludedFromAnalysis, true)),
+      ))]);
     const splits = rows.length
       ? await db.select({ transactionId: transactionSplits.transactionId, categoryId: transactionSplits.categoryId, categoryName: categories.name, amount: transactionSplits.amount, color: categories.color }).from(transactionSplits).leftJoin(categories, eq(transactionSplits.categoryId, categories.id)).where(inArray(transactionSplits.transactionId, rows.map((row) => row.id)))
       : [];
@@ -72,7 +81,12 @@ export async function GET(request: NextRequest) {
     const months = [...new Set(normalized.map((row) => row.month))]
       .filter((month) => month < currentMonth)
       .sort()
-      .map((month) => ({ month, value: spendingTotal(normalized.filter((row) => row.month === month)) }));
+      .map((month) => ({
+        month,
+        value: spendingTotal(normalized.filter((row) => row.month === month)),
+        excludedTransfers: excludedRows.filter((row) => row.bookedOn.slice(0, 7) === month && row.specialType === "transfer").reduce((sum, row) => sum + Math.abs(Number(row.amount)), 0),
+        excludedManually: excludedRows.filter((row) => row.bookedOn.slice(0, 7) === month && row.specialType !== "transfer" && row.excludedFromAnalysis).reduce((sum, row) => sum + Math.abs(Number(row.amount)), 0),
+      }));
     const totals=comparisonTotals(comparisons);
     const lastSeriesValue=months.find(item=>item.month===lastMonth)?.value??0;
     if(Math.round(lastSeriesValue*100)!==Math.round(totals.last*100))throw new Error("Interne Summenprüfung fehlgeschlagen: Monatsverlauf und Kategorien stimmen nicht überein.");

@@ -30,4 +30,13 @@ describe("Amazon Order History", () => {
   it("meldet fehlende Amazon-Pflichtspalten verständlich", () => {
     expect(() => parseAmazonOrderHistory("Order ID,Product Name\n1,Test")).toThrow("Notwendige Spalten fehlen");
   });
+
+  it("ignoriert Nullmengen, Nullsummen und Stornierungen", () => {
+    const zeroQuantity = first.replace(",Delivered,1,", ",Delivered,0,");
+    const zeroTotal = second.replace(",30.00,-2.00,", ",0.00,-2.00,");
+    const cancelled = first.replace(",Delivered,1,", ",Cancelled,1,");
+    const result = parseAmazonOrderHistory(`${header}\n${first}\n${zeroQuantity}\n${zeroTotal}\n${cancelled}`);
+    expect(result.items).toHaveLength(1);
+    expect(result.warnings).toHaveLength(3);
+  });
 });

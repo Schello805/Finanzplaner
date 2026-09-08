@@ -71,6 +71,8 @@ export function parseAmazonOrderHistory(input: string): AmazonOrderImportResult 
       const totalDiscounts = number(row["Total Discounts"], "Rabatt");
       const currency = clean(row.Currency).toUpperCase();
       if (!currency) throw new Error("Währung fehlt.");
+      if (quantity <= 0 || orderTotal <= 0) throw new Error("Null-, Storno- oder nicht berechnete Artikelzeile wird ignoriert.");
+      if (/cancel|storniert|canceled|cancelled/i.test(clean(row["Order Status"]))) throw new Error("Stornierter Artikel wird ignoriert.");
       const identity = [orderId, asin, orderDate, shipDateValue, quantity, unitPrice, orderTotal, productName]
         .map((part) => clean(part).toLocaleLowerCase("de-DE"))
         .join("|");
