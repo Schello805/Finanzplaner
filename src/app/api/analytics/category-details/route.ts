@@ -3,7 +3,7 @@ import { and, eq, gte, inArray, lt, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { accounts, categories, transactions, transactionSplits } from "@/db/schema";
-import { VERY_SAFE_CONFIDENCE } from "@/features/categorization/confidence";
+import { hasTrustedAnalysisCategory } from "@/features/analytics/calculations";
 import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 
@@ -58,6 +58,8 @@ export async function GET(request: NextRequest) {
         currency: transactions.currency,
         specialType: transactions.specialType,
         categoryId: transactions.categoryId,
+        categorizedBy: transactions.categorizedBy,
+        categorizationConfidence: transactions.categorizationConfidence,
         counterparty: transactions.counterparty,
         purpose: transactions.purpose,
         bookingType: transactions.bookingType,
@@ -74,7 +76,6 @@ export async function GET(request: NextRequest) {
         eq(transactions.excludedFromAnalysis, false),
         sql`${transactions.specialType} <> 'transfer'`,
         or(eq(transactions.direction, "expense"), eq(transactions.specialType, "refund")),
-        sql`not (coalesce(${transactions.categorizedBy}, '') like 'ai:%' and coalesce(${transactions.categorizationConfidence}, 0) < ${VERY_SAFE_CONFIDENCE})`,
       ));
     const splits = rows.length
       ? await db
@@ -113,7 +114,8 @@ export async function GET(request: NextRequest) {
             split: true,
           }));
       }
-      const matches = categoryId === "uncategorized" ? !row.categoryId : Boolean(row.categoryId && descendants.has(row.categoryId));
+      const effectiveCategoryId = hasTrustedAnalysisCategory(row.categorizedBy, row.categorizationConfidence) ? row.categoryId : null;
+      const matches = categoryId === "uncategorized" ? !effectiveCategoryId : Boolean(effectiveCategoryId && descendants.has(effectiveCategoryId));
       if (!matches) return [];
       return [{
         id: row.id,
@@ -125,7 +127,7 @@ export async function GET(request: NextRequest) {
         purpose: row.purpose,
         bookingType: row.bookingType,
         accountName: row.accountName,
-        categoryName: row.categoryId ? categoryNames.get(row.categoryId) ?? "Unbekannt" : "Nicht zugeordnet",
+        categoryName: effectiveCategoryId ? categoryNames.get(effectiveCategoryId) ?? "Unbekannt" : "Nicht zugeordnet / KI-Zuordnung prüfen",
         split: false,
       }];
     }).sort((a, b) => b.amount - a.amount || b.bookedOn.localeCompare(a.bookedOn));

@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, gte, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, transactions, transactionSplits } from "@/db/schema";
-import { categoryComparison, categoryTrendAnalysis, comparisonTotals, normalizeAnalysisTransactions, spendingOpportunities, spendingTotal } from "@/features/analytics/calculations";
+import { categoryComparison, categoryTrendAnalysis, comparisonTotals, hasTrustedAnalysisCategory, normalizeAnalysisTransactions, spendingOpportunities, spendingTotal } from "@/features/analytics/calculations";
 import { requireUser } from "@/lib/current-user";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
-import { VERY_SAFE_CONFIDENCE } from "@/features/categorization/confidence";
 
 const monthKey = (date: Date) => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 const dateKey = (date: Date) => `${monthKey(date)}-${String(date.getUTCDate()).padStart(2, "0")}`;
@@ -29,7 +28,7 @@ export async function GET(request: NextRequest) {
     const asOfDate = dateKey(now);
     const from = `${monthKey(shift(now, -13))}-01`;
     const [rows, categoryRows] = await Promise.all([db
-      .select({ id: transactions.id, bookedOn: transactions.bookedOn, amount: transactions.amount, specialType: transactions.specialType, categoryId: transactions.categoryId, categoryName: categories.name, color: categories.color })
+      .select({ id: transactions.id, bookedOn: transactions.bookedOn, amount: transactions.amount, specialType: transactions.specialType, categoryId: transactions.categoryId, categoryName: categories.name, color: categories.color, categorizedBy: transactions.categorizedBy, categorizationConfidence: transactions.categorizationConfidence })
       .from(transactions)
       .leftJoin(categories, eq(transactions.categoryId, categories.id))
       .where(and(
@@ -39,7 +38,6 @@ export async function GET(request: NextRequest) {
         eq(transactions.excludedFromAnalysis, false),
         sql`${transactions.specialType} <> 'transfer'`,
         or(eq(transactions.direction, "expense"), eq(transactions.specialType, "refund")),
-        sql`not (coalesce(${transactions.categorizedBy}, '') like 'ai:%' and coalesce(${transactions.categorizationConfidence}, 0) < ${VERY_SAFE_CONFIDENCE})`,
         gte(transactions.bookedOn, from),
       )), db.select({ id: categories.id, name: categories.name, parentId: categories.parentId, color: categories.color }).from(categories).where(eq(categories.householdId, visible.member.householdId))]);
     const splits = rows.length
@@ -57,8 +55,9 @@ export async function GET(request: NextRequest) {
       return current ?? categoryById.get(categoryId) ?? null;
     };
     const rowsAtRoot = rows.map((row) => {
-      const root = rootCategory(row.categoryId);
-      return { ...row, categoryId: root?.id ?? row.categoryId, categoryName: root?.name ?? row.categoryName, color: root?.color ?? row.color };
+      const trusted = hasTrustedAnalysisCategory(row.categorizedBy, row.categorizationConfidence);
+      const root = rootCategory(trusted ? row.categoryId : null);
+      return { ...row, categoryId: trusted ? (root?.id ?? row.categoryId) : null, categoryName: trusted ? (root?.name ?? row.categoryName) : null, color: trusted ? (root?.color ?? row.color) : "#7c898c" };
     });
     const splitsAtRoot = splits.map((split) => {
       const root = rootCategory(split.categoryId);

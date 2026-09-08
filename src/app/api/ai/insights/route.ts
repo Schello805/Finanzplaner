@@ -2,13 +2,12 @@ import { NextResponse } from "next/server";
 import { and, eq, gte, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { aiUsage, categories, systemSettings, transactions, transactionSplits } from "@/db/schema";
-import { categoryComparison, normalizeAnalysisTransactions } from "@/features/analytics/calculations";
+import { categoryComparison, hasTrustedAnalysisCategory, normalizeAnalysisTransactions } from "@/features/analytics/calculations";
 import { estimateCost, generateInsightsWithAi, resolveModelPrice } from "@/features/ai/provider";
 import { requireUser } from "@/lib/current-user";
 import { decryptSecret } from "@/lib/security";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { writeAudit } from "@/lib/audit";
-import { VERY_SAFE_CONFIDENCE } from "@/features/categorization/confidence";
 
 type ProviderConfig = { model: string; inputPricePerMillion?: number; outputPricePerMillion?: number };
 const monthKey = (date: Date) => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -23,7 +22,7 @@ async function context(userId: string) {
   const from = `${monthKey(shift(now, -13))}-01`;
   const asOfDate = now.toISOString().slice(0, 10);
   const [rows, categoryRows] = await Promise.all([db
-    .select({ id:transactions.id,bookedOn: transactions.bookedOn, amount: transactions.amount,specialType:transactions.specialType, categoryId: transactions.categoryId, categoryName: categories.name })
+    .select({ id:transactions.id,bookedOn: transactions.bookedOn, amount: transactions.amount,specialType:transactions.specialType, categoryId: transactions.categoryId, categoryName: categories.name, categorizedBy:transactions.categorizedBy, categorizationConfidence:transactions.categorizationConfidence })
     .from(transactions)
     .leftJoin(categories, eq(transactions.categoryId, categories.id))
     .where(and(
@@ -33,15 +32,14 @@ async function context(userId: string) {
       sql`${transactions.specialType} <> 'transfer'`,
       sql`${transactions.amount} <> 0`,
       sql`not (${transactions.counterparty} is null and ${transactions.bookingType} ilike 'SONSTIGER EINZUG' and ${transactions.purpose} ilike 'MO %')`,
-      sql`not (coalesce(${transactions.categorizedBy}, '') like 'ai:%' and coalesce(${transactions.categorizationConfidence}, 0) < ${VERY_SAFE_CONFIDENCE})`,
       gte(transactions.bookedOn, from),
     )), db.select({id:categories.id,name:categories.name,parentId:categories.parentId}).from(categories).where(eq(categories.householdId,member.householdId))]);
   const splits=rows.length?await db.select({transactionId:transactionSplits.transactionId,categoryId:transactionSplits.categoryId,categoryName:categories.name,amount:transactionSplits.amount}).from(transactionSplits).leftJoin(categories,eq(transactionSplits.categoryId,categories.id)).where(inArray(transactionSplits.transactionId,rows.map(row=>row.id))):[];
   const categoryById=new Map(categoryRows.map(category=>[category.id,category]));
   const root=(categoryId:string|null)=>{if(!categoryId)return null;let current=categoryById.get(categoryId);const visited=new Set<string>();while(current?.parentId&&!visited.has(current.id)){visited.add(current.id);current=categoryById.get(current.parentId)??current}return current??categoryById.get(categoryId)??null};
-  const normalized=normalizeAnalysisTransactions(rows.map(row=>{const category=root(row.categoryId);return{...row,categoryId:category?.id??row.categoryId,categoryName:category?.name??row.categoryName}}),splits.map(split=>{const category=root(split.categoryId);return{...split,categoryId:category?.id??split.categoryId,categoryName:category?.name??split.categoryName}})).filter(row=>!row.bookedOn||row.bookedOn<=asOfDate);
+  const normalized=normalizeAnalysisTransactions(rows.map(row=>{const trusted=hasTrustedAnalysisCategory(row.categorizedBy,row.categorizationConfidence);const category=root(trusted?row.categoryId:null);return{...row,categoryId:trusted?(category?.id??row.categoryId):null,categoryName:trusted?(category?.name??row.categoryName):null}}),splits.map(split=>{const category=root(split.categoryId);return{...split,categoryId:category?.id??split.categoryId,categoryName:category?.name??split.categoryName}})).filter(row=>!row.bookedOn||row.bookedOn<=asOfDate);
   const comparisons = categoryComparison(normalized, lastMonth, currentMonth)
-    .filter((item) => item.last > 0 || item.current > 0)
+    .filter((item) => item.categoryId !== "uncategorized" && (item.last > 0 || item.current > 0))
     .map((item) => ({
       name: item.categoryName,
       lastMonthEur: item.last,

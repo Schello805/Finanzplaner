@@ -2,6 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.8.1] - 2026-09-08
+
+- Korrigiert einen schwerwiegenden Analysefehler: Unsichere KI-Zuordnungen unter 95 Prozent wurden mitsamt ihrem Betrag aus Monatsgesamtwert und Ausgabenverlauf entfernt.
+- Jede echte Ausgabe zählt nun unabhängig von ihrer Kategorisierungssicherheit vollständig in Monatswert, Verlauf und Gesamtsumme.
+- Bei unsicheren KI-Treffern bleibt ausschließlich die Kategorie offen; der Betrag erscheint bis zur Bestätigung unter „Nicht zugeordnet“.
+- Kategorie-Drill-down und KI-Sparanalyse verwenden dieselbe korrigierte Datenbasis.
+- Ein zusätzlicher Rechentest schützt die Trennung zwischen sicherem Geldbetrag und unsicherer Kategorie dauerhaft ab.
+
 ## [0.8.0] - 2026-09-08
 
 - Die Analyse erkennt nun ausschließlich durchgängige mehrmonatige Anstiege und Rückgänge und zeigt die zugrunde liegende Wertefolge direkt an.

@@ -3,6 +3,13 @@ export interface MonthlyCategoryTotal { month: string; categoryId: string; categ
 export interface AnalysisTransaction { id:string;bookedOn:string;amount:number|string;specialType:string;categoryId:string|null;categoryName:string|null }
 export interface AnalysisSplit { transactionId:string;categoryId:string;categoryName:string|null;amount:number|string }
 
+export function hasTrustedAnalysisCategory(
+  categorizedBy: string | null | undefined,
+  confidence: number | string | null | undefined,
+) {
+  return !categorizedBy?.startsWith("ai:") || Number(confidence ?? 0) >= 0.95;
+}
+
 export function normalizeAnalysisTransactions(rows:AnalysisTransaction[],splits:AnalysisSplit[]):MonthlyCategoryTotal[]{
   const splitMap=new Map<string,AnalysisSplit[]>();
   for(const split of splits)splitMap.set(split.transactionId,[...(splitMap.get(split.transactionId)??[]),split]);

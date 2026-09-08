@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoryComparison, categoryTrendAnalysis, comparisonTotals, normalizeAnalysisTransactions, spendingOpportunities, spendingTotal } from "./calculations";
+import { categoryComparison, categoryTrendAnalysis, comparisonTotals, hasTrustedAnalysisCategory, normalizeAnalysisTransactions, spendingOpportunities, spendingTotal } from "./calculations";
 
 describe("Kategorievergleich",()=>{
   it("vergleicht den letzten Monat mit verfügbaren vollständigen Monaten",()=>{
@@ -78,5 +78,13 @@ describe("Kategorievergleich",()=>{
       {month:"2026-08",categoryId:"media",categoryName:"Medien",amount:-75},
     ],"2026-08","2026-09");
     expect(spendingOpportunities(comparisons)[0]).toMatchObject({monthlyIncrease:25,annualImpact:300});
+  });
+  it("behält unsichere KI-Buchungen als Ausgabe bei, behandelt nur ihre Kategorie als unbestätigt",()=>{
+    expect(hasTrustedAnalysisCategory("ai:openai","0.949")).toBe(false);
+    expect(hasTrustedAnalysisCategory("ai:openai","0.950")).toBe(true);
+    expect(hasTrustedAnalysisCategory("manual",null)).toBe(true);
+    const normalized=normalizeAnalysisTransactions([{id:"uncertain",bookedOn:"2026-08-01",amount:"-79.90",specialType:"normal",categoryId:null,categoryName:null}],[]);
+    expect(spendingTotal(normalized)).toBe(79.9);
+    expect(normalized[0].categoryName).toBe("Nicht zugeordnet");
   });
 });
