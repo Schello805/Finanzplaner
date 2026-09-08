@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { and, desc, eq, inArray, isNull, notExists, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
@@ -15,6 +15,7 @@ import { canLearnMerchant, normalizeMerchant } from "@/features/categorization/n
 import { isBalancedTransfer } from "@/features/analytics/transfers";
 import { writeAudit } from "@/lib/audit";
 import { shouldLearnAssignmentRule } from "@/features/categorization/assignment-policy";
+import { runHouseholdIntegrityCheck } from "@/features/integrity/service";
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUser();
@@ -284,6 +285,7 @@ export async function PATCH(request: Request) {
         })
       : { learned: false, applied: 0 };
     await writeAudit("transaction-updated","Ein Umsatz wurde bearbeitet.",{userId:user.userId,metadata:{transactionId:body.id,accountId:row.accountId,categoryChanged:body.categoryId!==undefined,splitChanged:Boolean(body.splits),specialType:effectiveSpecialType,linkedTransactionId:effectiveLinkedTransactionId,ruleMode:body.ruleMode,deferAiReview:body.deferAiReview}});
+    after(() => runHouseholdIntegrityCheck(member.householdId, { audit: true, userId: user.userId }));
     return NextResponse.json({ ok: true, ruleLearned: learned.learned, additionallyApplied: learned.applied });
   } catch (error) {
     return NextResponse.json(
@@ -302,7 +304,7 @@ const deleteSchema = z.object({ id: z.string().uuid() });
 export async function DELETE(request: Request) {
   try {
     const user = await requireUser();
-    const { accountIds } = await memberAndVisibleAccountIds(user.userId);
+    const { member, accountIds } = await memberAndVisibleAccountIds(user.userId);
     const body = deleteSchema.parse(await request.json());
     const [row] = await db.select({ accountId: transactions.accountId, linkedTransactionId: transactions.linkedTransactionId }).from(transactions).where(eq(transactions.id, body.id)).limit(1);
     if (!row || !accountIds.includes(row.accountId)) throw new Error("Umsatz nicht sichtbar.");
@@ -311,6 +313,7 @@ export async function DELETE(request: Request) {
       await tx.delete(transactions).where(eq(transactions.id, body.id));
     });
     await writeAudit("transaction-deleted","Eine bestätigte Umsatzdublette wurde gelöscht.",{userId:user.userId,metadata:{transactionId:body.id,accountId:row.accountId}});
+    after(() => runHouseholdIntegrityCheck(member.householdId, { audit: true, userId: user.userId }));
     return NextResponse.json({ ok:true });
   } catch (error) {
     return NextResponse.json({ error:error instanceof Error?error.message:"Umsatz konnte nicht gelöscht werden." },{status:400});

@@ -1,5 +1,5 @@
 import {createHash,randomUUID} from "node:crypto";
-import {NextResponse} from "next/server";
+import {after,NextResponse} from "next/server";
 import {FinTSClient,FinTSConfig,type BankingInformation,type StatementResponse} from "lib-fints";
 import {and,eq,ilike} from "drizzle-orm";
 import {z} from "zod";
@@ -14,6 +14,7 @@ import {requireUser} from "@/lib/current-user";
 import {decryptSecret,encryptSecret} from "@/lib/security";
 import {memberAndVisibleAccountIds} from "@/lib/visible-accounts";
 import {writeAudit} from "@/lib/audit";
+import {runHouseholdIntegrityCheck} from "@/features/integrity/service";
 
 type Connection={productId:string;endpoint:string;blz:string;userId:string;pin:string;tanMethodId?:number;tanMediaName?:string;bankAccountNumber:string;bankingInformation:BankingInformation};
 const schema=z.discriminatedUnion("action",[z.object({action:z.literal("start"),days:z.number().int().min(1).max(365).default(90)}),z.object({action:z.literal("continue_tan"),token:z.string().uuid(),tan:z.string().max(20).optional()})]);
@@ -27,7 +28,7 @@ async function save(response:StatementResponse,context:{connection:Connection;se
  if(inserted.length!==selected.length)await db.update(imports).set({importedCount:inserted.length,duplicateCount:duplicates.exact.length+duplicates.suspected.length+(selected.length-inserted.length)}).where(eq(imports.id,record.id));
  const local=await applyAutomaticAssignments({householdId:context.householdId,ownerMemberId:context.memberId,visibleAccountIds:[context.localAccountId]});
  if(response.bankingInformationUpdated)await db.update(systemSettings).set({valueEncrypted:encryptSecret(JSON.stringify(context.connection)),updatedAt:new Date()}).where(eq(systemSettings.key,context.settingsKey));
- await writeAudit("bank-import","Sparkassen-Umsätze wurden lesend über FinTS abgerufen.",{userId:context.userId,metadata:{accountId:context.localAccountId,imported:inserted.length,duplicates:duplicates.exact.length+duplicates.suspected.length+(selected.length-inserted.length)}});return{ok:true,imported:inserted.length,duplicates:duplicates.exact.length+duplicates.suspected.length+(selected.length-inserted.length),locallyCategorized:local.applied};
+ await writeAudit("bank-import","Sparkassen-Umsätze wurden lesend über FinTS abgerufen.",{userId:context.userId,metadata:{accountId:context.localAccountId,imported:inserted.length,duplicates:duplicates.exact.length+duplicates.suspected.length+(selected.length-inserted.length)}});after(()=>runHouseholdIntegrityCheck(context.householdId,{audit:true,userId:context.userId}));return{ok:true,imported:inserted.length,duplicates:duplicates.exact.length+duplicates.suspected.length+(selected.length-inserted.length),locallyCategorized:local.applied};
 }
 export async function POST(request:Request){try{const user=await requireUser(),{member,accountIds}=await memberAndVisibleAccountIds(user.userId),body=schema.parse(await request.json()),settingsKey=`fints.sparkasse.${member.id}`;cleanupFinTsStatementSessions();
  if(body.action==="continue_tan"){const pending=finTsStatementSessions.get(body.token);if(!pending||pending.userId!==user.userId)throw new Error("Die TAN-Sitzung ist abgelaufen.");const response=await pending.client.getAccountStatementsWithTan(pending.tanReference,body.tan||undefined);if(!response.success)throw new Error(response.bankAnswers.map(a=>a.text).join(" · "));if(response.requiresTan){pending.tanReference=response.tanReference??pending.tanReference;return NextResponse.json({requiresTan:true,token:body.token,challenge:response.tanChallenge,isDecoupled:pending.client.config.selectedTanMethod?.isDecoupled??false})}(pending.connection as Connection).bankingInformation=pending.client.config.bankingInformation;finTsStatementSessions.delete(body.token);return NextResponse.json(await save(response,{connection:pending.connection as Connection,settingsKey:pending.settingsKey,localAccountId:pending.localAccountId,memberId:pending.memberId,householdId:pending.householdId,userId:pending.userId}))}

@@ -21,6 +21,8 @@ export const importStatus = pgEnum("import_status", ["pending", "review", "compl
 export const transactionDirection = pgEnum("transaction_direction", ["income", "expense"]);
 export const transactionSpecialType = pgEnum("transaction_special_type", ["normal", "refund", "transfer"]);
 export const recurrenceStatus = pgEnum("recurrence_status", ["suggested", "confirmed", "dismissed"]);
+export const aiJobKind = pgEnum("ai_job_kind", ["amazon"]);
+export const aiJobStatus = pgEnum("ai_job_status", ["queued", "running", "paused", "completed", "failed"]);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -292,6 +294,30 @@ export const aiUsage = pgTable("ai_usage", {
   estimatedCostEur: numeric("estimated_cost_eur", { precision: 12, scale: 6 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const aiJobs = pgTable("ai_jobs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").references(() => households.id, { onDelete: "cascade" }).notNull(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  kind: aiJobKind("kind").notNull(),
+  status: aiJobStatus("status").default("queued").notNull(),
+  totalItems: integer("total_items").default(0).notNull(),
+  processedItems: integer("processed_items").default(0).notNull(),
+  appliedItems: integer("applied_items").default(0).notNull(),
+  suggestionItems: integer("suggestion_items").default(0).notNull(),
+  proposalItems: integer("proposal_items").default(0).notNull(),
+  rounds: integer("rounds").default(0).notNull(),
+  estimatedCostEur: numeric("estimated_cost_eur", { precision: 12, scale: 6 }).default("0").notNull(),
+  errorMessage: text("error_message"),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  heartbeatAt: timestamp("heartbeat_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  ...timestamps,
+}, (t) => [
+  uniqueIndex("ai_jobs_user_active_unique")
+    .on(t.userId, t.kind)
+    .where(sql`${t.status} in ('queued', 'running', 'paused')`),
+]);
 
 export const userPreferences = pgTable("user_preferences", {
   userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),

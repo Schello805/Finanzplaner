@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { amazonItemRules, amazonOrderImports, amazonOrderItems } from "@/db/schema";
@@ -9,6 +9,7 @@ import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/current-user";
 import { decryptSecret, encryptSecret, stablePrivateFingerprint } from "@/lib/security";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
+import { runHouseholdIntegrityCheck } from "@/features/integrity/service";
 
 const chunks = <T,>(values: T[], size: number) =>
   Array.from({ length: Math.ceil(values.length / size) }, (_, index) =>
@@ -133,6 +134,7 @@ export async function POST(request: Request) {
       userId: user.userId,
       metadata: { importId: result.id, items: newItems.length, orders: result.orderCount },
     });
+    after(() => runHouseholdIntegrityCheck(member.householdId, { audit: true, userId: user.userId }));
     return NextResponse.json(
       { importId: result.id, importedItems: newItems.length, importedOrders: result.orderCount },
       { status: 201 },

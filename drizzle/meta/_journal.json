@@ -148,6 +148,20 @@
       "when": 1789401600000,
       "tag": "0020_remove_invalid_amazon_rows",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1788865628428,
+      "tag": "0021_stiff_sharon_ventura",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1788865898601,
+      "tag": "0022_milky_lady_mastermind",
+      "breakpoints": true
     }
   ]
 }

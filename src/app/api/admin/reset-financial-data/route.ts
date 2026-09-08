@@ -2,7 +2,7 @@ import {NextResponse} from "next/server";
 import {eq,inArray} from "drizzle-orm";
 import {z} from "zod";
 import {db} from "@/db";
-import {accounts,aiUsage,amazonOrderImports,categories,categorizationRules,householdMembers,imports,recurringTransactions,transactions} from "@/db/schema";
+import {accounts,aiJobs,aiUsage,amazonOrderImports,categories,categorizationRules,householdMembers,imports,recurringTransactions,transactions} from "@/db/schema";
 import {defaultCategories} from "@/features/categories/defaults";
 import {requireAdmin} from "@/lib/current-user";
 import {writeAudit} from "@/lib/audit";
@@ -18,6 +18,7 @@ export async function POST(request:Request){
   const accountRows=await db.select({id:accounts.id}).from(accounts).where(eq(accounts.householdId,member.householdId));
   const accountIds=accountRows.map(row=>row.id);
   await db.transaction(async tx=>{
+   await tx.delete(aiJobs).where(eq(aiJobs.householdId,member.householdId));
    await tx.delete(amazonOrderImports).where(eq(amazonOrderImports.householdId,member.householdId));
    if(accountIds.length){
     await tx.delete(recurringTransactions).where(inArray(recurringTransactions.accountId,accountIds));

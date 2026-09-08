@@ -6,6 +6,8 @@ node_modules/
 .env.*
 !.env.example
 coverage/
+playwright-report/
+test-results/
 *.log
 *.tsbuildinfo
 *.csv

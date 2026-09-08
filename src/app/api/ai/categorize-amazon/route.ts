@@ -1,115 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, count, eq, inArray, isNull, notInArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/db";
-import { aiUsage, amazonOrderItems, categories, systemSettings, transactions, userPreferences } from "@/db/schema";
-import { categorizeWithAi, estimateCost, resolveModelPrice } from "@/features/ai/provider";
-import type { AiTransactionInput } from "@/features/ai/types";
-import { writeAudit } from "@/lib/audit";
+import { estimateCost } from "@/features/ai/provider";
+import { AMAZON_AI_BATCH_SIZE, getAmazonAiPreview, processAmazonAiBatch } from "@/features/amazon/ai-service";
 import { requireUser } from "@/lib/current-user";
-import { decryptSecret } from "@/lib/security";
-import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
-import { isForbiddenCategoryName, normalizeCategoryName } from "@/features/categories/policy";
-import { automaticAcceptanceThreshold, LIKELY_CONFIDENCE } from "@/features/categorization/confidence";
-import { amazonAnalysisCoverage } from "@/features/amazon/analysis-coverage";
-
-const BATCH_SIZE = 25;
-const MATCH_TOLERANCE_DAYS = 21;
-type ProviderConfig = { model: string; inputPricePerMillion?: number; outputPricePerMillion?: number };
-
-async function aiSettings() {
-  const rows = await db.select().from(systemSettings);
-  const provider = ((rows.find((row) => row.key === "ai.default")?.valueJson as { provider?: "openai" | "gemini" } | null)?.provider ?? "openai");
-  const row = rows.find((item) => item.key === `ai.${provider}`);
-  if (!row?.valueEncrypted) throw new Error(`${provider === "openai" ? "OpenAI" : "Gemini"} ist nicht vollständig eingerichtet.`);
-  return { provider, apiKey: decryptSecret(row.valueEncrypted), config: row.valueJson as ProviderConfig };
-}
-
-async function pending(userId: string, ids?: string[], excludedIds: string[] = []) {
-  const { member, accountIds } = await memberAndVisibleAccountIds(userId);
-  const base = [eq(amazonOrderItems.ownerMemberId, member.id), isNull(amazonOrderItems.categoryId),isNull(amazonOrderItems.aiAnalyzedAt),sql`${amazonOrderItems.quantity} > 0`,sql`${amazonOrderItems.orderTotal} > 0`,sql`${amazonOrderItems.status} !~* 'cancel|storniert'`];
-  const [{ value: totalPending }] = await db.select({ value: count() }).from(amazonOrderItems).where(and(...base));
-  const bankDates = accountIds.length ? await db
-    .select({ bookedOn: transactions.bookedOn })
-    .from(transactions)
-    .where(and(inArray(transactions.accountId, accountIds), or(sql`${transactions.counterparty} ilike '%amazon%'`, sql`${transactions.purpose} ilike '%amazon%'`))) : [];
-  const coverage = amazonAnalysisCoverage(bankDates.map((row) => row.bookedOn), MATCH_TOLERANCE_DAYS);
-  const coverageDate = sql`coalesce(${amazonOrderItems.shipDate}, ${amazonOrderItems.orderDate})`;
-  const coverageFilter = coverage ? [sql`${coverageDate} >= ${coverage.from}`, sql`${coverageDate} <= ${coverage.to}`] : [sql`false`];
-  const [{ value: coverageItems }] = await db.select({ value: count() }).from(amazonOrderItems).where(and(eq(amazonOrderItems.ownerMemberId, member.id), ...coverageFilter));
-  const eligibleBase = [...base, ...coverageFilter];
-  const [{ value: total }] = await db.select({ value: count() }).from(amazonOrderItems).where(and(...eligibleBase));
-  const filters = [...eligibleBase];
-  if (ids) filters.push(inArray(amazonOrderItems.id, ids));
-  else if (excludedIds.length) filters.push(notInArray(amazonOrderItems.id, excludedIds));
-  const databaseRows = await db.select({ id: amazonOrderItems.id, date: amazonOrderItems.orderDate, amount: amazonOrderItems.unitPrice, tax: amazonOrderItems.unitTax, quantity: amazonOrderItems.quantity, currency: amazonOrderItems.currency, productName: amazonOrderItems.productNameEncrypted, department: amazonOrderItems.department }).from(amazonOrderItems).where(and(...filters)).limit(ids ? 100 : BATCH_SIZE);
-  const rows = databaseRows.map((row) => ({
-    id: row.id,
-    date: row.date,
-    amount: -Math.abs((Number(row.amount) + Number(row.tax)) * Number(row.quantity)),
-    currency: row.currency,
-    bookingType: "Amazon-Artikel",
-    merchant: "Amazon",
-    purpose: `${decryptSecret(row.productName)}${row.department ? ` · Bereich: ${row.department}` : ""}`,
-  } satisfies AiTransactionInput));
-  return { member, total, totalPending, coverageItems, excludedOutsideCoverage: Math.max(0, totalPending - total), coverage, rows };
-}
 
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUser();
-    const excludedIds = (request.nextUrl.searchParams.get("exclude") ?? "").split(",").filter((id) => z.string().uuid().safeParse(id).success).slice(0, 1000);
-    const { rows, total, totalPending, coverageItems, excludedOutsideCoverage, coverage } = await pending(user.userId, undefined, excludedIds);
-    if (!rows.length) return NextResponse.json({ available: true, count: total, totalPending, coverageItems, excludedOutsideCoverage, coverage, batchSize: 0, totalRounds: 0, items: [] });
-    const ai = await aiSettings();
-    const price = resolveModelPrice(ai.provider, ai.config.model, ai.config);
-    return NextResponse.json({ available: true, count: total, totalPending, coverageItems, excludedOutsideCoverage, coverage, batchSize: rows.length, totalRounds: Math.ceil(total / BATCH_SIZE), remainingAfterBatch: Math.max(0, total - excludedIds.length - rows.length), provider: ai.provider, model: ai.config.model, items: rows.map(({ id }) => ({ id })), cost: price ? estimateCost(rows, price, Math.max(300, rows.length * 80)) : null });
+    const excludedIds = (request.nextUrl.searchParams.get("exclude") ?? "")
+      .split(",")
+      .filter((id) => z.string().uuid().safeParse(id).success)
+      .slice(0, 1000);
+    const state = await getAmazonAiPreview(user.userId, excludedIds);
+    if (!state.rows.length) {
+      return NextResponse.json({
+        available: true,
+        count: state.total,
+        totalPending: state.totalPending,
+        coverageItems: state.coverageItems,
+        excludedOutsideCoverage: state.excludedOutsideCoverage,
+        coverage: state.coverage,
+        batchSize: 0,
+        totalRounds: 0,
+        items: [],
+      });
+    }
+    return NextResponse.json({
+      available: true,
+      count: state.total,
+      totalPending: state.totalPending,
+      coverageItems: state.coverageItems,
+      excludedOutsideCoverage: state.excludedOutsideCoverage,
+      coverage: state.coverage,
+      batchSize: state.rows.length,
+      totalRounds: Math.ceil(state.total / AMAZON_AI_BATCH_SIZE),
+      remainingAfterBatch: Math.max(0, state.total - excludedIds.length - state.rows.length),
+      provider: state.provider,
+      model: state.model,
+      items: state.rows.map(({ id }) => ({ id })),
+      cost: state.price ? estimateCost(state.rows, state.price, Math.max(300, state.rows.length * 80)) : null,
+    });
   } catch (error) {
     return NextResponse.json({ available: false, error: error instanceof Error ? error.message : "Amazon-KI-Vorschau fehlgeschlagen." }, { status: 400 });
   }
 }
 
 const postSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(100) });
+
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
     const body = postSchema.parse(await request.json());
-    const { member, rows } = await pending(user.userId, body.ids);
-    if (!rows.length) throw new Error("Keine offenen Amazon-Artikel gefunden.");
-    const ai = await aiSettings();
-    const allowed = await db.select({ id: categories.id, name: categories.name }).from(categories).where(and(eq(categories.householdId, member.householdId), eq(categories.isIncome, false)));
-    const eligibleCategories = allowed.filter((category) => !isForbiddenCategoryName(category.name));
-    const result = await categorizeWithAi({ provider: ai.provider, apiKey: ai.apiKey, model: ai.config.model }, rows, eligibleCategories.map((category) => category.name));
-    const byName = new Map(eligibleCategories.map((category) => [normalizeCategoryName(category.name), category.id]));
-    const [preferences] = await db.select({ level: userPreferences.aiAutoAcceptLevel }).from(userPreferences).where(eq(userPreferences.userId, user.userId)).limit(1);
-    const autoThreshold = automaticAcceptanceThreshold(preferences?.level);
-    const suggestions: Array<{ id: string; categoryId: string; category: string; confidence: number; reason: string }> = [];
-    const categoryProposals: Array<{ id: string; name: string; confidence: number; reason: string }> = [];
-    let applied = 0;
-    for (const item of result.data.results) {
-      if (!body.ids.includes(item.id)) continue;
-      const categoryId = item.category ? byName.get(normalizeCategoryName(item.category)) : undefined;
-      if (!categoryId) {
-        const name = (item.proposedCategory ?? item.category)?.trim();
-        if (name && item.confidence >= LIKELY_CONFIDENCE && !isForbiddenCategoryName(name) && !/^(andere?s?|diverses)$/i.test(name)) {
-          categoryProposals.push({ id: item.id, name, confidence: item.confidence, reason: item.reason });
-          await db.update(amazonOrderItems).set({aiSuggestedCategoryId:null,aiSuggestedCategoryName:name,aiSuggestionConfidence:item.confidence.toFixed(4),aiSuggestionReason:item.reason,aiAnalyzedAt:new Date(),updatedAt:new Date()}).where(and(eq(amazonOrderItems.id,item.id),eq(amazonOrderItems.ownerMemberId,member.id),isNull(amazonOrderItems.categoryId)));
-        } else {
-          await db.update(amazonOrderItems).set({aiSuggestedCategoryId:null,aiSuggestedCategoryName:null,aiSuggestionConfidence:item.confidence.toFixed(4),aiSuggestionReason:item.reason,aiAnalyzedAt:new Date(),updatedAt:new Date()}).where(and(eq(amazonOrderItems.id,item.id),eq(amazonOrderItems.ownerMemberId,member.id),isNull(amazonOrderItems.categoryId)));
-        }
-      } else if (item.confidence >= autoThreshold) {
-        const updated = await db.update(amazonOrderItems).set({categoryId,aiSuggestedCategoryId:null,aiSuggestedCategoryName:null,aiSuggestionConfidence:null,aiSuggestionReason:null,aiAnalyzedAt:new Date(),updatedAt:new Date()}).where(and(eq(amazonOrderItems.id,item.id),eq(amazonOrderItems.ownerMemberId,member.id),isNull(amazonOrderItems.categoryId))).returning({id:amazonOrderItems.id});
-        applied += updated.length;
-      } else {
-        suggestions.push({id:item.id,categoryId,category:item.category!,confidence:item.confidence,reason:item.reason});
-        await db.update(amazonOrderItems).set({aiSuggestedCategoryId:categoryId,aiSuggestedCategoryName:item.category!,aiSuggestionConfidence:item.confidence.toFixed(4),aiSuggestionReason:item.reason,aiAnalyzedAt:new Date(),updatedAt:new Date()}).where(and(eq(amazonOrderItems.id,item.id),eq(amazonOrderItems.ownerMemberId,member.id),isNull(amazonOrderItems.categoryId)));
-      }
-    }
-    const price = resolveModelPrice(ai.provider, ai.config.model, ai.config);
-    const estimatedCostEur = price ? result.usage.inputTokens * price.inputPerMillion / 1_000_000 + result.usage.outputTokens * price.outputPerMillion / 1_000_000 : null;
-    await db.insert(aiUsage).values({ householdId: member.householdId, userId: user.userId, provider: ai.provider, model: ai.config.model, purpose: "amazon-categorization", inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens, estimatedCostEur: estimatedCostEur?.toFixed(6) });
-    await writeAudit("ai", "Amazon-Artikel wurden mit KI kategorisiert.", { userId: user.userId, metadata: { count: rows.length, applied, suggestions: suggestions.length, provider: ai.provider } });
-    return NextResponse.json({ applied, suggestions, categoryProposals, analyzedIds: body.ids, usage: result.usage, estimatedCostEur, pricingAvailable: Boolean(price) });
+    const result = await processAmazonAiBatch(user.userId, body.ids);
+    if (!result.analyzedIds.length) throw new Error("Keine offenen Amazon-Artikel gefunden.");
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Amazon-KI-Kategorisierung fehlgeschlagen." }, { status: 400 });
   }

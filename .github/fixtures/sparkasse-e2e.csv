@@ -1,0 +1,3 @@
+Auftragskonto;Buchungstag;Valutadatum;Buchungstext;Verwendungszweck;Beguenstigter/Zahlungspflichtiger;Betrag;Waehrung;Kundenreferenz (End-to-End)
+DE00123456780000000000;03.08.2026;03.08.2026;Kartenzahlung;Einkauf;E2E SUPERMARKT;-12,34;EUR;E2E-REF-0001
+DE00123456780000000000;04.08.2026;04.08.2026;Lastschrift;Internet;E2E TELEKOM;-17,66;EUR;E2E-REF-0002

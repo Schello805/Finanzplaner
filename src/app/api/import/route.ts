@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { accounts, imports, importTemplates, transactions } from "@/db/schema";
@@ -22,6 +22,7 @@ import { findMissingStoredTransactions, statementCoverage } from "@/features/imp
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { writeAudit } from "@/lib/audit";
 import { validateImportAccount } from "@/features/import/account-binding";
+import { runHouseholdIntegrityCheck } from "@/features/integrity/service";
 async function context(userId: string, accountId: string) {
   const { member, accountIds } = await memberAndVisibleAccountIds(userId);
   if (!accountIds.includes(accountId))
@@ -275,6 +276,7 @@ export async function POST(request: Request) {
       visibleAccountIds: [account.id],
     });
     await writeAudit("bank-import","Ein Kontoauszug wurde importiert.",{userId:user.userId,metadata:{accountId:account.id,importId:result.id,imported:selected.length,duplicates:duplicateCheck.exact.length,skippedSuspected:duplicateCheck.suspected.length-keptSuspects.length,accountValidation:accountValidation.status}});
+    after(() => runHouseholdIntegrityCheck(member.householdId, { audit: true, userId: user.userId }));
     return NextResponse.json(
       {
         importId: result.id,

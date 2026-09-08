@@ -2,6 +2,16 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.10.0] - 2026-09-08
+
+- Ein vollständiger Browser-Test prüft Anmeldung, Sparkassen-CSV-Import, Umsatzanzeige und die mobile Profilansicht gemeinsam gegen eine isolierte PostgreSQL-Testdatenbank.
+- GitHub Actions führt Typprüfung, Lint, 142 fachliche Tests, Sicherheitsprüfung, Produktions-Build und den Browser-Test bei jedem Push und Pull Request automatisch aus.
+- Die Amazon-KI läuft als dauerhaft gespeicherter Hintergrundauftrag weiter, auch wenn die Seite oder der Browser geschlossen wird. Fortschritt, Runden, Kosten, Pause und Wiederaufnahme bleiben serverseitig erhalten.
+- Gleichzeitige Startversuche erzeugen dank einer Datenbankgarantie niemals zwei parallele Amazon-KI-Aufträge für denselben Benutzer.
+- Eine neue Finanz-Integritätsprüfung kontrolliert centgenau Aufteilungen, Amazon-Verknüpfungen, Buchungsrichtungen und interne Umbuchungspaare.
+- CSV-, Amazon- und FinTS-Importe sowie Änderungen an Umsätzen lösen die Prüfung automatisch im Hintergrund aus. Administratoren können sie zusätzlich im Systemstatus ausführen und Abweichungen einsehen.
+- Beim Zurücksetzen der Finanzdaten werden auch alte KI-Aufträge entfernt; Benutzer-, Profil- und Systemeinstellungen bleiben weiterhin erhalten.
+
 ## [0.9.3] - 2026-09-08
 
 - Der Gesamtwert einer Amazon-Zahlungsgruppe wird nun centgenau aus allen enthaltenen Positionen summiert, statt nur den Wert der ersten Position zu übernehmen.

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "ai_jobs_user_active_unique" ON "ai_jobs" USING btree ("user_id","kind") WHERE "ai_jobs"."status" in ('queued', 'running', 'paused');

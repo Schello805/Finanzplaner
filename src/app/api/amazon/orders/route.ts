@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { and, desc, eq, inArray, notInArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
@@ -11,6 +11,7 @@ import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/current-user";
 import { decryptSecret } from "@/lib/security";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
+import { runHouseholdIntegrityCheck } from "@/features/integrity/service";
 
 const categorySchema = z.object({ itemId: z.string().uuid(), categoryId: z.string().uuid().nullable() });
 const applySchema = z.object({ itemIds: z.array(z.string().uuid()).min(1).max(200), transactionId: z.string().uuid() });
@@ -217,6 +218,7 @@ export async function POST(request: Request) {
       await tx.update(amazonOrderItems).set({ matchedTransactionId: transaction.id, updatedAt: new Date() }).where(inArray(amazonOrderItems.id, body.itemIds));
     });
     await writeAudit("amazon-match", "Amazon-Artikel wurden einer Bankbuchung zugeordnet.", { userId: user.userId, metadata: { transactionId: transaction.id, items: items.length, paymentGroups: paymentGroups.length, categories: grouped.size } });
+    after(() => runHouseholdIntegrityCheck(member.householdId, { audit: true, userId: user.userId }));
     return NextResponse.json({ ok: true, splitCount: grouped.size, paymentGroupCount: paymentGroups.length });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Amazon-Zuordnung fehlgeschlagen." }, { status: 400 });
