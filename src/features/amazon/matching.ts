@@ -6,6 +6,13 @@ export function amazonMatchScore(orderTotal: number, orderDate: string, transact
   return { score: Math.round(score * 100) / 100, days: Math.round(days), reason: days === 0 ? "Betrag und Datum stimmen überein" : `Betrag stimmt überein · ${Math.round(days)} Tage Abstand` };
 }
 
+export function amazonPaymentGroupTotal(items: Array<{ orderTotal: number | string }>) {
+  return items.reduce(
+    (totalCents, item) => totalCents + Math.round(Number(item.orderTotal) * 100),
+    0,
+  ) / 100;
+}
+
 type AmountCandidate = { id: string; amountCents: number };
 
 export function uniqueAmountCombination(candidates: AmountCandidate[], targetCents: number, minimumItems = 2) {

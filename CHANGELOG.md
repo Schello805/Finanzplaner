@@ -2,6 +2,12 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.9.3] - 2026-09-08
+
+- Der Gesamtwert einer Amazon-Zahlungsgruppe wird nun centgenau aus allen enthaltenen Positionen summiert, statt nur den Wert der ersten Position zu übernehmen.
+- Anzeige, Bankbuchungssuche und abschließende Betragsprüfung verwenden dieselbe zentrale Summenberechnung.
+- Zwei Positionen zu je 10,87 € ergeben damit korrekt 21,74 € und werden gegen eine Bankbuchung über 21,74 € abgeglichen.
+
 ## [0.9.2] - 2026-09-08
 
 - Kreditkarten-CSV-Dateien mit einer von Excel oder der Sparkasse vorangestellten `sep=;`-Zeile werden automatisch erkannt und korrekt ab der eigentlichen Kopfzeile gelesen.
