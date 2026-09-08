@@ -2,6 +2,13 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.8.2] - 2026-09-08
+
+- Die Amazon-Abstimmung berechnet ihre Summen nun über den vollständigen Import statt nur über die ersten 1.000 Artikel.
+- Offene Amazon-Zahlungen werden serverseitig in Seiten zu je 100 Bestellgruppen geladen; dadurch bleiben auch große Importe vollständig und bedienbar.
+- Die Oberfläche unterscheidet ausdrücklich zwischen einzelnen, noch nicht KI-analysierten Artikeln und offenen Bestell- beziehungsweise Zahlungsgruppen.
+- Filter zeigen nun vollständige Gesamtzahlen für offene Zahlungen mit und ohne passende Bankbuchung.
+
 ## [0.8.1] - 2026-09-08
 
 - Korrigiert einen schwerwiegenden Analysefehler: Unsichere KI-Zuordnungen unter 95 Prozent wurden mitsamt ihrem Betrag aus Monatsgesamtwert und Ausgabenverlauf entfernt.

@@ -15,7 +15,7 @@ const categorySchema = z.object({ itemId: z.string().uuid(), categoryId: z.strin
 const applySchema = z.object({ itemIds: z.array(z.string().uuid()).min(1).max(50), transactionId: z.string().uuid() });
 const cents = (value: number) => Math.round(value * 100);
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await requireUser();
     const { member, accountIds } = await memberAndVisibleAccountIds(user.userId);
@@ -31,16 +31,14 @@ export async function GET() {
       })
       .from(amazonOrderItems)
       .where(eq(amazonOrderItems.ownerMemberId, member.id))
-      .orderBy(desc(amazonOrderItems.orderDate))
-      .limit(1000);
+      .orderBy(desc(amazonOrderItems.orderDate));
     const availableCategories = await db.select({ id: categories.id, name: categories.name, isIncome: categories.isIncome }).from(categories).where(eq(categories.householdId, member.householdId));
     const amazonTransactions = accountIds.length ? await db
       .select({ id: transactions.id, bookedOn: transactions.bookedOn, amount: transactions.amount, currency: transactions.currency, accountName: accounts.name })
       .from(transactions)
       .innerJoin(accounts, eq(transactions.accountId, accounts.id))
       .where(and(inArray(transactions.accountId, accountIds), or(sql`${transactions.counterparty} ilike '%amazon%'`, sql`${transactions.purpose} ilike '%amazon%'`)))
-      .orderBy(desc(transactions.bookedOn))
-      .limit(1000) : [];
+      .orderBy(desc(transactions.bookedOn)) : [];
     const groups = new Map<string, typeof items>();
     for (const item of items) {
       const key = `${item.orderIdFingerprint}|${Number(item.orderTotal).toFixed(2)}|${item.shipDate ?? item.orderDate}`;
@@ -49,7 +47,8 @@ export async function GET() {
     const usedTransactionIds = new Set(
       items.flatMap((item) => item.matchedTransactionId ? [item.matchedTransactionId] : []),
     );
-    return NextResponse.json([...groups.entries()].slice(0, 250).map(([key, rows]) => {
+    const openGroups = [...groups.entries()].filter(([, rows]) => !rows.some((row) => row.matchedTransactionId));
+    const preparedGroups = openGroups.map(([key, rows]) => {
       const first = rows[0];
       const currentTransactionId = rows.find((row) => row.matchedTransactionId)?.matchedTransactionId ?? null;
       const candidates = amazonTransactions.flatMap((transaction) => {
@@ -70,7 +69,29 @@ export async function GET() {
         }),
         candidates: candidates.map((transaction) => ({ ...transaction, amount: Number(transaction.amount) })),
       };
-    }));
+    });
+    const url = new URL(request.url);
+    const match = z.enum(["all", "found", "missing"]).catch("all").parse(url.searchParams.get("match"));
+    const filteredGroups = preparedGroups.filter((group) => match === "all" || (match === "found" ? group.candidates.length > 0 : group.candidates.length === 0));
+    const pageSize = 100;
+    const pageCount = Math.max(1, Math.ceil(filteredGroups.length / pageSize));
+    const page = Math.min(pageCount, Math.max(1, Number(url.searchParams.get("page") ?? 1) || 1));
+    const found = preparedGroups.filter((group) => group.candidates.length > 0).length;
+    return NextResponse.json({
+      groups: filteredGroups.slice((page - 1) * pageSize, page * pageSize),
+      page,
+      pageSize,
+      pageCount,
+      filteredCount: filteredGroups.length,
+      counts: {
+        importedItems: items.length,
+        importedGroups: groups.size,
+        openGroups: preparedGroups.length,
+        linkedGroups: groups.size - preparedGroups.length,
+        bankMatchFound: found,
+        bankMatchMissing: preparedGroups.length - found,
+      },
+    });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Amazon-Bestellungen konnten nicht geladen werden." }, { status: 400 });
   }
