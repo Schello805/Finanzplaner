@@ -43,4 +43,22 @@ describe("Importvorlagen-Erkennung", () => {
     expect(result.autoDetected).toBe(false);
     expect(result.template).toBe(sparkasseCreditCard);
   });
+
+  it("erkennt einen Sparkassen-Kreditkartenexport trotz ausgewählter PayPal-Vorlage", () => {
+    const csv = [
+      "Umsatz getätigt von;Belegdatum;Buchungsdatum;Originalbetrag;Originalwährung;Umrechnungskurs;Buchungsbetrag;Buchungswährung;Transaktionsbeschreibung;Transaktionsbeschreibung Zusatz;Buchungsreferenz;Gebührenschlüssel;Länderkennzeichen;BAR-Entgelt+Buchungsreferenz;AEE+Buchungsreferenz;Abrechnungskennzeichen",
+      'BEISPIELPERSON;01.09.26;03.09.26;"12,00";EUR;1,000000;"-12,00";EUR;BEISPIEL HÄNDLER;TESTORT;REF-DEMO-1;;DE;;;Belastung',
+    ].join("\n");
+    const selected = candidates.find((item) => item.template === paypalActivity)!;
+
+    const result = resolveImportTemplate(
+      new Uint8Array(Buffer.from(csv, "latin1")),
+      selected,
+      candidates,
+    );
+
+    expect(result.autoDetected).toBe(true);
+    expect(result.template).toBe(sparkasseCreditCard);
+    expect(result.parsed.transactions).toHaveLength(1);
+  });
 });
