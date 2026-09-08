@@ -2,6 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.8.4] - 2026-09-08
+
+- KI-Analyse und Bankabstimmung verwenden nun denselben Amazon-Zeitraum und dasselbe maßgebliche Versand- beziehungsweise Bestelldatum.
+- Historische Amazon-Zahlungsgruppen außerhalb des importierten Bankzeitraums werden aus dem laufenden Arbeitsablauf ausgeblendet.
+- Die KI-Karte zeigt getrennt, wie viele Artikel im Bankzeitraum liegen, wie viele davon noch analysiert werden müssen und wie viele bewusst ausgeschlossen sind.
+- Bei vollständig bearbeitetem Bankzeitraum erscheint eine klare Fertigmeldung statt eines deaktivierten Analyseknopfs.
+- Die Abstimmung bezeichnet Amazon-Sammelbelastungen korrekt als Zahlungsgruppen und nennt nur die im Bankzeitraum tatsächlich relevanten offenen Gruppen.
+
 ## [0.8.3] - 2026-09-08
 
 - Die Amazon-KI analysiert nur noch Artikel aus dem Zeitraum, der durch importierte Amazon-Bankbuchungen abgedeckt ist.

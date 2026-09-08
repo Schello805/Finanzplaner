@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, count, eq, gte, inArray, isNull, lte, notInArray, or, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, notInArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { aiUsage, amazonOrderItems, categories, systemSettings, transactions, userPreferences } from "@/db/schema";
@@ -34,7 +34,10 @@ async function pending(userId: string, ids?: string[], excludedIds: string[] = [
     .from(transactions)
     .where(and(inArray(transactions.accountId, accountIds), or(sql`${transactions.counterparty} ilike '%amazon%'`, sql`${transactions.purpose} ilike '%amazon%'`))) : [];
   const coverage = amazonAnalysisCoverage(bankDates.map((row) => row.bookedOn), MATCH_TOLERANCE_DAYS);
-  const eligibleBase = coverage ? [...base, gte(amazonOrderItems.orderDate, coverage.from), lte(amazonOrderItems.orderDate, coverage.to)] : [...base, sql`false`];
+  const coverageDate = sql`coalesce(${amazonOrderItems.shipDate}, ${amazonOrderItems.orderDate})`;
+  const coverageFilter = coverage ? [sql`${coverageDate} >= ${coverage.from}`, sql`${coverageDate} <= ${coverage.to}`] : [sql`false`];
+  const [{ value: coverageItems }] = await db.select({ value: count() }).from(amazonOrderItems).where(and(eq(amazonOrderItems.ownerMemberId, member.id), ...coverageFilter));
+  const eligibleBase = [...base, ...coverageFilter];
   const [{ value: total }] = await db.select({ value: count() }).from(amazonOrderItems).where(and(...eligibleBase));
   const filters = [...eligibleBase];
   if (ids) filters.push(inArray(amazonOrderItems.id, ids));
@@ -49,18 +52,18 @@ async function pending(userId: string, ids?: string[], excludedIds: string[] = [
     merchant: "Amazon",
     purpose: `${decryptSecret(row.productName)}${row.department ? ` · Bereich: ${row.department}` : ""}`,
   } satisfies AiTransactionInput));
-  return { member, total, totalPending, excludedOutsideCoverage: Math.max(0, totalPending - total), coverage, rows };
+  return { member, total, totalPending, coverageItems, excludedOutsideCoverage: Math.max(0, totalPending - total), coverage, rows };
 }
 
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUser();
     const excludedIds = (request.nextUrl.searchParams.get("exclude") ?? "").split(",").filter((id) => z.string().uuid().safeParse(id).success).slice(0, 1000);
-    const { rows, total, totalPending, excludedOutsideCoverage, coverage } = await pending(user.userId, undefined, excludedIds);
-    if (!rows.length) return NextResponse.json({ available: true, count: total, totalPending, excludedOutsideCoverage, coverage, batchSize: 0, totalRounds: 0, items: [] });
+    const { rows, total, totalPending, coverageItems, excludedOutsideCoverage, coverage } = await pending(user.userId, undefined, excludedIds);
+    if (!rows.length) return NextResponse.json({ available: true, count: total, totalPending, coverageItems, excludedOutsideCoverage, coverage, batchSize: 0, totalRounds: 0, items: [] });
     const ai = await aiSettings();
     const price = resolveModelPrice(ai.provider, ai.config.model, ai.config);
-    return NextResponse.json({ available: true, count: total, totalPending, excludedOutsideCoverage, coverage, batchSize: rows.length, totalRounds: Math.ceil(total / BATCH_SIZE), remainingAfterBatch: Math.max(0, total - excludedIds.length - rows.length), provider: ai.provider, model: ai.config.model, items: rows.map(({ id }) => ({ id })), cost: price ? estimateCost(rows, price, Math.max(300, rows.length * 80)) : null });
+    return NextResponse.json({ available: true, count: total, totalPending, coverageItems, excludedOutsideCoverage, coverage, batchSize: rows.length, totalRounds: Math.ceil(total / BATCH_SIZE), remainingAfterBatch: Math.max(0, total - excludedIds.length - rows.length), provider: ai.provider, model: ai.config.model, items: rows.map(({ id }) => ({ id })), cost: price ? estimateCost(rows, price, Math.max(300, rows.length * 80)) : null });
   } catch (error) {
     return NextResponse.json({ available: false, error: error instanceof Error ? error.message : "Amazon-KI-Vorschau fehlgeschlagen." }, { status: 400 });
   }

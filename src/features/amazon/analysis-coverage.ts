@@ -15,3 +15,7 @@ export function amazonAnalysisCoverage(bankBookingDates: string[], toleranceDays
     bankTransactions: sortedDates.length,
   };
 }
+
+export function isWithinAmazonCoverage(value: string, coverage: { from: string; to: string } | null) {
+  return Boolean(coverage && value >= coverage.from && value <= coverage.to);
+}

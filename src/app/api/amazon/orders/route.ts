@@ -6,6 +6,7 @@ import { accounts, amazonOrderItems, categories, transactions, transactionSplits
 import { allocateAmazonCategories } from "@/features/amazon/allocation";
 import { suggestAmazonCategory } from "@/features/amazon/category-suggestions";
 import { amazonMatchScore } from "@/features/amazon/matching";
+import { amazonAnalysisCoverage, isWithinAmazonCoverage } from "@/features/amazon/analysis-coverage";
 import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/current-user";
 import { decryptSecret } from "@/lib/security";
@@ -39,6 +40,7 @@ export async function GET(request: Request) {
       .innerJoin(accounts, eq(transactions.accountId, accounts.id))
       .where(and(inArray(transactions.accountId, accountIds), or(sql`${transactions.counterparty} ilike '%amazon%'`, sql`${transactions.purpose} ilike '%amazon%'`)))
       .orderBy(desc(transactions.bookedOn)) : [];
+    const coverage = amazonAnalysisCoverage(amazonTransactions.map((transaction) => transaction.bookedOn));
     const groups = new Map<string, typeof items>();
     for (const item of items) {
       const key = `${item.orderIdFingerprint}|${Number(item.orderTotal).toFixed(2)}|${item.shipDate ?? item.orderDate}`;
@@ -47,7 +49,8 @@ export async function GET(request: Request) {
     const usedTransactionIds = new Set(
       items.flatMap((item) => item.matchedTransactionId ? [item.matchedTransactionId] : []),
     );
-    const openGroups = [...groups.entries()].filter(([, rows]) => !rows.some((row) => row.matchedTransactionId));
+    const relevantGroups = [...groups.entries()].filter(([, rows]) => isWithinAmazonCoverage(rows[0].shipDate ?? rows[0].orderDate, coverage));
+    const openGroups = relevantGroups.filter(([, rows]) => !rows.some((row) => row.matchedTransactionId));
     const preparedGroups = openGroups.map(([key, rows]) => {
       const first = rows[0];
       const currentTransactionId = rows.find((row) => row.matchedTransactionId)?.matchedTransactionId ?? null;
@@ -86,8 +89,10 @@ export async function GET(request: Request) {
       counts: {
         importedItems: items.length,
         importedGroups: groups.size,
+        relevantGroups: relevantGroups.length,
+        excludedGroups: groups.size - relevantGroups.length,
         openGroups: preparedGroups.length,
-        linkedGroups: groups.size - preparedGroups.length,
+        linkedGroups: relevantGroups.length - preparedGroups.length,
         bankMatchFound: found,
         bankMatchMissing: preparedGroups.length - found,
       },
