@@ -15,6 +15,8 @@ export async function GET() {
     ]);
     return NextResponse.json({
       householdName: household?.name ?? "Familie",
+      displayName: member.displayName,
+      username: user.username,
       visibleAccountCount: accountIds.length,
       memberCount: Number(members.value),
       isAdmin: user.isAdmin,

@@ -2,6 +2,14 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.9.1] - 2026-09-08
+
+- Die Einstellungsübersicht konzentriert sich auf fachliche Funktionen und zeigt sie in kompakteren, leichter erfassbaren Karten.
+- Profil, E-Mail, Passwort und Zwei-Faktor-Anmeldung wurden aus der allgemeinen Übersicht in einen gemeinsamen persönlichen Bereich verschoben.
+- Auf dem Desktop öffnet der persönliche Eintrag links unten direkt das eigene Profil und zeigt Name sowie Benutzername; die Haushaltsinformation bleibt dezent darunter erhalten.
+- Auf dem Smartphone führt „Mein Profil“ im Kopf der Einstellungen zum persönlichen Bereich.
+- Abmelden ist nun direkt im Profil möglich.
+
 ## [0.9.0] - 2026-09-08
 
 - Eine neue zentrale Seite „Zuordnungen & Automatik“ verwaltet Bank-, Buchungstext- und Amazon-Artikelregeln gemeinsam und erklärt die feste Prioritätsreihenfolge.

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BarChart3, Landmark, List, Settings, ShieldCheck } from "lucide-react";
+import { BarChart3, ChevronRight, Landmark, List, Settings, ShieldCheck, UserRound } from "lucide-react";
 
 const links = [
   { href: "/", label: "Analysen", icon: BarChart3 },
@@ -16,7 +16,7 @@ const links = [
 
 export function AppNavigation() {
   const pathname = usePathname();
-  const [summary, setSummary] = useState<{householdName:string;visibleAccountCount:number;memberCount:number;isAdmin:boolean}|null>(null);
+  const [summary, setSummary] = useState<{householdName:string;displayName:string;username:string;visibleAccountCount:number;memberCount:number;isAdmin:boolean}|null>(null);
   useEffect(()=>{fetch("/api/household/summary").then(response=>response.json()).then(body=>{if(typeof body.visibleAccountCount==="number")setSummary(body)}).catch(()=>undefined)},[]);
   if (["/anmelden","/passwort-aendern","/passwort-vergessen","/passwort-zuruecksetzen","/einrichtung","/einladung"].includes(pathname)) return null;
   return <>
@@ -34,8 +34,11 @@ export function AppNavigation() {
           </Link>;
         })}
       </nav>
-      <div className="absolute bottom-6 left-4 right-4 rounded-2xl bg-[var(--surface-soft)] p-4 text-sm">
-        <div className="font-semibold">{summary?.householdName??"Familie"}</div><div className="mt-1 muted">{summary?`${summary.visibleAccountCount} ${summary.visibleAccountCount===1?"Konto":"Konten"} · ${summary.memberCount} ${summary.memberCount===1?"Mitglied":"Mitglieder"}`:"Haushaltsdaten werden geladen …"}</div>
+      <div className="absolute bottom-6 left-4 right-4 overflow-hidden rounded-2xl bg-[var(--surface-soft)] text-sm">
+        <Link href="/einstellungen/profil" className={`group flex items-center gap-3 p-3.5 text-[var(--text)] no-underline hover:bg-[var(--border)] ${pathname.startsWith("/einstellungen/profil")||pathname.startsWith("/einstellungen/sicherheit")?"bg-[var(--border)]":""}`}>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--primary)]"><UserRound size={19}/></span><span className="min-w-0 flex-1"><strong className="block truncate">{summary?.displayName??"Mein Profil"}</strong><span className="block truncate text-xs muted">{summary?.username?`@${summary.username}`:"Profil & Sicherheit"}</span></span><ChevronRight size={17} className="shrink-0 muted transition-transform group-hover:translate-x-0.5"/>
+        </Link>
+        <div className="border-t border-[var(--border)] px-3.5 py-2.5"><div className="truncate text-xs font-semibold">{summary?.householdName??"Familie"}</div><div className="mt-0.5 text-[11px] muted">{summary?`${summary.visibleAccountCount} ${summary.visibleAccountCount===1?"Konto":"Konten"} · ${summary.memberCount} ${summary.memberCount===1?"Mitglied":"Mitglieder"}`:"Haushaltsdaten werden geladen …"}</div></div>
       </div>
     </aside>
     <nav aria-label="Mobile Hauptnavigation" className={`fixed bottom-0 left-0 right-0 z-30 grid ${summary?.isAdmin?"grid-cols-5":"grid-cols-4"} border-t border-[var(--border)] bg-[var(--surface)] px-1 pb-[env(safe-area-inset-bottom)] md:hidden`}>
