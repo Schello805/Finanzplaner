@@ -6,18 +6,17 @@ import {
   findDuplicates,
   fingerprintFile,
   isPendingTransaction,
-  parseBankCsv,
 } from "@/features/import/parser";
 import { sparkasseCamtV8 } from "@/features/import/sparkasse-camt-v8";
 import type {
   ImportTemplate,
   ParsedTransaction,
 } from "@/features/import/types";
+import { resolveImportTemplate } from "@/features/import/template-detection";
 import { merchantRuleMap, normalizeMerchant } from "@/features/categorization/merchant-rules";
 import { applyAutomaticAssignments } from "@/features/categorization/automatic-assignments";
 import { requireUser } from "@/lib/current-user";
 import { encryptSecret, stablePrivateFingerprint } from "@/lib/security";
-import { decodeBankCsv } from "@/features/import/decode";
 import { findMissingStoredTransactions, statementCoverage } from "@/features/import/reconciliation";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { writeAudit } from "@/lib/audit";
@@ -75,56 +74,49 @@ export async function POST(request: Request) {
       .limit(1);
     if (prior.length && mode !== "preview")
       throw new Error("Diese Datei wurde für das Konto bereits importiert.");
-    const templateId = String(form.get("templateId") ?? "");
-    let template: ImportTemplate = sparkasseCamtV8;
-    let storedTemplateId: string | undefined;
-    if (templateId) {
-      const [row] = await db
-        .select()
-        .from(importTemplates)
-        .where(
-          and(
-            eq(importTemplates.id, templateId),
-            eq(importTemplates.householdId, member.householdId),
-            eq(importTemplates.enabled, true),
-          ),
-        )
-        .limit(1);
-      if (!row)
-        throw new Error("Importvorlage nicht gefunden oder nicht aktiv.");
+    const requestedTemplateId = String(form.get("templateId") ?? "");
+    const activeTemplateRows = await db
+      .select()
+      .from(importTemplates)
+      .where(
+        and(
+          eq(importTemplates.householdId, member.householdId),
+          eq(importTemplates.enabled, true),
+        ),
+      );
+    const templateCandidates = activeTemplateRows.map((row) => {
       const c = row.config;
-      template = {
-        id: row.id,
-        name: row.name,
-        bankName: row.bankName,
-        delimiter: c.delimiter,
-        encoding: c.encoding,
-        headerRow: c.headerRow,
-        skipEmptyLines: c.skipEmptyLines,
-        dateFormat: c.dateFormat as ImportTemplate["dateFormat"],
-        decimalSeparator: c.decimalSeparator,
-        columns: c.columns as ImportTemplate["columns"],
-        requiredFields: c.requiredFields as ImportTemplate["requiredFields"],
-        rowFilter: c.rowFilter,
+      return {
+        storedId: row.id,
+        template: {
+          id: row.id,
+          name: row.name,
+          bankName: row.bankName,
+          delimiter: c.delimiter,
+          encoding: c.encoding,
+          headerRow: c.headerRow,
+          skipEmptyLines: c.skipEmptyLines,
+          dateFormat: c.dateFormat as ImportTemplate["dateFormat"],
+          decimalSeparator: c.decimalSeparator,
+          columns: c.columns as ImportTemplate["columns"],
+          requiredFields: c.requiredFields as ImportTemplate["requiredFields"],
+          rowFilter: c.rowFilter,
+        } satisfies ImportTemplate,
       };
-      storedTemplateId = row.id;
-    } else {
-      const [row] = await db
-        .select()
-        .from(importTemplates)
-        .where(
-          and(
-            eq(importTemplates.householdId, member.householdId),
-            eq(importTemplates.builtin, true),
-          ),
-        )
-        .limit(1);
-      storedTemplateId = row?.id;
+    });
+    const selectedCandidate = requestedTemplateId
+      ? templateCandidates.find((candidate) => candidate.storedId === requestedTemplateId)
+      : templateCandidates.find((candidate) => candidate.template.name === sparkasseCamtV8.name)
+        ?? templateCandidates[0];
+    if (!selectedCandidate) {
+      throw new Error(
+        requestedTemplateId
+          ? "Importvorlage nicht gefunden oder nicht aktiv."
+          : "Keine aktive Importvorlage vorhanden.",
+      );
     }
-    if (!storedTemplateId)
-      throw new Error("Keine aktive Importvorlage vorhanden.");
-    const content = decodeBankCsv(bytes, template.encoding);
-    const parsed = parseBankCsv(content, template);
+    const resolvedImport = resolveImportTemplate(bytes, selectedCandidate, templateCandidates);
+    const { template, parsed, storedId: storedTemplateId } = resolvedImport;
     const accountValidation=validateImportAccount(parsed.transactions.map(transaction=>transaction.accountReference),account.ibanLast4,account.ibanFingerprint,stablePrivateFingerprint);
     if(accountValidation.status==="mismatch")throw new Error(`Import gestoppt: ${accountValidation.message}`);
     const pendingTransactions = parsed.transactions.filter(isPendingTransaction);
@@ -206,6 +198,11 @@ export async function POST(request: Request) {
         statementPeriod: firstDate && lastDate ? { from: firstDate, to: lastDate } : null,
         reconciliationSkippedReason,
         importSource: `${template.bankName} · ${template.name}`,
+        detectedTemplateId: storedTemplateId,
+        templateAutoDetected: resolvedImport.autoDetected,
+        templateSelectionMessage: resolvedImport.autoDetected
+          ? `Die gewählte Vorlage passte nicht. Die Datei wurde eindeutig als „${template.bankName} · ${template.name}“ erkannt und entsprechend geprüft.`
+          : null,
         missingStored,
         ready: duplicateCheck.accepted.length,
         exactDuplicates: duplicateCheck.exact.length,

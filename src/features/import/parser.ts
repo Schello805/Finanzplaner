@@ -48,7 +48,21 @@ export function parseBankCsv(input: string, template: ImportTemplate): ImportRes
   if (separatorDirective) source = source.slice(separatorDirective[0].length);
   const delimiters = [...new Set([separatorDirective?.[1], template.delimiter, ";", ",", "\t"].filter(Boolean) as string[])];
   const candidates = delimiters.map(delimiter => Papa.parse<Record<string, string>>(source, { header: true, delimiter, skipEmptyLines: template.skipEmptyLines ?? false }));
-  let parsed = candidates.find(candidate => template.requiredFields.every(field => Boolean(resolveHeader(candidate.meta.fields ?? [], template.columns[field])))) ?? candidates[0];
+  const matchingCandidate = candidates.find(candidate =>
+    template.requiredFields.every(field =>
+      Boolean(resolveHeader(candidate.meta.fields ?? [], template.columns[field])),
+    ),
+  );
+  // If the selected template does not fit the file, prefer the cleanest header
+  // interpretation. Otherwise a valid comma-separated file parsed first with a
+  // semicolon template can misleadingly report a quote error instead of the
+  // actual problem: the selected source does not match its columns.
+  let parsed = matchingCandidate ?? candidates
+    .filter((candidate) =>
+      !candidate.errors.some((error) => error.type === "Delimiter" || error.type === "Quotes"),
+    )
+    .sort((left, right) => (right.meta.fields?.length ?? 0) - (left.meta.fields?.length ?? 0))[0]
+    ?? candidates[0];
   let toleratedMalformedQuotes = false;
   if (parsed.errors.some((error) => error.type === "Quotes")) {
     const fallbacks = delimiters.map((delimiter) =>

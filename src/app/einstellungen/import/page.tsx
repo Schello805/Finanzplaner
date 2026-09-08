@@ -36,6 +36,9 @@ export default function ImportPage() {
     statementPeriod: { from: string; to: string } | null;
     reconciliationSkippedReason: string | null;
     importSource: string;
+    detectedTemplateId: string;
+    templateAutoDetected: boolean;
+    templateSelectionMessage: string | null;
     missingStored: Array<{
       id: string;
       date: string;
@@ -112,6 +115,7 @@ export default function ImportPage() {
     }
     if (mode === "preview") {
       setPreview(body);
+      if (body.detectedTemplateId) setTemplateId(body.detectedTemplateId);
       setKeepSuspected(new Set());
       setSelectedMissing(new Set());
     } else {
@@ -217,7 +221,10 @@ export default function ImportPage() {
             Datenquelle und Format
             <select
               value={templateId}
-              onChange={(e) => setTemplateId(e.target.value)}
+              onChange={(e) => {
+                setTemplateId(e.target.value);
+                setPreview(null);
+              }}
               className="mt-2 min-h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3"
             >
               <option value="">Format auswählen</option>
@@ -240,7 +247,10 @@ export default function ImportPage() {
               type="file"
               accept=".csv,text/csv"
               className="sr-only"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                setFile(e.target.files?.[0] ?? null);
+                setPreview(null);
+              }}
             />
           </label>
           <p className="mt-3 text-sm leading-6 muted">
@@ -318,6 +328,12 @@ export default function ImportPage() {
       {preview && (
         <section className="card p-5">
           <h2 className="font-bold">Importvorschau · {preview.importSource}</h2>
+          {preview.templateAutoDetected && preview.templateSelectionMessage && (
+            <div role="status" className="mt-4 rounded-xl bg-sky-50 p-4 text-sm leading-6 text-sky-900">
+              <strong>Datenquelle automatisch korrigiert.</strong>{" "}
+              {preview.templateSelectionMessage}
+            </div>
+          )}
           <div className={`mt-4 rounded-xl p-4 text-sm leading-6 ${preview.accountValidation.status==="verified"?"bg-emerald-50 text-emerald-900":"bg-amber-50 text-amber-900"}`}><strong>{preview.accountValidation.status==="verified"?"Zielkonto bestätigt.":"Zielkonto nicht automatisch prüfbar."}</strong>{" "}{preview.accountValidation.message}</div>
           {preview.alreadyImported && (
             <div className="mt-4 rounded-xl bg-sky-50 p-4 text-sm leading-6 text-sky-900">

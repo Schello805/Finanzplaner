@@ -126,6 +126,16 @@ describe("Sparkassen-Kreditkartenumsätze", () => {
     expect(parseBankCsv(csv, sparkasseCreditCard).transactions[0].direction).toBe("income");
   });
 
+  it("meldet bei einem gültigen PayPal-Export die falsche Vorlage statt kaputter Anführungszeichen", () => {
+    const csv = [
+      "Datum,Name,Typ,Status,Währung,Netto,Transaktionscode,Betreff",
+      '05.09.2026,Beispiel GmbH,Zahlung,Abgeschlossen,EUR,"-12,34",PP-DEMO-1,Beispielartikel',
+    ].join("\n");
+    expect(() => parseBankCsv(csv, sparkasseCreditCard)).toThrow(
+      "Notwendige Spalten fehlen",
+    );
+  });
+
   it("liest Sparkassen-Exporte mit fehlerhaften Anführungszeichen tolerant", () => {
     const csv = [
       "Buchungsdatum;Buchungsbetrag;Buchungswährung;Transaktionsbeschreibung;Transaktionsbeschreibung Zusatz",

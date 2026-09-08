@@ -2,6 +2,13 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.10.2] - 2026-09-08
+
+- Der CSV-Import erkennt eine eindeutig passende aktive Datenquelle automatisch, wenn versehentlich die falsche Vorlage ausgewählt wurde.
+- Ein PayPal-Aktivitätsbericht wird dadurch auch bei vorausgewählter Kreditkartenvorlage korrekt als PayPal-Datei geprüft; die korrigierte Auswahl wird in der Vorschau sichtbar erklärt und für den Import übernommen.
+- Gültige CSV-Dateien mit einem anderen Trennzeichen melden bei einer unpassenden Vorlage nun fehlende Pflichtspalten statt irreführend fehlerhafte Anführungszeichen.
+- Anonymisierte Regressionstests sichern die Formaterkennung ab; echte Finanzdaten werden weder in Tests noch im Repository gespeichert.
+
 ## [0.10.1] - 2026-09-08
 
 - Korrigiert die internen Zeitstempel der Migrationen 21 und 22, damit Drizzle sie auf bestehenden Installationen nach Migration 20 tatsächlich ausführt.
