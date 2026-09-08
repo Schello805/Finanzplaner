@@ -10,7 +10,7 @@ import { requireUser } from "@/lib/current-user";
 import { decryptSecret } from "@/lib/security";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { isForbiddenCategoryName, normalizeCategoryName } from "@/features/categories/policy";
-import { automaticAcceptanceThreshold } from "@/features/categorization/confidence";
+import { automaticAcceptanceThreshold, LIKELY_CONFIDENCE } from "@/features/categorization/confidence";
 
 const BATCH_SIZE = 25;
 type ProviderConfig = { model: string; inputPricePerMillion?: number; outputPricePerMillion?: number };
@@ -66,8 +66,9 @@ export async function POST(request: Request) {
     if (!rows.length) throw new Error("Keine offenen Amazon-Artikel gefunden.");
     const ai = await aiSettings();
     const allowed = await db.select({ id: categories.id, name: categories.name }).from(categories).where(and(eq(categories.householdId, member.householdId), eq(categories.isIncome, false)));
-    const result = await categorizeWithAi({ provider: ai.provider, apiKey: ai.apiKey, model: ai.config.model }, rows, allowed.map((category) => category.name));
-    const byName = new Map(allowed.map((category) => [normalizeCategoryName(category.name), category.id]));
+    const eligibleCategories = allowed.filter((category) => !isForbiddenCategoryName(category.name));
+    const result = await categorizeWithAi({ provider: ai.provider, apiKey: ai.apiKey, model: ai.config.model }, rows, eligibleCategories.map((category) => category.name));
+    const byName = new Map(eligibleCategories.map((category) => [normalizeCategoryName(category.name), category.id]));
     const [preferences] = await db.select({ level: userPreferences.aiAutoAcceptLevel }).from(userPreferences).where(eq(userPreferences.userId, user.userId)).limit(1);
     const autoThreshold = automaticAcceptanceThreshold(preferences?.level);
     const suggestions: Array<{ id: string; categoryId: string; category: string; confidence: number; reason: string }> = [];
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
       const categoryId = item.category ? byName.get(normalizeCategoryName(item.category)) : undefined;
       if (!categoryId) {
         const name = (item.proposedCategory ?? item.category)?.trim();
-        if (name && !isForbiddenCategoryName(name) && !/^(andere?s?|diverses)$/i.test(name)) {
+        if (name && item.confidence >= LIKELY_CONFIDENCE && !isForbiddenCategoryName(name) && !/^(andere?s?|diverses)$/i.test(name)) {
           categoryProposals.push({ id: item.id, name, confidence: item.confidence, reason: item.reason });
           await db.update(amazonOrderItems).set({aiSuggestedCategoryId:null,aiSuggestedCategoryName:name,aiSuggestionConfidence:item.confidence.toFixed(4),aiSuggestionReason:item.reason,aiAnalyzedAt:new Date(),updatedAt:new Date()}).where(and(eq(amazonOrderItems.id,item.id),eq(amazonOrderItems.ownerMemberId,member.id),isNull(amazonOrderItems.categoryId)));
         } else {

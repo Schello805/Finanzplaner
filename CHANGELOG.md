@@ -2,6 +2,13 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.7.6] - 2026-09-08
+
+- KI-Kategorien müssen nun den tatsächlichen Verwendungszweck beschreiben, nicht Händler, Zahlungsweg oder Bezugsquelle.
+- Begriffe wie „Online-Marktplatzkäufe“, „Lokaler Einzelhandel“, „Fachhandel“, „Onlinehandel“ und „Zahlungsanbieter“ sind als neue Kategorien gesperrt.
+- Bereits vorhandene unspezifische Bezugsquellen-Kategorien werden der KI nicht mehr als mögliche Zuordnungsziele angeboten.
+- Neue Kategorien werden nur noch ab mindestens 75 Prozent Sicherheit vorgeschlagen. Bei unklarem Verwendungszweck bleibt ein Umsatz bewusst ungeklärt.
+
 ## [0.7.5] - 2026-09-07
 
 - Eine neue Amazon-Artikelmatrix zeigt jeden unterschiedlichen Produktnamen, seine Häufigkeit und die zugeordnete Kategorie; Änderungen erzeugen eine dauerhaft gültige exakte Artikelregel.

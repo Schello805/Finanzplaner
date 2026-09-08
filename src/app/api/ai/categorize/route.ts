@@ -12,7 +12,7 @@ import { decryptSecret } from "@/lib/security";
 import { memberAndVisibleAccountIds } from "@/lib/visible-accounts";
 import { normalizeMerchant } from "@/features/categorization/merchant-rules";
 import { isForbiddenCategoryName, normalizeCategoryName } from "@/features/categories/policy";
-import { automaticAcceptanceThreshold } from "@/features/categorization/confidence";
+import { automaticAcceptanceThreshold, LIKELY_CONFIDENCE } from "@/features/categorization/confidence";
 type ProviderConfig = {
   model: string;
   inputPricePerMillion?: number;
@@ -189,15 +189,18 @@ export async function POST(request: Request) {
       .select({ id: categories.id, name: categories.name,isIncome:categories.isIncome })
       .from(categories)
       .where(eq(categories.householdId, member.householdId));
+    const eligibleCategories = allowed.filter(
+      (category) => !isForbiddenCategoryName(category.name),
+    );
     const result = await categorizeWithAi(
       { provider: ai.provider, apiKey: ai.apiKey, model: ai.config.model },
       preview,
-      allowed.map((c) => c.name),
+      eligibleCategories.map((c) => c.name),
     );
     if (!result.data.results.length)
       throw new Error("Die KI hat keine Zuordnung geliefert. Bitte starte die Analyse erneut.");
     const byName = new Map(
-      allowed.map((c) => [normalizeCategoryName(c.name), c]),
+      eligibleCategories.map((c) => [normalizeCategoryName(c.name), c]),
     );
     const [preferences] = await db.select({aiAutoAcceptLevel:userPreferences.aiAutoAcceptLevel}).from(userPreferences).where(eq(userPreferences.userId, user.userId)).limit(1);
     const threshold=automaticAcceptanceThreshold(preferences?.aiAutoAcceptLevel);
@@ -216,7 +219,7 @@ export async function POST(request: Request) {
       const categoryId=matchedCategory&&source&&matchedCategory.isIncome===expectsIncome?matchedCategory.id:undefined;
       if (!categoryId) {
         const proposedName = matchedCategory ? undefined : (item.proposedCategory ?? item.category)?.trim();
-        if (proposedName && source && !isForbiddenCategoryName(proposedName) && !/^(andere?s?|diverses)$/i.test(proposedName)) {
+        if (proposedName && source && item.confidence >= LIKELY_CONFIDENCE && !isForbiddenCategoryName(proposedName) && !/^(andere?s?|diverses)$/i.test(proposedName)) {
           const key = `${expectsIncome ? "income" : "expense"}:${proposedName.toLocaleLowerCase("de-DE")}`;
           const existing = categoryProposalMap.get(key);
           if (existing) {
