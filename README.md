@@ -106,7 +106,7 @@ Details stehen in [docs/PRIVACY.md](docs/PRIVACY.md) und [SECURITY.md](SECURITY.
 
 ## Sparkasse direkt verbinden
 
-Unter **Einstellungen → Sparkasse verbinden** führt ein Assistent durch die lesende FinTS-Einrichtung. Benötigt werden eine einmalig für den Finanzplaner registrierte FinTS-Produkt-ID, die BLZ und FinTS-URL der Sparkasse sowie die üblichen Online-Banking-Zugangsdaten. Alle Felder enthalten Hilfetexte zur Beschaffung der Angaben. Nach der Kontozuordnung können die letzten 90 Tage direkt abgerufen werden; Dubletten werden nicht erneut angelegt und sichere lokale Regeln sofort angewendet.
+Unter **Einstellungen → Sparkasse verbinden** führt ein Assistent durch die lesende FinTS-Einrichtung. Benötigt werden eine einmalig für den Finanzplaner registrierte FinTS-Produkt-ID, die BLZ sowie die üblichen Online-Banking-Zugangsdaten. Die passende FinTS-PIN/TAN-Adresse kann anhand der BLZ automatisch aus dem aktuellen [HBCI4Java-Bankverzeichnis](https://github.com/hbci4j/hbci4java/blob/master/src/main/resources/blz.properties) ermittelt werden; die Idee folgt dem MIT-lizenzierten Projekt [python-fints-url](https://github.com/dr-duplo/python-fints-url). Die manuelle Eingabe bleibt als Rückfallweg erhalten. Nach der Kontozuordnung können die letzten 90 Tage direkt abgerufen werden; Dubletten werden nicht erneut angelegt und sichere lokale Regeln sofort angewendet.
 
 Der Finanzplaner implementiert keine Überweisungen. Zugangsdaten werden lokal verschlüsselt gespeichert und nur direkt an den konfigurierten HTTPS-Endpunkt der Sparkasse übertragen. Je nach Sparkasse kann für Einrichtung oder Abruf eine TAN beziehungsweise eine Freigabe in der pushTAN-App erforderlich sein.
 

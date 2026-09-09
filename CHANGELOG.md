@@ -2,6 +2,13 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.11.1] - 2026-09-09
+
+- Der Sparkassen-Assistent ermittelt Institut und FinTS-PIN/TAN-Adresse anhand der BLZ und übernimmt den gefundenen Endpunkt automatisch.
+- Die Bankliste wird serverseitig aus dem aktuellen HBCI4Java-Verzeichnis geladen und für 24 Stunden zwischengespeichert; die eingegebene BLZ wird dabei nicht an den Verzeichnisanbieter übertragen.
+- Automatisch ermittelte und manuell eingetragene Adressen werden serverseitig auf HTTPS und bekannte Sparkassen-FinTS-Domains geprüft, bevor Zugangsdaten verwendet werden.
+- Bei fehlender oder nicht erreichbarer Verzeichnisquelle bleibt die manuelle Eingabe erhalten.
+
 ## [0.11.0] - 2026-09-08
 
 - Eine neue interaktive Auswertung zeigt die Hauptkategorien als Linien für die letzten zwölf vollständigen Monate und als gestapelte Jahressummen über den gesamten verfügbaren Zeitraum.

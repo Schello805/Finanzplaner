@@ -10,6 +10,7 @@ import {requireUser} from "@/lib/current-user";
 import {encryptSecret} from "@/lib/security";
 import {memberAndVisibleAccountIds} from "@/lib/visible-accounts";
 import {writeAudit} from "@/lib/audit";
+import {isTrustedSparkasseEndpoint} from "@/features/fints/bank-directory";
 
 const discoverSchema=z.object({action:z.literal("discover"),productId:z.string().trim().min(1).max(64),endpoint:z.string().url().startsWith("https://"),blz:z.string().regex(/^\d{8}$/),userId:z.string().trim().min(1).max(64),pin:z.string().min(1).max(64)});
 const methodSchema=z.object({action:z.literal("select_method"),token:z.string().uuid(),tanMethodId:z.number().int(),tanMediaName:z.string().max(100).optional()});
@@ -31,6 +32,7 @@ export async function GET(){try{const user=await requireUser();const{member,acco
 export async function POST(request:Request){try{
  const user=await requireUser();const{member,accountIds}=await memberAndVisibleAccountIds(user.userId);const body=bodySchema.parse(await request.json());cleanupFinTsSessions();
  if(body.action==="discover"){
+  if(!isTrustedSparkasseEndpoint(body.endpoint))throw new Error("Die FinTS-Adresse gehört nicht zu einem bekannten Sparkassen-Bankserver. Bitte ermittle sie über die BLZ oder prüfe die Adresse.");
   const config=FinTSConfig.forFirstTimeUse(body.productId,process.env.APP_VERSION??"0.5",body.endpoint,body.blz,body.userId,body.pin);
   const client=new FinTSClient(config),response=await client.synchronize();
   if(!response.success&&!response.bankingInformation)throw new Error(answers(response));
