@@ -2,6 +2,11 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.11.2] - 2026-09-09
+
+- Die vollständige App-Version wird für FinTS automatisch in die erlaubten maximal fünf Zeichen verdichtet. Dadurch scheitern Einrichtung und Umsatzabruf nicht mehr an `productVersion`.
+- Die FinTS-Produkt-ID wird serverseitig entsprechend dem Protokoll auf höchstens 25 Zeichen begrenzt und meldet ungültige Eingaben verständlich.
+
 ## [0.11.1] - 2026-09-09
 
 - Der Sparkassen-Assistent ermittelt Institut und FinTS-PIN/TAN-Adresse anhand der BLZ und übernimmt den gefundenen Endpunkt automatisch.
