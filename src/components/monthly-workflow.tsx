@@ -81,6 +81,10 @@ export function MonthlyWorkflow() {
     },
   ];
 
+  // Sobald alle vier Monatsabschluss-Schritte erledigt sind, nimmt der Assistent
+  // keinen Platz mehr auf der Startseite ein. Die Auswertung bleibt darunter sichtbar.
+  if (clarified) return null;
+
   const nextIndex = clarified ? steps.length - 1 : Math.max(0, steps.findIndex((step) => !step.done));
   const next = steps[nextIndex];
   const NextIcon = next.icon;
