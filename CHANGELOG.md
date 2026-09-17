@@ -2,6 +2,11 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.11.3] - 2026-09-17
+
+- Die FinTS-Einrichtung erkennt gerätepflichtige TAN-Verfahren korrekt und fragt die Gerätebezeichnung für pushTAN ab, statt automatisch `default` zu senden.
+- Fehler bei der Sparkassen-Einrichtung und beim Umsatzabruf werden zusätzlich sicher im Dienstprotokoll erfasst.
+
 ## [0.11.2] - 2026-09-09
 
 - Die vollständige App-Version wird für FinTS automatisch in die erlaubten maximal fünf Zeichen verdichtet. Dadurch scheitern Einrichtung und Umsatzabruf nicht mehr an `productVersion`.

@@ -38,13 +38,13 @@ export async function POST(request:Request){try{
   const client=new FinTSClient(config),response=await client.synchronize();
   if(!response.success&&!response.bankingInformation)throw new Error(answers(response));
   const token=randomUUID(),session:PendingFinTsSession={client,productId:body.productId,endpoint:body.endpoint,blz:body.blz,userId:body.userId,pin:body.pin,bankingInformation:response.bankingInformation,createdAt:Date.now()};finTsSessions.set(token,session);
-  const methods=config.availableTanMethods.map(method=>({id:method.id,name:method.name,isDecoupled:method.isDecoupled,media:method.activeTanMedia,mediaRequired:String(method.tanMediaRequirement).toLowerCase().includes("required")}));
+  const methods=config.availableTanMethods.map(method=>({id:method.id,name:method.name,isDecoupled:method.isDecoupled,media:method.activeTanMedia,mediaRequired:method.tanMediaRequirement===2}));
   if(!methods.length)throw new Error("Die Sparkasse hat kein unterstütztes PIN/TAN-Verfahren geliefert.");
   return NextResponse.json({token,stage:"tan_method",methods,bankMessages:response.bankingInformation?.bankMessages??[]});
  }
  const session=finTsSessions.get(body.token);if(!session)throw new Error("Die Einrichtungssitzung ist abgelaufen. Bitte beginne erneut.");
  if(body.action==="select_method"){
-  session.client.selectTanMethod(body.tanMethodId);if(body.tanMediaName)session.client.selectTanMedia(body.tanMediaName);session.tanMethodId=body.tanMethodId;session.tanMediaName=body.tanMediaName;
+  session.client.selectTanMethod(body.tanMethodId);if(body.tanMediaName){const selected=session.client.config.selectedTanMethod;if(selected?.activeTanMedia.length)session.client.selectTanMedia(body.tanMediaName);else session.client.config.tanMediaName=body.tanMediaName;}session.tanMethodId=body.tanMethodId;session.tanMediaName=body.tanMediaName;
   const response=await session.client.synchronize();if(!response.success)throw new Error(answers(response));const next=result(session,response);if(!next)throw new Error("Die Sparkasse hat noch keine Konten geliefert.");return NextResponse.json({token:body.token,...next});
  }
  if(body.action==="continue_tan"){
