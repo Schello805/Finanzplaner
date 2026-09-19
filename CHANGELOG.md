@@ -2,6 +2,11 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.11.5] - 2026-09-19
+
+- Das npm-Lockfile enthält die plattformspezifischen WebAssembly-Unterabhängigkeiten nun an der korrekten Stelle. `npm audit --audit-level=high` kann dadurch in GitHub Actions wieder ausgeführt werden.
+- Nodemailer wurde innerhalb der bestehenden Hauptversion auf 9.1.1 aktualisiert und die dort behobene moderate Sicherheitswarnung geschlossen.
+
 ## [0.11.4] - 2026-09-19
 
 - Der Sparkassen-Assistent fragt registrierte TAN-Geräte nun per FinTS-Geschäftsvorfall HKTAB direkt bei der Bank ab und lässt nur ein tatsächlich gemeldetes Gerät auswählen.
