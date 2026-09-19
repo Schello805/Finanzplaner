@@ -7,10 +7,10 @@ function config(requirement=2,media:string[]=[]){
 }
 describe("TAN device selection",()=>{
  it("rejects a missing required device before contacting the bank",()=>{
-  const c=config();expect(()=>selectTanDevice(c)).toThrow("TAN-Gerätebezeichnung");expect(c.tanMediaName).toBeUndefined();
+  const c=config();expect(()=>selectTanDevice(c)).toThrow("kein registriertes TAN-Gerät");expect(c.tanMediaName).toBeUndefined();
  });
- it("keeps a manually supplied device when the bank has not delivered a list",()=>{
-  const c=config();expect(selectTanDevice(c," Apple iPhone ")).toBe("Apple iPhone");expect(c.tanMediaName).toBe("Apple iPhone");
+ it("rejects a manually supplied device that the bank has not delivered",()=>{
+  const c=config();expect(()=>selectTanDevice(c,"Apple iPhone")).toThrow("nicht als aktiv gemeldet");
  });
  it("selects the only bank-provided device",()=>{
   const c=config(2,["Registered device"]);expect(selectTanDevice(c)).toBe("Registered device");expect(c.selectTanMedia).toHaveBeenCalledWith("Registered device");

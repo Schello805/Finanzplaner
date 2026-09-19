@@ -2,6 +2,13 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.11.4] - 2026-09-19
+
+- Der Sparkassen-Assistent fragt registrierte TAN-Geräte nun per FinTS-Geschäftsvorfall HKTAB direkt bei der Bank ab und lässt nur ein tatsächlich gemeldetes Gerät auswählen.
+- Die irreführende freie Eingabe einer Gerätebezeichnung wurde entfernt. Leerzeichen werden unverändert übertragen; der wiederkehrende Text `MBV07390100255` ist kein Gerätename.
+- Ein Fehler in `lib-fints`, der vor der Geräteabfrage den erfundenen Mediennamen `default` sendete und dadurch Sparkassen-Fehler 9955 auslöste, wird installationsfest korrigiert.
+- `lib-fints` wurde auf Version 1.5.2 aktualisiert.
+
 ## [0.11.3] - 2026-09-17
 
 - Die FinTS-Einrichtung erkennt gerätepflichtige TAN-Verfahren korrekt und fragt die Gerätebezeichnung für pushTAN ab, statt automatisch `default` zu senden.

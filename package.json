@@ -1,6 +1,6 @@
 {
   "name": "finanzplaner",
-  "version": "0.11.3",
+  "version": "0.11.4",
   "private": true,
   "license": "PolyForm-Noncommercial-1.0.0",
   "engines": {
@@ -18,7 +18,8 @@
     "e2e:seed": "node scripts/e2e-seed.mjs",
     "db:check-migrations": "node scripts/check-migrations.mjs",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -33,7 +34,7 @@
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.2",
     "jose": "^6.1.0",
-    "lib-fints": "^1.5.0",
+    "lib-fints": "^1.5.2",
     "lucide-react": "^0.542.0",
     "next": "16.3.4",
     "nodemailer": "^9.1.0",
@@ -60,6 +61,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.35.0",
     "eslint-config-next": "16.3.4",
+    "patch-package": "^8.0.1",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"

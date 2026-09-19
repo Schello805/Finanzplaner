@@ -15,14 +15,22 @@ import {selectTanDevice} from "@/features/fints/tan-device";
 import {finTsProductVersion} from "@/features/fints/product-version";
 
 const discoverSchema=z.object({action:z.literal("discover"),productId:z.string().trim().min(1).max(25,"Die FinTS-Produkt-ID darf höchstens 25 Zeichen lang sein."),endpoint:z.string().url().startsWith("https://"),blz:z.string().regex(/^\d{8}$/),userId:z.string().trim().min(1).max(64),pin:z.string().min(1).max(64)});
-const methodSchema=z.object({action:z.literal("select_method"),token:z.string().uuid(),tanMethodId:z.number().int(),tanMediaName:z.string().max(100).optional()});
+const methodSchema=z.object({action:z.literal("select_method"),token:z.string().uuid(),tanMethodId:z.number().int()});
+const mediaSchema=z.object({action:z.literal("select_media"),token:z.string().uuid(),tanMediaName:z.string().trim().min(1).max(32)});
 const tanSchema=z.object({action:z.literal("continue_tan"),token:z.string().uuid(),tan:z.string().max(20).optional()});
 const saveSchema=z.object({action:z.literal("save"),token:z.string().uuid(),bankAccountNumber:z.string().min(1),localAccountId:z.string().uuid()});
-const bodySchema=z.discriminatedUnion("action",[discoverSchema,methodSchema,tanSchema,saveSchema]);
+const bodySchema=z.discriminatedUnion("action",[discoverSchema,methodSchema,mediaSchema,tanSchema,saveSchema]);
 const answers=(response:{bankAnswers?:Array<{code:number;text:string}>})=>response.bankAnswers?.map(answer=>`${answer.code}: ${answer.text}`).join(" · ")||"Die Sparkasse hat die Anfrage abgelehnt.";
 function result(session:PendingFinTsSession,response:{success:boolean;requiresTan:boolean;tanReference?:string;tanChallenge?:string;tanPhoto?:{mimeType:string;image:Uint8Array};bankingInformation?:PendingFinTsSession["bankingInformation"]}){
  if(response.bankingInformation)session.bankingInformation=response.bankingInformation;
  if(response.requiresTan){session.tanReference=response.tanReference;return{stage:"tan",challenge:response.tanChallenge??"Bitte den Auftrag mit deinem TAN-Verfahren freigeben.",photo:response.tanPhoto?`data:${response.tanPhoto.mimeType};base64,${Buffer.from(response.tanPhoto.image).toString("base64")}`:null,isDecoupled:session.client.config.selectedTanMethod?.isDecoupled??false}}
+ const method=session.client.config.selectedTanMethod;
+ if(method&&method.tanMediaRequirement>0&&!session.tanMediaName){
+  const media=[...new Set(method.activeTanMedia.map(name=>name.trim()).filter(Boolean))];
+  if(media.length===1)session.tanMediaName=selectTanDevice(session.client.config,media[0]);
+  else if(media.length>1)return{stage:"tan_media",media};
+  else if(method.tanMediaRequirement===2)throw new Error("Die Sparkasse hat kein registriertes TAN-Gerät über FinTS geliefert. Prüfe im Online-Banking, ob pushTAN für diesen Zugang aktiviert ist, und starte die Einrichtung danach erneut.");
+ }
  const info=response.bankingInformation??session.bankingInformation??session.client.config.bankingInformation;
  const bankAccounts=info?.upd?.bankAccounts??[];
  if(response.success&&bankAccounts.length)return{stage:"accounts",accounts:bankAccounts.map(account=>({accountNumber:account.accountNumber,iban:account.iban??null,bic:account.bic??null,currency:account.currency,holder:account.holder1,product:account.product??"Sparkassenkonto",type:account.accountType}))};
@@ -39,14 +47,17 @@ export async function POST(request:Request){try{
   const client=new FinTSClient(config),response=await client.synchronize();
   if(!response.success&&!response.bankingInformation)throw new Error(answers(response));
   const token=randomUUID(),session:PendingFinTsSession={client,productId:body.productId,endpoint:body.endpoint,blz:body.blz,userId:body.userId,pin:body.pin,bankingInformation:response.bankingInformation,createdAt:Date.now()};finTsSessions.set(token,session);
-  const methods=config.availableTanMethods.map(method=>({id:method.id,name:method.name,isDecoupled:method.isDecoupled,media:method.activeTanMedia,mediaRequired:method.tanMediaRequirement===2}));
+  const methods=config.availableTanMethods.map(method=>({id:method.id,name:method.name,isDecoupled:method.isDecoupled}));
   if(!methods.length)throw new Error("Die Sparkasse hat kein unterstütztes PIN/TAN-Verfahren geliefert.");
   return NextResponse.json({token,stage:"tan_method",methods,bankMessages:response.bankingInformation?.bankMessages??[]});
  }
  const session=finTsSessions.get(body.token);if(!session)throw new Error("Die Einrichtungssitzung ist abgelaufen. Bitte beginne erneut.");
  if(body.action==="select_method"){
-  session.client.selectTanMethod(body.tanMethodId);session.tanMediaName=selectTanDevice(session.client.config,body.tanMediaName);session.tanMethodId=body.tanMethodId;
+  session.client.selectTanMethod(body.tanMethodId);session.client.config.tanMediaName=undefined;session.tanMediaName=undefined;session.tanMethodId=body.tanMethodId;
   const response=await session.client.synchronize();if(!response.success)throw new Error(answers(response));const next=result(session,response);if(!next)throw new Error("Die Sparkasse hat noch keine Konten geliefert.");return NextResponse.json({token:body.token,...next});
+ }
+ if(body.action==="select_media"){
+  session.tanMediaName=selectTanDevice(session.client.config,body.tanMediaName);const next=result(session,{success:true,requiresTan:false});if(!next)throw new Error("Die Sparkasse hat noch keine Konten geliefert.");return NextResponse.json({token:body.token,...next});
  }
  if(body.action==="continue_tan"){
   if(!session.tanReference)throw new Error("Die TAN-Referenz ist abgelaufen. Bitte beginne erneut.");const response=await session.client.synchronizeWithTan(session.tanReference,body.tan||undefined);if(!response.success)throw new Error(answers(response));const next=result(session,response);if(!next)throw new Error("Die Sparkasse hat nach der Freigabe keine Konten geliefert.");return NextResponse.json({token:body.token,...next});

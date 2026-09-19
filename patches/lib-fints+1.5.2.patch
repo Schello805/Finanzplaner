@@ -1,0 +1,13 @@
+diff --git a/node_modules/lib-fints/dist/dialog.js b/node_modules/lib-fints/dist/dialog.js
+index 03e147a..769ea6d 100644
+--- a/node_modules/lib-fints/dist/dialog.js
++++ b/node_modules/lib-fints/dist/dialog.js
+@@ -168,7 +168,7 @@ export class Dialog {
+             return undefined;
+         }
+         if (requirement === TanMediaRequirement.Required) {
+-            return this.config.tanMediaName ?? 'default';
++            return this.config.tanMediaName;
+         }
+         return this.config.tanMediaName;
+     }
