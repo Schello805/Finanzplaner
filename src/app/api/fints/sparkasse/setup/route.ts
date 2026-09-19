@@ -11,6 +11,7 @@ import {encryptSecret} from "@/lib/security";
 import {memberAndVisibleAccountIds} from "@/lib/visible-accounts";
 import {writeAudit} from "@/lib/audit";
 import {isTrustedSparkasseEndpoint} from "@/features/fints/bank-directory";
+import {selectTanDevice} from "@/features/fints/tan-device";
 import {finTsProductVersion} from "@/features/fints/product-version";
 
 const discoverSchema=z.object({action:z.literal("discover"),productId:z.string().trim().min(1).max(25,"Die FinTS-Produkt-ID darf höchstens 25 Zeichen lang sein."),endpoint:z.string().url().startsWith("https://"),blz:z.string().regex(/^\d{8}$/),userId:z.string().trim().min(1).max(64),pin:z.string().min(1).max(64)});
@@ -44,7 +45,7 @@ export async function POST(request:Request){try{
  }
  const session=finTsSessions.get(body.token);if(!session)throw new Error("Die Einrichtungssitzung ist abgelaufen. Bitte beginne erneut.");
  if(body.action==="select_method"){
-  session.client.selectTanMethod(body.tanMethodId);if(body.tanMediaName){const selected=session.client.config.selectedTanMethod;if(selected?.activeTanMedia.length)session.client.selectTanMedia(body.tanMediaName);else session.client.config.tanMediaName=body.tanMediaName;}session.tanMethodId=body.tanMethodId;session.tanMediaName=body.tanMediaName;
+  session.client.selectTanMethod(body.tanMethodId);session.tanMediaName=selectTanDevice(session.client.config,body.tanMediaName);session.tanMethodId=body.tanMethodId;
   const response=await session.client.synchronize();if(!response.success)throw new Error(answers(response));const next=result(session,response);if(!next)throw new Error("Die Sparkasse hat noch keine Konten geliefert.");return NextResponse.json({token:body.token,...next});
  }
  if(body.action==="continue_tan"){
