@@ -2,6 +2,12 @@
 
 Dieses Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.11.6] - 2026-09-20
+
+- Der FinTS-Import verwechselt CAMT-Bankgeschäftscodes wie `ACMT` nicht mehr mit einer Währung.
+- Die Umsatzwährung wird aus den Kontoständen des Kontoauszugs ermittelt und fällt nur bei fehlender Angabe auf die von der Sparkasse gemeldete Kontowährung zurück.
+- Widersprüchliche oder nicht sicher ermittelbare Währungen brechen den Import weiterhin kontrolliert ab, statt Beträge stillschweigend als EUR zu behandeln.
+
 ## [0.11.5] - 2026-09-19
 
 - Das npm-Lockfile enthält die plattformspezifischen WebAssembly-Unterabhängigkeiten nun an der korrekten Stelle. `npm audit --audit-level=high` kann dadurch in GitHub Actions wieder ausgeführt werden.
